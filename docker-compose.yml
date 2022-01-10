@@ -1,0 +1,27 @@
+version: "3.9"
+services:
+  web:
+    build: .
+    restart: on-failure
+    ports:
+      - "5001:5001"
+    volumes:
+      - .:/code
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 5001
+    environment:
+      MONGODB_URL: mongodb://newshades:newshades@db
+    depends_on:
+      - mongodb
+  db:
+    image: mongo:4.2.7
+    env_file:
+      - .env
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: newshades
+      MONGO_INITDB_ROOT_PASSWORD: newshades
+      MONGO_INITDB_DATABASE: newshades
+      MONGODB_DATA_DIR: /data/db
