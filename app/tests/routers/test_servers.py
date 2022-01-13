@@ -7,15 +7,20 @@ from pymongo.database import Database
 
 class TestServerRoutes:
     @pytest.mark.asyncio
-    async def test_list_servers_empty(self, app: FastAPI, db: Database, client: AsyncClient):
+    async def test_list_servers_unauthorized(self, app: FastAPI, db: Database, client: AsyncClient):
         response = await client.get("/servers")
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_list_servers_empty(self, app: FastAPI, db: Database, authorized_client: AsyncClient):
+        response = await authorized_client.get("/servers")
         assert response.status_code == 200
         assert response.json() == []
 
     @pytest.mark.asyncio
-    async def test_create_server(self, app: FastAPI, db: Database, client: AsyncClient):
+    async def test_create_server(self, app: FastAPI, db: Database, authorized_client: AsyncClient):
         server_name = "test"
-        response = await client.post("/servers", json={"name": server_name})
+        response = await authorized_client.post("/servers", json={"name": server_name})
         assert response.status_code == 201
         json_response = response.json()
         assert json_response != {}
@@ -25,9 +30,9 @@ class TestServerRoutes:
         assert type(json_response['_id']) == str
 
     @pytest.mark.asyncio
-    async def test_create_server_right_objectid_type(self, app: FastAPI, db: Database, client: AsyncClient):
+    async def test_create_server_right_objectid_type(self, app: FastAPI, db: Database, authorized_client: AsyncClient):
         server_name = "test"
-        response = await client.post("/servers", json={"name": server_name})
+        response = await authorized_client.post("/servers", json={"name": server_name})
         assert response.status_code == 201
         obj = await db["servers"].find_one()
         assert type(obj['_id']) != str

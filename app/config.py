@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     mongodb_url: str = ""
     mongodb_db: str = ""
 
+    jwt_secret_key: str
+    jwt_expire_minutes: int
+
     class Config:
         env_file = ".env"
 
