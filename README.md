@@ -64,4 +64,6 @@ Go to `/docs` to find the API documentation. Locally: `http://localhost:5001/doc
 
 ## Contributing
 
-Pull requests are welcome!
+Pull requests are welcome. For major changes, please open an issue first or ping a core member in discord (#development) to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
