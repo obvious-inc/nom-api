@@ -27,14 +27,15 @@ class APIBaseModel(BaseModel):
 
     _collection_name: str
 
+    @property
+    def collection_name(self):
+        return self._collection_name
+
     class Config:
         underscore_attrs_are_private = True
         allow_population_by_field_name = True
         arbitrary_types_allowed = True
         json_encoders = {
-            ObjectId: ObjectId,
+            PyObjectId: ObjectId,
+            datetime: lambda x: x  # send datetime objects as datetime to pymongo
         }
-
-    @property
-    def collection_name(self):
-        return self._collection_name
