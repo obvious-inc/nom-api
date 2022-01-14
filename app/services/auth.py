@@ -15,7 +15,7 @@ async def generate_wallet_token(data: dict) -> str:
     if not message or not signature:
         raise Exception("missing params")
 
-    json_message = json.dumps(message)
+    json_message = json.dumps(message).replace(" ", "")  # JSON.stringify() in JS removes all spaces
 
     try:
         signed_address = get_wallet_address_from_signed_message(json_message, signature)
