@@ -1,12 +1,14 @@
 from bson import ObjectId
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.models.base import PyObjectId
+from app.models.base import PyObjectId, APIBaseModel
 
 
-class ServerModel(BaseModel):
+class ServerModel(APIBaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     name: str = Field()
+
+    _collection_name = "servers"
 
     class Config:
         allow_population_by_field_name = True

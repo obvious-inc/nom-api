@@ -2,11 +2,11 @@ import http
 from typing import List
 
 from fastapi import APIRouter, Body, Depends
-from fastapi.encoders import jsonable_encoder
 
 from app.dependencies import get_current_user
 from app.helpers.database import get_db
 from app.models.server import ServerModel
+from app.services.crud import create_object
 
 router = APIRouter()
 
@@ -17,9 +17,7 @@ router = APIRouter()
              status_code=http.HTTPStatus.CREATED)
 async def create_server(server: ServerModel = Body(...), db=Depends(get_db),
                         current_user: str = Depends(get_current_user)):
-    server = jsonable_encoder(server)
-    new_server = await db["servers"].insert_one(server)
-    created_server = await db["servers"].find_one({"_id": new_server.inserted_id})
+    created_server = await create_object(model=server, db=db, user=current_user)
     return created_server
 
 

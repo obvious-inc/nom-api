@@ -27,7 +27,6 @@ class TestServerRoutes:
         assert 'name' in json_response
         assert '_id' in json_response
         assert json_response['name'] == server_name
-        assert type(json_response['_id']) == str
 
     @pytest.mark.asyncio
     async def test_create_server_right_objectid_type(self, app: FastAPI, db: Database, authorized_client: AsyncClient):
