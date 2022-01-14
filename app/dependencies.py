@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 
 from app.helpers.jwt import decode_jwt_token
+from app.services.users import get_user_by_id
 
 oauth2_scheme = HTTPBearer()
 
@@ -15,8 +16,8 @@ async def get_current_user(token: HTTPAuthorizationCredentials = Depends(oauth2_
     )
     try:
         payload = decode_jwt_token(token.credentials)
-        wallet_address: str = payload.get("sub")
-        if wallet_address is None:
+        user_id: str = payload.get("sub")
+        if not user_id:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
@@ -24,9 +25,8 @@ async def get_current_user(token: HTTPAuthorizationCredentials = Depends(oauth2_
         print(f"error w/ decoding JWT: {e}")
         raise credentials_exception
 
-    # TODO: fetch user from DB
-    # user = get_user(...)
-    # if not user:
-    #     raise credentials_exception
+    user = await get_user_by_id(user_id=user_id)
+    if not user:
+        raise credentials_exception
 
-    return wallet_address
+    return user

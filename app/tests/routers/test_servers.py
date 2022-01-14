@@ -25,7 +25,8 @@ class TestServerRoutes:
         json_response = response.json()
         assert json_response != {}
         assert 'name' in json_response
-        assert '_id' in json_response
+        assert 'id' in json_response
+        assert json_response['id'] is not None
         assert json_response['name'] == server_name
 
     @pytest.mark.asyncio

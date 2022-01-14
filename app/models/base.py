@@ -1,41 +1,19 @@
-from datetime import datetime
+import datetime
 
-from bson import ObjectId
-from pydantic import BaseModel, Field
+from umongo import Document, MixinDocument, fields
 
-
-class PyObjectId(ObjectId):
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError('Invalid ObjectID')
-        return str(v)
-
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type='string')
+from app.helpers.database import instance
 
 
-class APIBaseModel(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+@instance.register
+class DatetimeMixin(MixinDocument):
+    created_at = fields.DateTimeField(default=datetime.datetime.utcnow)
 
-    _collection_name: str
+    # TODO: add default updated_at + trigger on each update
+    updated_at = fields.DateTimeField()
 
-    @property
-    def collection_name(self):
-        return self._collection_name
 
-    class Config:
-        underscore_attrs_are_private = True
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {
-            PyObjectId: ObjectId,
-            datetime: lambda x: x  # send datetime objects as datetime to pymongo
-        }
+@instance.register
+class APIDocument(Document, DatetimeMixin):
+    class Meta:
+        abstract = True

@@ -15,8 +15,8 @@ class TestBaseRouting:
         json_response = response.json()
         assert json_response != {}
         assert 'name' in json_response
-        assert '_id' in json_response
-        assert isinstance(json_response.get('_id'), str)
+        assert 'id' in json_response
+        assert isinstance(json_response.get('id'), str)
 
         # collection is private
         assert 'collection_name' not in json_response

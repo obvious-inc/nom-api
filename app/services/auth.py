@@ -4,6 +4,8 @@ import arrow
 
 from app.helpers.jwt import generate_jwt_token
 from app.helpers.w3 import get_wallet_address_from_signed_message
+from app.schemas.users import UserCreateSchema
+from app.services.users import create_user, get_user_by_wallet_address
 
 
 async def generate_wallet_token(data: dict) -> str:
@@ -24,5 +26,9 @@ async def generate_wallet_token(data: dict) -> str:
     signed_at = arrow.get(message.get("signed_at"))
     assert signed_at > arrow.utcnow().shift(seconds=-5)
 
-    token = generate_jwt_token({"sub": signed_address})
+    user = await get_user_by_wallet_address(wallet_address=signed_address)
+    if not user:
+        user = await create_user(UserCreateSchema(wallet_address=signed_address))
+
+    token = generate_jwt_token({"sub": str(user.id)})
     return token

@@ -1,16 +1,14 @@
-from typing import Optional
+from umongo import fields
 
-from app.models.base import APIBaseModel
+from app.helpers.database import instance
+from app.models.base import APIDocument
 
 
-class UserModel(APIBaseModel):
-    email: Optional[str] = None
+@instance.register
+class User(APIDocument):
+    wallet_address = fields.StrField()
+    ens_name = fields.StrField()
+    email = fields.StrField()
 
-    _collection_name = "users"
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "email": "test@newshades.xyz",
-            }
-        }
+    class Meta:
+        collection_name = "users"

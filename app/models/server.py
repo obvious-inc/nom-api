@@ -1,17 +1,12 @@
-from pydantic import Field
+from umongo import fields
 
-from app.models.base import PyObjectId, APIBaseModel
+from app.helpers.database import instance
+from app.models.base import APIDocument
 
 
-class ServerModel(APIBaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    name: str = Field()
+@instance.register
+class Server(APIDocument):
+    name = fields.StrField()
 
-    _collection_name = "servers"
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "name": "Verbs",
-            }
-        }
+    class Meta:
+        collection_name = "servers"
