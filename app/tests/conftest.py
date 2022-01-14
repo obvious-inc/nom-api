@@ -68,7 +68,7 @@ async def authorized_client(client: AsyncClient, private_key: bytes, wallet: str
         "signed_at": arrow.utcnow().isoformat()
     }
 
-    str_message = json.dumps(message_data)
+    str_message = json.dumps(message_data, separators=(',', ':'))
     message = encode_defunct(text=str_message)
     signed_message = Web3().eth.account.sign_message(message, private_key=private_key)
 

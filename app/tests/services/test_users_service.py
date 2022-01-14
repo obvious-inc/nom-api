@@ -17,7 +17,7 @@ class TestUsersService:
         assert user.ens_name is None
         assert user.email is None
 
-    @pytest.mark.asyncio
+    @pytest.mark.skip
     async def test_create_user_expand_ens(self, db):
         wallet_address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
         user_model = UserCreateSchema(wallet_address=wallet_address)
