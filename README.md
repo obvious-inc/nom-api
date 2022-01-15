@@ -33,22 +33,26 @@ Otherwise, you can follow these steps:
    ```sh
    git clone git@github.com:NewShadesDAO/api.git
    ```
-2. Install packages
+2. Install poetry (Python dependency management tooling) via pipx
    ```sh
-   pip install -r requirements.txt
+   pip install pipx && pipx install poetry
    ```
-3. Setup local .env file
+3. Install packages
    ```sh
-   copy .env.template .env
+   poetry install
    ```
-4. Run the server
+4. Setup local .env file
    ```sh
-   uvicorn app.main:app --host 0.0.0.0 --port 5001 --reload
+   cp .env.template .env
+   ```
+5. Run the server
+   ```sh
+   poetry run uvicorn app.main:app --host 0.0.0.0 --port 5001 --reload
    ```
 
 ### Testing
 
-You can run all tests by running `pytest` on the shell or via docker:
+You can run all tests by running `poetry run pytest` on the shell or via docker:
 
 ```sh
 docker exec -it <container_id> pytest
