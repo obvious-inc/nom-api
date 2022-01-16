@@ -25,6 +25,7 @@ pyyaml = "^6.0"
 pycparser = "^2.21"
 pydantic = "^1.9"
 pymongo = "^3.12"
+python-dotenv = "^0.19"
 python-jose = "^3.3"
 umongo = "^3.1"
 uvicorn = "^0.16"
@@ -35,8 +36,6 @@ web3 = "^5.26"
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
 pytest-asyncio = "^0.16"
-python-dateutil = "^2.8"
-python-dotenv = "^0.19"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
