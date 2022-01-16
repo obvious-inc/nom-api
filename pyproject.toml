@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "app"  # name field is required but not used by services
+version = "0.0.0"  # version field is required but not used by services
+description = ""
+authors = ["New Shades DAO <dev@newshades.xyz>"]
+license = "CC0-1.0"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+arrow = "^1.2"
+asgi-lifespan = "^1.0"
+cffi = "^1.15"
+cryptography = "^36.0"
+dnspython = "^2.1"
+eth-account = "^0.5"
+eth-utils = "^1.10"
+fastapi = "^0.70"
+gunicorn = "^20.1"
+httptools = "^0.3"
+httpx = "^0.21"
+marshmallow = "^3.14"
+motor = "^2.5"
+orjson = "^3.6"
+pyyaml = "^6.0"
+pycparser = "^2.21"
+pydantic = "^1.9"
+pymongo = "^3.12"
+python-dotenv = "^0.19"
+python-jose = "^3.3"
+umongo = "^3.1"
+uvicorn = "^0.16"
+uvloop = "^0.16"
+watchgod = "^0.7"
+web3 = "^5.26"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2"
+pytest-asyncio = "^0.16"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
