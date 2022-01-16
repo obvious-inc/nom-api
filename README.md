@@ -33,9 +33,11 @@ Otherwise, you can follow these steps:
    ```sh
    git clone git@github.com:NewShadesDAO/api.git
    ```
-2. Install poetry (Python dependency management tooling) via pipx
+2. Install `poetry` – dependency management tooling for Python ([see full installation documentation for additional options](<https://github.com/python-poetry/poetry#installation>))
    ```sh
-   pip install pipx && pipx install poetry
+   curl -sSL https://install.python-poetry.org | python3 -
+
+   # Note: add `export PATH="~/Library/Python/3.9/bin:$PATH"` to your shell configuration file.
    ```
 3. Install packages
    ```sh
