@@ -1,8 +1,9 @@
 import http
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Depends
 
-from app.models.auth import AuthWalletModel, AccessTokenModel
+from app.helpers.database import get_db
+from app.schemas.auth import AuthWalletSchema, AccessTokenSchema
 from app.services.auth import generate_wallet_token
 
 router = APIRouter()
@@ -10,10 +11,10 @@ router = APIRouter()
 
 @router.post('/login',
              response_description="Generate access token",
-             response_model=AccessTokenModel,
+             response_model=AccessTokenSchema,
              status_code=http.HTTPStatus.CREATED
              )
-async def create_token(data: AuthWalletModel = Body(...)):
+async def login_with_wallet(data: AuthWalletSchema = Body(...), db=Depends(get_db)):
     token = await generate_wallet_token(data.dict())
-    response = AccessTokenModel(access_token=token)
+    response = AccessTokenSchema(access_token=token)
     return response

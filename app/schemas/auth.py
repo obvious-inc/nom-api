@@ -3,22 +3,22 @@ from typing import Optional
 from pydantic import Field, BaseModel
 
 
-class MessageModel(BaseModel):
+class MessageSchema(BaseModel):
     address: Optional[str] = None
     signed_at: Optional[str] = None
 
 
-class AuthWalletModel(BaseModel):
-    message: MessageModel = Field()
+class AuthWalletSchema(BaseModel):
+    message: MessageSchema = Field()
     signature: str = Field()
 
     class Config:
         allow_population_by_field_name = True
-        json_encoders = {MessageModel: dict}
+        json_encoders = {MessageSchema: dict}
         schema_extra = {
             "example": {
                 "message": {
-                    "address": "0x1234",
+                    "address": "0x1231237072081028432784128371234898237233",
                     "signed_at": "2022-01-01T12:12:12.123Z"
                 },
                 "signature": "0x1231237072081028432784128371234898237233479"
@@ -26,7 +26,7 @@ class AuthWalletModel(BaseModel):
         }
 
 
-class AccessTokenModel(BaseModel):
+class AccessTokenSchema(BaseModel):
     access_token: str = Field()
     token_type: str = Field(default="bearer")
 
