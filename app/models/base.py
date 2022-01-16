@@ -1,18 +1,19 @@
-from bson import ObjectId
+import datetime
+
+from umongo import Document, MixinDocument, fields
+
+from app.helpers.database import instance
 
 
-class PyObjectId(ObjectId):
+@instance.register
+class DatetimeMixin(MixinDocument):
+    created_at = fields.DateTimeField(default=datetime.datetime.utcnow)
 
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    # TODO: add default updated_at + trigger on each update
+    updated_at = fields.DateTimeField()
 
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError('Invalid ObjectID')
-        return str(v)
 
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type='string')
+@instance.register
+class APIDocument(Document, DatetimeMixin):
+    class Meta:
+        abstract = True

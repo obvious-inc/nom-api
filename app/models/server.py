@@ -1,19 +1,12 @@
-from bson import ObjectId
-from pydantic import BaseModel, Field
+from umongo import fields
 
-from app.models.base import PyObjectId
+from app.helpers.database import instance
+from app.models.base import APIDocument
 
 
-class ServerModel(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    name: str = Field()
+@instance.register
+class Server(APIDocument):
+    name = fields.StrField()
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: ObjectId}
-        schema_extra = {
-            "example": {
-                "name": "Verbs",
-            }
-        }
+    class Meta:
+        collection_name = "servers"

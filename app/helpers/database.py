@@ -1,7 +1,10 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.database import Database
+from umongo.frameworks import MotorAsyncIOInstance
 
 from app.config import get_settings
+
+instance = MotorAsyncIOInstance()
 
 
 async def get_client() -> AsyncIOMotorClient:
@@ -13,4 +16,5 @@ async def get_db() -> Database:
     settings = get_settings()
     client = await get_client()
     db = client[settings.mongodb_db]
+    instance.set_db(db)
     return db
