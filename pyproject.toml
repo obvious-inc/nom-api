@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "app"
-version = "0.0.0"
+name = "app"  # name field is required but not used by services
+version = "0.0.0"  # version field is required but not used by services
 description = ""
 authors = ["New Shades DAO <dev@newshades.xyz>"]
 license = "CC0-1.0"
