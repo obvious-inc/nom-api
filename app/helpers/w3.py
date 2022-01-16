@@ -24,3 +24,7 @@ async def get_ens_primary_name_for_address(wallet_address: str) -> str:
     checksum_address = web3_client.toChecksumAddress(wallet_address)
     ens_name = ENS.fromWeb3(web3_client).name(checksum_address)
     return ens_name
+
+
+def checksum_address(address: str) -> str:
+    return Web3().toChecksumAddress(address)

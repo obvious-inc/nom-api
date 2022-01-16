@@ -3,7 +3,7 @@ import json
 import arrow
 
 from app.helpers.jwt import generate_jwt_token
-from app.helpers.w3 import get_wallet_address_from_signed_message
+from app.helpers.w3 import get_wallet_address_from_signed_message, checksum_address
 from app.schemas.users import UserCreateSchema
 from app.services.users import create_user, get_user_by_wallet_address
 
@@ -22,7 +22,7 @@ async def generate_wallet_token(data: dict) -> str:
     except Exception as e:
         raise e
 
-    assert signed_address == message.get("address")
+    assert signed_address == checksum_address(message.get("address"))
     signed_at = arrow.get(message.get("signed_at"))
     assert signed_at > arrow.utcnow().shift(seconds=-5)
 
