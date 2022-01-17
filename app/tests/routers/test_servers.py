@@ -26,12 +26,12 @@ class TestServerRoutes:
         assert response.status_code == 201
         json_response = response.json()
         assert json_response != {}
-        assert 'name' in json_response
-        assert 'id' in json_response
-        assert json_response['id'] is not None
-        assert json_response['name'] == server_name
-        assert 'owner' in json_response
-        assert json_response['owner'] == str(current_user.id)
+        assert "name" in json_response
+        assert "id" in json_response
+        assert json_response["id"] is not None
+        assert json_response["name"] == server_name
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
 
     @pytest.mark.asyncio
     async def test_create_server_right_objectid_type(self, app: FastAPI, db: Database, authorized_client: AsyncClient):
@@ -39,5 +39,5 @@ class TestServerRoutes:
         response = await authorized_client.post("/servers", json={"name": server_name})
         assert response.status_code == 201
         obj = await db["servers"].find_one()
-        assert type(obj['_id']) != str
-        assert type(obj['_id']) == ObjectId
+        assert type(obj["_id"]) != str
+        assert type(obj["_id"]) == ObjectId

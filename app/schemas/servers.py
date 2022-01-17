@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from app.schemas.base import APIBaseSchema, APIBaseCreateSchema, PyObjectId
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
 
 
 class ServerSchema(APIBaseSchema):
@@ -9,11 +9,7 @@ class ServerSchema(APIBaseSchema):
 
     class Config:
         schema_extra = {
-            "example": {
-                "id": "61e17018c3ee162141baf5c9",
-                "name": "Verbs",
-                "owner": "61e17018c3ee162141baf5c7"
-            }
+            "example": {"id": "61e17018c3ee162141baf5c9", "name": "Verbs", "owner": "61e17018c3ee162141baf5c7"}
         }
 
 
