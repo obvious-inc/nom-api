@@ -8,6 +8,6 @@ from app.schemas.users import UserSchema
 router = APIRouter()
 
 
-@router.get("/me", response_description="Get user info", response_model=UserSchema)
+@router.get("/me", response_description="Get user info", response_model=UserSchema, summary="Get current user info")
 async def get_user_me(db=Depends(get_db), current_user: User = Depends(get_current_user)):
     return current_user
