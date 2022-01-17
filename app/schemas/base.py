@@ -2,6 +2,7 @@ from datetime import datetime
 
 from bson import ObjectId
 from pydantic import BaseModel, Field
+from umongo.frameworks.motor_asyncio import MotorAsyncIOReference
 
 
 class PyObjectId(ObjectId):
@@ -11,6 +12,8 @@ class PyObjectId(ObjectId):
 
     @classmethod
     def validate(cls, v):
+        if isinstance(v, MotorAsyncIOReference):
+            v = v.pk
         if not ObjectId.is_valid(v):
             raise ValueError('Invalid ObjectID')
         return str(v)

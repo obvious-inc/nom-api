@@ -14,7 +14,10 @@ from web3 import Web3
 
 from app.helpers.database import get_db, get_client
 from app.main import get_application
+from app.models.user import User
+from app.schemas.users import UserCreateSchema
 from app.services.auth import generate_wallet_token
+from app.services.users import create_user
 
 
 @pytest.fixture
@@ -62,9 +65,14 @@ def wallet(private_key: bytes) -> str:
 
 
 @pytest.fixture
-async def authorized_client(client: AsyncClient, private_key: bytes, wallet: str) -> AsyncClient:
+async def current_user(private_key: bytes, wallet: str) -> User:
+    return await create_user(UserCreateSchema(wallet_address=wallet))
+
+
+@pytest.fixture
+async def authorized_client(client: AsyncClient, private_key: bytes, current_user: User) -> AsyncClient:
     message_data = {
-        "address": wallet,
+        "address": current_user.wallet_address,
         "signed_at": arrow.utcnow().isoformat()
     }
 
