@@ -19,9 +19,9 @@ class AuthWalletSchema(BaseModel):
             "example": {
                 "message": {
                     "address": "0x1231237072081028432784128371234898237233",
-                    "signed_at": "2022-01-01T12:12:12.123Z"
+                    "signed_at": "2022-01-01T12:12:12.123Z",
                 },
-                "signature": "0x1231237072081028432784128371234898237233479"
+                "signature": "0x1231237072081028432784128371234898237233479",
             }
         }
 
@@ -35,6 +35,6 @@ class AccessTokenSchema(BaseModel):
         schema_extra = {
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIweDI1MDVmYTg2MTQwMDhGNTNGQjg1YmE0RTgwREFiOUZEZTUyNjYyNTMiLCJleHAiOjE2NDIwMjg2MjR9.bDZW6RHWpkQpwqkDopjSoiNDc2sHglWQ2TjdkM_5F84",
-                "token_type": "bearer"
+                "token_type": "bearer",
             }
         }

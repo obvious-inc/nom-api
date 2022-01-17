@@ -25,7 +25,7 @@ class TestCRUDService:
         created_user = await create_item(item=model, result_obj=User, current_user="")
         assert created_user is not None
         assert created_user.wallet_address == wallet_address
-        assert 'created_at' in created_user._fields
+        assert "created_at" in created_user._fields
         assert created_user.created_at is not None
         assert isinstance(created_user.created_at, datetime)
         created_date = arrow.get(created_user.created_at)

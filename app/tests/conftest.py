@@ -29,11 +29,7 @@ def app() -> FastAPI:
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncClient:
     async with LifespanManager(app):
-        async with AsyncClient(
-                app=app,
-                base_url="http://testserver",
-                follow_redirects=True
-        ) as client:
+        async with AsyncClient(app=app, base_url="http://testserver", follow_redirects=True) as client:
             yield client
 
 
@@ -55,7 +51,7 @@ def private_key() -> bytes:
 
 @pytest.fixture(scope="module")
 def wallet(private_key: bytes) -> str:
-    priv = binascii.hexlify(private_key).decode('ascii')
+    priv = binascii.hexlify(private_key).decode("ascii")
     private_key = "0x" + priv
     acct = Account.from_key(private_key)
     return acct.address
@@ -63,19 +59,13 @@ def wallet(private_key: bytes) -> str:
 
 @pytest.fixture
 async def authorized_client(client: AsyncClient, private_key: bytes, wallet: str) -> AsyncClient:
-    message_data = {
-        "address": wallet,
-        "signed_at": arrow.utcnow().isoformat()
-    }
+    message_data = {"address": wallet, "signed_at": arrow.utcnow().isoformat()}
 
-    str_message = json.dumps(message_data, separators=(',', ':'))
+    str_message = json.dumps(message_data, separators=(",", ":"))
     message = encode_defunct(text=str_message)
     signed_message = Web3().eth.account.sign_message(message, private_key=private_key)
 
-    data = {
-        "message": message_data,
-        "signature": signed_message.signature
-    }
+    data = {"message": message_data, "signature": signed_message.signature}
 
     access_token = await generate_wallet_token(data)
 
