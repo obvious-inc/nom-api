@@ -17,7 +17,7 @@ RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-proje
 
 WORKDIR /code
 
-COPY pyproject.toml poetry.lock ./
+COPY tox.ini pyproject.toml poetry.lock ./
 RUN poetry install \
     # poetry artifacts cache cleanup nice-to-have
     && ( \

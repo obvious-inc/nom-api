@@ -3,7 +3,7 @@ import json
 import arrow
 
 from app.helpers.jwt import generate_jwt_token
-from app.helpers.w3 import get_wallet_address_from_signed_message, checksum_address
+from app.helpers.w3 import checksum_address, get_wallet_address_from_signed_message
 from app.schemas.users import UserCreateSchema
 from app.services.users import create_user, get_user_by_wallet_address
 

@@ -7,18 +7,18 @@ from app.dependencies import get_current_user
 from app.helpers.database import get_db
 from app.models.server import Server
 from app.models.user import User
-from app.schemas.servers import ServerSchema, ServerCreateSchema
+from app.schemas.servers import ServerCreateSchema, ServerSchema
 from app.services.crud import create_item
 
 router = APIRouter()
 
 
-@router.post("",
-             response_description="Create new server",
-             response_model=ServerSchema,
-             status_code=http.HTTPStatus.CREATED)
-async def create_server(server: ServerCreateSchema = Body(...), db=Depends(get_db),
-                        current_user: User = Depends(get_current_user)):
+@router.post(
+    "", response_description="Create new server", response_model=ServerSchema, status_code=http.HTTPStatus.CREATED
+)
+async def create_server(
+    server: ServerCreateSchema = Body(...), db=Depends(get_db), current_user: User = Depends(get_current_user)
+):
     created_server = await create_item(server, result_obj=Server, current_user=current_user)
     return created_server
 
