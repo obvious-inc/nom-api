@@ -2,6 +2,7 @@ import binascii
 import json
 import os
 import secrets
+from typing import Union
 
 import arrow
 import pytest
@@ -14,9 +15,13 @@ from web3 import Web3
 
 from app.helpers.database import get_db, get_client
 from app.main import get_application
+from app.models.base import APIDocument
+from app.models.server import Server
 from app.models.user import User
+from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.auth import generate_wallet_token
+from app.services.crud import create_item
 from app.services.users import create_user
 
 
@@ -67,6 +72,12 @@ def wallet(private_key: bytes) -> str:
 @pytest.fixture
 async def current_user(private_key: bytes, wallet: str) -> User:
     return await create_user(UserCreateSchema(wallet_address=wallet))
+
+
+@pytest.fixture
+async def server(current_user: User) -> Union[Server, APIDocument]:
+    server_model = ServerCreateSchema(name="NewShades DAO")
+    return await create_item(server_model, result_obj=Server, current_user=current_user, user_field='owner')
 
 
 @pytest.fixture
