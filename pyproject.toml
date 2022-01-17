@@ -34,9 +34,25 @@ watchgod = "^0.7"
 web3 = "^5.26"
 
 [tool.poetry.dev-dependencies]
+black = { version = "*", allow-prereleases = true }
+isort = ">=5.10"
+flake8 = ">=4.0"
+flake8-black = ">=0.2"
+flake8-isort = ">=4.1"
 pytest = "^6.2"
 pytest-asyncio = "^0.16"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target_version = ["py39"]
+include = '\.pyi?$'
+exclude = '\.git/|\.mypy_cache/|\.venv/|\.pytest_cache/|\.vscode/|__pycache__/'
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip = ".git,.mypy_cache,.venv,.pytest_cache,.vscode,__pycache__"
