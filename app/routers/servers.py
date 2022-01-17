@@ -7,7 +7,7 @@ from app.dependencies import get_current_user
 from app.helpers.database import get_db
 from app.models.server import Server
 from app.models.user import User
-from app.schemas.servers import ServerSchema, ServerCreateSchema
+from app.schemas.servers import ServerCreateSchema, ServerSchema
 from app.services.crud import create_item
 
 router = APIRouter()

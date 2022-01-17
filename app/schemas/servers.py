@@ -1,4 +1,4 @@
-from app.schemas.base import APIBaseSchema, APIBaseCreateSchema
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema
 
 
 class ServerSchema(APIBaseSchema):

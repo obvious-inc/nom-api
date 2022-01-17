@@ -3,7 +3,7 @@ import http
 from fastapi import APIRouter, Body, Depends
 
 from app.helpers.database import get_db
-from app.schemas.auth import AuthWalletSchema, AccessTokenSchema
+from app.schemas.auth import AccessTokenSchema, AuthWalletSchema
 from app.services.auth import generate_wallet_token
 
 router = APIRouter()

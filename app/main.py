@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
-from app.routers import servers, base, auth, users
+from app.routers import auth, base, servers, users
 
 
 def get_application():

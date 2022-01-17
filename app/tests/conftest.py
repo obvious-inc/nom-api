@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from web3 import Web3
 
-from app.helpers.database import get_db, get_client
+from app.helpers.database import get_client, get_db
 from app.main import get_application
 from app.services.auth import generate_wallet_token
 
