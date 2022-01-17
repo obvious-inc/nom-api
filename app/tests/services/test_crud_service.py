@@ -38,10 +38,11 @@ class TestCRUDService:
     async def test_create_item_custom_user_field(self, db: Database, current_user: User):
         server_name = "Verbs DAO"
         server_model = ServerCreateSchema(name=server_name)
-        created_server = await create_item(item=server_model, result_obj=Server, current_user=current_user,
-                                           user_field='owner')
+        created_server = await create_item(
+            item=server_model, result_obj=Server, current_user=current_user, user_field="owner"
+        )
         assert created_server is not None
         assert created_server.name == server_name
-        assert 'owner' in created_server._fields
+        assert "owner" in created_server._fields
         assert created_server.owner is not None
         assert created_server.owner == current_user

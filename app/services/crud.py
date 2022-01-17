@@ -1,4 +1,4 @@
-from typing import Type, Optional
+from typing import Optional, Type
 
 from bson import ObjectId
 
@@ -7,10 +7,9 @@ from app.models.user import User
 from app.schemas.base import APIBaseCreateSchema
 
 
-async def create_item(item: APIBaseCreateSchema,
-                      result_obj: Type[APIDocument],
-                      current_user: User,
-                      user_field: Optional[str] = 'user') -> APIDocument:
+async def create_item(
+    item: APIBaseCreateSchema, result_obj: Type[APIDocument], current_user: User, user_field: Optional[str] = "user"
+) -> APIDocument:
     db_object = result_obj(**item.dict())
     if user_field:
         db_object[user_field] = current_user

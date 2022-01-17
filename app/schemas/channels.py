@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import Field
 
-from app.schemas.base import APIBaseSchema, PyObjectId, APIBaseCreateSchema
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
 
 
 class ChannelSchema(APIBaseSchema):
@@ -19,7 +19,7 @@ class DMChannelSchema(ChannelSchema):
                 "id": "61e17018c3ee162141baf5c9",
                 "kind": "dm",
                 "members": ["61e17018c3ee162141baf5c1", "61e17018c3ee162141baf5c2", "61e17018c3ee162141baf5c3"],
-                "owner": "61e17018c3ee162141baf5c1"
+                "owner": "61e17018c3ee162141baf5c1",
             }
         }
 
@@ -35,7 +35,7 @@ class ServerChannelSchema(ChannelSchema):
                 "kind": "server",
                 "name": "🔥-shilling",
                 "server": "61e17018c3ee162141baf5c1",
-                "owner": "61e17018c3ee162141baf5c1"
+                "owner": "61e17018c3ee162141baf5c1",
             }
         }
 

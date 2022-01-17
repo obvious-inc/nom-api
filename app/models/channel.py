@@ -8,7 +8,7 @@ from app.models.user import User
 
 @instance.register
 class Channel(APIDocument):
-    kind: str = fields.StrField(validate=validate.OneOf(['dm', 'server']), required=True)  # TODO: make enum?
+    kind: str = fields.StrField(validate=validate.OneOf(["dm", "server"]), required=True)  # TODO: make enum?
     owner = fields.ReferenceField(User, required=True)
 
     class Meta:
