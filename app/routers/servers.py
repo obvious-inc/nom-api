@@ -16,10 +16,10 @@ router = APIRouter()
 @router.post(
     "", response_description="Create new server", response_model=ServerSchema, status_code=http.HTTPStatus.CREATED
 )
-async def create_server(
+async def post_create_server(
     server: ServerCreateSchema = Body(...), db=Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    created_server = await create_item(server, result_obj=Server, current_user=current_user)
+    created_server = await create_item(server, result_obj=Server, current_user=current_user, user_field="owner")
     return created_server
 
 
