@@ -14,6 +14,11 @@ class Settings(BaseSettings):
 
     web3_provider_url_ws: Optional[str]
 
+    pusher_app_id: Optional[str]
+    pusher_key: Optional[str]
+    pusher_secret: Optional[str]
+    pusher_cluster: Optional[str]
+
     class Config:
         env_file = ".env"
 

@@ -11,7 +11,7 @@ oauth2_scheme = HTTPBearer()
 async def get_current_user(token: HTTPAuthorizationCredentials = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate token",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
