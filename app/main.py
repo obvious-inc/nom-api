@@ -2,7 +2,9 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
+from app.config import get_settings
 from app.routers import auth, base, channels, messages, servers, users
 
 
@@ -25,6 +27,12 @@ def get_application():
     app_.include_router(servers.router, prefix="/servers", tags=["servers"])
     app_.include_router(channels.router, prefix="/channels", tags=["channels"])
     app_.include_router(messages.router, prefix="/messages", tags=["messages"])
+
+    settings = get_settings()
+
+    # Force HTTPS when not testing or local
+    if not settings.testing:
+        app_.add_middleware(HTTPSRedirectMiddleware)
 
     return app_
 
