@@ -24,7 +24,6 @@ async def broadcast_message(
 
     server = message.server  # type: Server
     members = await get_items(filters={}, result_obj=User, current_user=current_user)
-    print(f"members: {members}")
     online_members = members
 
     event_id = "MESSAGE_CREATE"
@@ -35,13 +34,14 @@ async def broadcast_message(
         if online_member == current_user:
             continue
 
-        channel_id = str(online_member.id)
+        # private-channels will require auth:
+        # https://pusher.com/docs/channels/using_channels/channels/#channel-naming-conventions
+        channel_id = f"private-{str(online_member.id)}"
         channels.append(channel_id)
 
         if len(channels) > 90:
             try:
-                print(f"triggering to channels: {channels}")
-                pusher_client.trigger(channels, event_id, ws_data)
+                await pusher_client.trigger(channels, event_id, ws_data)
             except Exception as e:
                 print(f"problems triggering Pusher events: {e}")
             finally:
@@ -49,8 +49,7 @@ async def broadcast_message(
 
     if len(channels) > 0:
         try:
-            print(f"triggering to channels: {channels}")
-            pusher_client.trigger(channels, event_id, ws_data)
+            await pusher_client.trigger("private-61e7f0f13bcb32093be735db", event_id, ws_data)
         except Exception as e:
             print(f"problems triggering Pusher events: {e}")
 
