@@ -29,15 +29,10 @@ async def broadcast_message(
     event_id = "MESSAGE_CREATE"
     ws_data = {**message_model.dict(), "author": str(current_user.id)}
 
+    # TODO: abstract this away from Pusher specific behaviour
     channels = []
     for online_member in online_members:  # type: User
-        if online_member == current_user:
-            continue
-
-        # private-channels will require auth:
-        # https://pusher.com/docs/channels/using_channels/channels/#channel-naming-conventions
-        channel_id = f"private-{str(online_member.id)}"
-        channels.append(channel_id)
+        channels.extend(online_member.online_channels)
 
         if len(channels) > 90:
             try:
@@ -49,7 +44,7 @@ async def broadcast_message(
 
     if len(channels) > 0:
         try:
-            await pusher_client.trigger("private-61e7f0f13bcb32093be735db", event_id, ws_data)
+            await pusher_client.trigger(channels, event_id, ws_data)
         except Exception as e:
             print(f"problems triggering Pusher events: {e}")
 
