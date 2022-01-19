@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.models.server import Server
 from app.models.user import User
 
 
@@ -41,3 +42,14 @@ class TestServerRoutes:
         obj = await db["servers"].find_one()
         assert type(obj["_id"]) != str
         assert type(obj["_id"]) == ObjectId
+
+    @pytest.mark.asyncio
+    async def test_list_servers_ok(self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server):
+        response = await authorized_client.get("/servers")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response != []
+        assert len(json_response) == 1
+        json_server = json_response[0]
+        assert json_server["id"] == str(server.id)
+        assert json_server["name"] == server.name
