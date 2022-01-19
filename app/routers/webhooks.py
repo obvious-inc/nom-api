@@ -1,7 +1,8 @@
 from typing import Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from starlette import status
 from starlette.background import BackgroundTasks
 
 from app.helpers.database import get_db
@@ -17,10 +18,8 @@ async def process_webhook_events(events: list[dict], db):
             channel_name = event["channel"]
             user_id = channel_name.split("-")[1]
             if event["name"] == "channel_occupied":
-                print(f"channel occupied: {event['channel']}")
                 update_data = {"$addToSet": {"online_channels": channel_name}}
             elif event["name"] == "channel_vacated":
-                print(f"channel vacated: {event['channel']}")
                 update_data = {"$pull": {"online_channels": channel_name}}
             else:
                 raise NotImplementedError(f"not expected event: {event}")
@@ -38,15 +37,20 @@ async def post_pusher_webhooks(
     db=Depends(get_db),
     background_tasks: BackgroundTasks = None,
 ):
+    webhook_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate webhook",
+    )
+
     # need to use raw body
     data = await request.body()
     try:
         webhook = pusher_client.validate_webhook(key=x_pusher_key, signature=x_pusher_signature, body=data)
     except Exception as e:
-        raise Exception(f"invalid webhook: {e}")
+        raise webhook_exception
 
     if not webhook:
-        raise Exception(f"invalid webhook")
+        raise webhook_exception
 
     background_tasks.add_task(process_webhook_events, events=webhook["events"], db=db)
 
