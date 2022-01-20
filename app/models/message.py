@@ -2,14 +2,14 @@ from umongo import fields
 
 from app.helpers.database import instance
 from app.models.base import APIDocument
-from app.models.channel import ServerChannel
+from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
 
 
 @instance.register
 class Message(APIDocument):
-    channel = fields.ReferenceField(ServerChannel, required=False)
+    channel = fields.ReferenceField(Channel, required=False)
     server = fields.ReferenceField(Server, required=False)
     author = fields.ReferenceField(User, required=True)
 

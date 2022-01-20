@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
 
@@ -117,3 +118,17 @@ class TestChannelsRoutes:
         assert json_response["name"] == data["name"]
         assert "server" in json_response
         assert json_response["server"] == str(server.id)
+
+    @pytest.mark.asyncio
+    async def test_list_channels_ok(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server, server_channel: Channel
+    ):
+        response = await authorized_client.get("/channels")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response != []
+        assert len(json_response) == 1
+        json_channel = json_response[0]
+        assert json_channel["id"] == str(server_channel.id)
+        assert json_channel["name"] == server_channel.name
+        assert json_channel["server"] == str(server.id)

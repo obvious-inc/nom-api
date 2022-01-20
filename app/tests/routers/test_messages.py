@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
-from app.models.channel import ServerChannel
+from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
 
@@ -17,7 +17,7 @@ class TestMessagesRoutes:
         current_user: User,
         authorized_client: AsyncClient,
         server: Server,
-        server_channel: ServerChannel,
+        server_channel: Channel,
     ):
         data = {"content": "gm!", "server": str(server.id), "channel": str(server_channel.id)}
         response = await authorized_client.post("/messages", json=data)

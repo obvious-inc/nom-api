@@ -1,3 +1,4 @@
+from marshmallow import ValidationError
 from umongo import fields, validate
 
 from app.helpers.database import instance
@@ -11,22 +12,27 @@ class Channel(APIDocument):
     kind: str = fields.StrField(validate=validate.OneOf(["dm", "server"]), required=True)  # TODO: make enum?
     owner = fields.ReferenceField(User, required=True)
 
+    # DM fields
+    members = fields.ListField(fields.ReferenceField(User))
+
+    # Server fields
+    server = fields.ReferenceField(Server)
+    name = fields.StrField()
+
+    def pre_insert(self):
+        if self.kind == "dm":
+            if not hasattr(self, "members"):
+                raise ValidationError("missing 'members' field")
+
+        elif self.kind == "server":
+            error_fields = []
+            if not hasattr(self, "server"):
+                error_fields.append("server")
+            if not hasattr(self, "name"):
+                error_fields.append("name")
+
+            if error_fields:
+                raise ValidationError(f"missing fields: {error_fields}")
+
     class Meta:
-        abstract = True
-
-
-@instance.register
-class DMChannel(Channel):
-    members = fields.ListField(fields.ReferenceField(User), required=True)
-
-    class Meta:
-        collection_name = "channels"
-
-
-@instance.register
-class ServerChannel(Channel):
-    server = fields.ReferenceField(Server, required=True)
-    name = fields.StrField(required=True)
-
-    class Meta:
-        collection_name = "channels"
+        collection = "channels"
