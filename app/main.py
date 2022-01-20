@@ -5,7 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
-from app.routers import auth, base, channels, servers, users
+from app.routers import auth, base, channels, messages, servers, users, webhooks, websockets
 
 
 def get_application():
@@ -26,6 +26,9 @@ def get_application():
     app_.include_router(users.router, prefix="/users", tags=["users"])
     app_.include_router(servers.router, prefix="/servers", tags=["servers"])
     app_.include_router(channels.router, prefix="/channels", tags=["channels"])
+    app_.include_router(messages.router, prefix="/messages", tags=["messages"])
+    app_.include_router(websockets.router, prefix="/websockets", tags=["websockets"])
+    app_.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 
     settings = get_settings()
 

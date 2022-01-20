@@ -18,3 +18,12 @@ async def get_db() -> Database:
     db = client[settings.mongodb_db]
     instance.set_db(db)
     return db
+
+
+async def override_get_db():
+    settings = get_settings()
+    settings.mongodb_db = "newshades-test"
+    client = await get_client()
+    db = client[settings.mongodb_db]
+    instance.set_db(db)
+    return db

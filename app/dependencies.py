@@ -2,16 +2,17 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 
+from app.helpers.database import get_db
 from app.helpers.jwt import decode_jwt_token
 from app.services.users import get_user_by_id
 
 oauth2_scheme = HTTPBearer()
 
 
-async def get_current_user(token: HTTPAuthorizationCredentials = Depends(oauth2_scheme)):
+async def get_current_user(token: HTTPAuthorizationCredentials = Depends(oauth2_scheme), db=Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate token",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:

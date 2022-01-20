@@ -1,6 +1,7 @@
-from typing import Optional, Type
+from typing import Optional, Type, Union
 
 from bson import ObjectId
+from umongo.document import DocumentImplementation
 
 from app.models.base import APIDocument
 from app.models.user import User

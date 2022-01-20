@@ -10,5 +10,7 @@ class User(APIDocument):
     ens_name = fields.StrField()
     email = fields.StrField()
 
+    online_channels = fields.ListField(fields.StrField(), required=False, default=[])
+
     class Meta:
         collection_name = "users"

@@ -3,18 +3,18 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class MessageSchema(BaseModel):
+class WalletMessageSchema(BaseModel):
     address: Optional[str] = None
     signed_at: Optional[str] = None
 
 
 class AuthWalletSchema(BaseModel):
-    message: MessageSchema = Field()
+    message: WalletMessageSchema = Field()
     signature: str = Field()
 
     class Config:
         allow_population_by_field_name = True
-        json_encoders = {MessageSchema: dict}
+        json_encoders = {WalletMessageSchema: dict}
         schema_extra = {
             "example": {
                 "message": {
