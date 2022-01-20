@@ -5,7 +5,7 @@ from starlette.background import BackgroundTasks
 from app.helpers.websockets import pusher_client
 from app.models.base import APIDocument
 from app.models.message import Message
-from app.models.server import Server
+from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema
 from app.services.crud import create_item, get_items
@@ -23,16 +23,16 @@ async def broadcast_message(
     # 4. Broadcast message to their channels
 
     server = message.server  # type: Server
-    members = await get_items(filters={}, result_obj=User, current_user=current_user)
-    online_members = members
+    server_members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
+    server_users = [await member.user.fetch() for member in server_members]
 
     event_id = "MESSAGE_CREATE"
     ws_data = {**message_model.dict(), "author": str(current_user.id)}
 
     # TODO: abstract this away from Pusher specific behaviour
     channels = []
-    for online_member in online_members:  # type: User
-        channels.extend(online_member.online_channels)
+    for user in server_users:  # type: User
+        channels.extend(user.online_channels)
 
         if len(channels) > 90:
             try:
