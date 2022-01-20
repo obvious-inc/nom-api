@@ -43,3 +43,7 @@ async def create_channel(
         return await create_server_channel(channel_model, current_user)
     else:
         raise Exception(f"unexpected channel kind: {kind}")
+
+
+async def get_server_channels(server_id, current_user: User) -> [Channel]:
+    return await get_items(filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user)
