@@ -1,16 +1,15 @@
 from bson import ObjectId
 
-from app.helpers.w3 import get_ens_primary_name_for_address
+from app.helpers.w3 import get_wallet_short_name
 from app.models.user import User
 from app.schemas.users import UserCreateSchema
 
 
-async def create_user(user_model: UserCreateSchema, expand_ens: bool = False) -> User:
+async def create_user(user_model: UserCreateSchema, fetch_ens: bool = False) -> User:
     user = User(**user_model.dict())
-    if expand_ens:
-        ens_address = await get_ens_primary_name_for_address(user.wallet_address)
-        if ens_address:
-            user.ens_name = ens_address
+    if not user_model.display_name:
+        display_name = await get_wallet_short_name(address=user_model.wallet_address, check_ens=fetch_ens)
+        user.display_name = display_name
     await user.commit()
     return user
 

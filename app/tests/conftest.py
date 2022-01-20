@@ -67,7 +67,7 @@ def wallet(private_key: bytes) -> str:
 
 @pytest.fixture
 async def current_user(private_key: bytes, wallet: str) -> User:
-    return await create_user(UserCreateSchema(wallet_address=wallet))
+    return await create_user(UserCreateSchema(wallet_address=wallet), fetch_ens=False)
 
 
 @pytest.fixture

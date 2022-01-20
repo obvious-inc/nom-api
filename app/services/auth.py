@@ -28,7 +28,7 @@ async def generate_wallet_token(data: dict) -> str:
 
     user = await get_user_by_wallet_address(wallet_address=signed_address)
     if not user:
-        user = await create_user(UserCreateSchema(wallet_address=signed_address))
+        user = await create_user(UserCreateSchema(wallet_address=signed_address), fetch_ens=True)
 
     token = generate_jwt_token({"sub": str(user.id)})
     return token
