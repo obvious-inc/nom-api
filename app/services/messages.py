@@ -1,3 +1,4 @@
+import logging
 from typing import Union
 
 from starlette.background import BackgroundTasks
@@ -8,6 +9,8 @@ from app.models.user import User
 from app.schemas.messages import MessageCreateSchema
 from app.services.crud import create_item
 from app.services.websockets import broadcast_new_message
+
+logger = logging.getLogger(__name__)
 
 
 async def create_message(

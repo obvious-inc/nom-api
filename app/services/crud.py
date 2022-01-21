@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Type
 
 from bson import ObjectId
@@ -5,6 +6,8 @@ from bson import ObjectId
 from app.models.base import APIDocument
 from app.models.user import User
 from app.schemas.base import APIBaseCreateSchema
+
+logger = logging.getLogger(__name__)
 
 
 async def create_item(
@@ -14,6 +17,7 @@ async def create_item(
     if user_field:
         db_object[user_field] = current_user
     await db_object.commit()
+    logger.info("Object created. [object_type=%s, object_id=%s]", result_obj.__name__, str(db_object.id))
     return db_object
 
 

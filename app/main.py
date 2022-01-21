@@ -1,11 +1,19 @@
+import logging.config
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
+from app.middlewares import add_canonical_log_line
 from app.routers import auth, base, channels, messages, servers, users, webhooks, websockets
+from logconf import log_configuration
+
+logging.config.dictConfig(log_configuration)
+logger = logging.getLogger(__name__)
 
 
 def get_application():
@@ -35,6 +43,8 @@ def get_application():
     # Force HTTPS when not testing or local
     if not settings.testing:
         app_.add_middleware(HTTPSRedirectMiddleware)
+
+    app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
 
     return app_
 

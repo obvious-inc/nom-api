@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from bson import ObjectId
@@ -11,6 +12,8 @@ from app.models.user import User
 from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_connection_ready
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -22,6 +25,8 @@ async def process_webhook_events(events: list[dict]):
             if event["name"] == "channel_occupied":
                 update_data = {"$addToSet": {"online_channels": channel_name}}
                 user = await get_user_by_id(user_id)
+                if not user:
+                    raise Exception("Missing user. [user_id=%s]", user_id)
                 await broadcast_connection_ready(current_user=user, channel=channel_name)
             elif event["name"] == "channel_vacated":
                 update_data = {"$pull": {"online_channels": channel_name}}
@@ -29,8 +34,8 @@ async def process_webhook_events(events: list[dict]):
                 raise NotImplementedError(f"not expected event: {event}")
 
             await User.collection.update_one(filter={"_id": ObjectId(user_id)}, update=update_data)
-        except Exception as e:
-            print(f"problems handling event {event}: {e}")
+        except Exception:
+            logger.exception("Problems handling webhook event. [event=%(name)s, channel=%(channel)s]", event)
 
 
 @router.post("/pusher", include_in_schema=False)
@@ -50,10 +55,10 @@ async def post_pusher_webhooks(
     data = await request.body()
     try:
         webhook = pusher_client.validate_webhook(key=x_pusher_key, signature=x_pusher_signature, body=data)
+        if not webhook:
+            raise Exception("No valid webhook extracted.")
     except Exception as e:
-        raise webhook_exception
-
-    if not webhook:
+        logger.exception("Error validating webhook signature.")
         raise webhook_exception
 
     background_tasks.add_task(process_webhook_events, events=webhook["events"])
