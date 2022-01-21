@@ -1,3 +1,4 @@
+import logging
 from functools import cache
 
 from ens import ENS
@@ -7,6 +8,8 @@ from eth_utils import ValidationError
 from web3 import Web3
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 def checksum_address(address: str) -> ChecksumAddress:
@@ -38,7 +41,7 @@ async def get_wallet_short_name(address: str, check_ens: bool = True) -> str:
         try:
             ens_name = get_ens_primary_name_for_address(address)
             short_address = ens_name or short_address
-        except Exception as e:
-            print(f"problems fetching ENS primary domain for {address}: {e}")
+        except Exception:
+            logger.exception("Problems fetching ENS primary domain. [address=%s]", address)
 
     return short_address

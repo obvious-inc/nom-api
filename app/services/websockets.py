@@ -1,3 +1,5 @@
+import logging
+
 from app.helpers.websockets import pusher_client
 from app.models.message import Message
 from app.models.server import Server, ServerMember
@@ -5,6 +7,8 @@ from app.models.user import User
 from app.services.channels import get_server_channels
 from app.services.crud import get_item, get_items
 from app.services.servers import get_server_members, get_user_servers
+
+logger = logging.getLogger(__name__)
 
 
 async def get_online_channels(message: Message, current_user: User) -> [str]:
@@ -22,9 +26,10 @@ async def pusher_broadcast_messages(channels: [str], event_name: str, data: dict
         push_channels = channels[:90]
         try:
             await pusher_client.trigger(push_channels, event_name, data)
-        except Exception as e:
-            print(f"problems triggering Pusher events: {e}")
+        except Exception:
+            logger.exception("Problem broadcasting event to Pusher channel. [event_name=%s]", event_name)
         channels = channels[90:]
+    logger.debug("Event broadcast successful. [event_name=%s]", event_name)
 
 
 async def broadcast_new_message(
