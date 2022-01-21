@@ -24,12 +24,16 @@ async def process_webhook_events(events: list[dict]):
             user_id = channel_name.split("-")[1]
             if event["name"] == "channel_occupied":
                 update_data = {"$addToSet": {"online_channels": channel_name}}
-                user = await get_user_by_id(user_id)
-                if not user:
-                    raise Exception("Missing user. [user_id=%s]", user_id)
-                await broadcast_connection_ready(current_user=user, channel=channel_name)
             elif event["name"] == "channel_vacated":
                 update_data = {"$pull": {"online_channels": channel_name}}
+            elif event["name"] == "client_event":
+                client_event = event["event"]
+                if client_event == "client-connection-request":
+                    user = await get_user_by_id(user_id)
+                    if not user:
+                        raise Exception("Missing user. [user_id=%s]", user_id)
+                    await broadcast_connection_ready(current_user=user, channel=channel_name)
+                return
             else:
                 raise NotImplementedError(f"not expected event: {event}")
 
