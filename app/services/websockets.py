@@ -2,7 +2,6 @@ from app.helpers.websockets import pusher_client
 from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
-from app.schemas.messages import MessageCreateSchema
 from app.services.channels import get_server_channels
 from app.services.crud import get_item, get_items
 from app.services.servers import get_server_members, get_user_servers
@@ -29,12 +28,11 @@ async def pusher_broadcast_messages(channels: [str], event_name: str, data: dict
 
 
 async def broadcast_new_message(
-    message_model: MessageCreateSchema,
     message: Message,
     current_user: User,
 ):
     event_name = "MESSAGE_CREATE"
-    ws_data = {**message_model.dict(), "author": str(current_user.id)}
+    ws_data = message.dump()
     channels = await get_online_channels(message, current_user)
 
     await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)

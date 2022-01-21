@@ -15,8 +15,6 @@ async def create_message(
 ) -> Union[Message, APIDocument]:
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
 
-    background_tasks.add_task(
-        broadcast_new_message, message_model=message_model, message=message, current_user=current_user
-    )
+    background_tasks.add_task(broadcast_new_message, message=message, current_user=current_user)
 
     return message
