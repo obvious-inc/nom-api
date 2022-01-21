@@ -35,4 +35,4 @@ class Channel(APIDocument):
                 raise ValidationError(f"missing fields: {error_fields}")
 
     class Meta:
-        collection = "channels"
+        collection_name = "channels"
