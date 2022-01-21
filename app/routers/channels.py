@@ -7,8 +7,10 @@ from app.dependencies import get_current_user
 from app.models.channel import Channel
 from app.models.user import User
 from app.schemas.channels import DMChannelCreateSchema, DMChannelSchema, ServerChannelCreateSchema, ServerChannelSchema
+from app.schemas.messages import MessageSchema
 from app.services.channels import create_channel
 from app.services.crud import get_items
+from app.services.messages import get_messages
 
 router = APIRouter()
 
@@ -32,3 +34,9 @@ async def post_create_channel(
 async def list_channels(current_user: User = Depends(get_current_user)):
     channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
     return channels
+
+
+@router.get("/{channel_id}/messages", response_description="Get latest messages", response_model=List[MessageSchema])
+async def get_list_messages(channel_id, size: int = 50, current_user: User = Depends(get_current_user)):
+    messages = await get_messages(channel_id, size, current_user=current_user)
+    return messages

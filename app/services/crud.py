@@ -26,9 +26,11 @@ async def get_item_by_id(id_: str, result_obj: Type[APIDocument], current_user: 
     return item
 
 
-async def get_items(filters: dict, result_obj: Type[APIDocument], current_user: User) -> [APIDocument]:
+async def get_items(
+    filters: dict, result_obj: Type[APIDocument], current_user: User, size: Optional[int] = None
+) -> [APIDocument]:
     # TODO: add paging default size to settings
-    items = await result_obj.find(filters).to_list(length=None)
+    items = await result_obj.find(filters).sort("created_at", -1).to_list(length=size)
     return items
 
 
