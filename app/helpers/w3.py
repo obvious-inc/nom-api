@@ -23,9 +23,22 @@ def get_wallet_address_from_signed_message(message: str, signature: str) -> str:
 
 
 @cache
-async def get_ens_primary_name_for_address(wallet_address: str) -> str:
+def get_ens_primary_name_for_address(wallet_address: str) -> str:
     settings = get_settings()
     web3_client = Web3(Web3.WebsocketProvider(settings.web3_provider_url_ws))
     wallet_address = checksum_address(wallet_address)
     ens_name = ENS.fromWeb3(web3_client).name(wallet_address)
     return ens_name
+
+
+async def get_wallet_short_name(address: str, check_ens: bool = True) -> str:
+    address = checksum_address(address)
+    short_address = f"{address[:5]}...{address[-3:]}"
+    if check_ens:
+        try:
+            ens_name = get_ens_primary_name_for_address(address)
+            short_address = ens_name or short_address
+        except Exception as e:
+            print(f"problems fetching ENS primary domain for {address}: {e}")
+
+    return short_address

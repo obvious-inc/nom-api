@@ -1,7 +1,6 @@
-from typing import Optional, Type, Union
+from typing import Optional, Type
 
 from bson import ObjectId
-from umongo.document import DocumentImplementation
 
 from app.models.base import APIDocument
 from app.models.user import User
@@ -25,7 +24,7 @@ async def get_item_by_id(id_: str, result_obj: Type[APIDocument], current_user: 
 
 async def get_items(filters: dict, result_obj: Type[APIDocument], current_user: User) -> [APIDocument]:
     # TODO: add paging default size to settings
-    items = await result_obj.find(filters).to_list(10)
+    items = await result_obj.find(filters).to_list(length=None)
     return items
 
 

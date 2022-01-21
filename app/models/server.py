@@ -1,3 +1,5 @@
+import datetime
+
 from umongo import fields
 
 from app.helpers.database import instance
@@ -13,3 +15,15 @@ class Server(APIDocument):
 
     class Meta:
         collection_name = "servers"
+
+
+@instance.register
+class ServerMember(APIDocument):
+    server = fields.ReferenceField(Server, required=True)
+    user = fields.ReferenceField(User, required=True)
+
+    display_name = fields.StrField()
+    joined_at = fields.DateTimeField(default=datetime.datetime.utcnow)
+
+    class Meta:
+        collection_name = "server_members"

@@ -23,7 +23,7 @@ from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.auth import generate_wallet_token
 from app.services.channels import create_server_channel
-from app.services.crud import create_item
+from app.services.servers import create_server
 from app.services.users import create_user
 
 
@@ -67,13 +67,13 @@ def wallet(private_key: bytes) -> str:
 
 @pytest.fixture
 async def current_user(private_key: bytes, wallet: str) -> User:
-    return await create_user(UserCreateSchema(wallet_address=wallet))
+    return await create_user(UserCreateSchema(wallet_address=wallet), fetch_ens=False)
 
 
 @pytest.fixture
 async def server(current_user: User) -> Union[Server, APIDocument]:
     server_model = ServerCreateSchema(name="NewShades DAO")
-    return await create_item(server_model, result_obj=Server, current_user=current_user, user_field="owner")
+    return await create_server(server_model, current_user=current_user)
 
 
 @pytest.fixture
