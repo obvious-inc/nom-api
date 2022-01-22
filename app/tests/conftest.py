@@ -51,13 +51,13 @@ async def db():
     await client.drop_database(db.name)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def private_key() -> bytes:
     key = secrets.token_bytes(32)
     return key
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def wallet(private_key: bytes) -> str:
     priv = binascii.hexlify(private_key).decode("ascii")
     private_key = "0x" + priv

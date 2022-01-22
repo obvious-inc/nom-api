@@ -4,11 +4,11 @@ import arrow
 import pytest
 from pymongo.database import Database
 
-from app.models.server import Server
+from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
-from app.services.crud import create_item
+from app.services.crud import create_item, get_items
 
 
 class TestCRUDService:
@@ -46,3 +46,9 @@ class TestCRUDService:
         assert "owner" in created_server._fields
         assert created_server.owner is not None
         assert created_server.owner == current_user
+
+    @pytest.mark.asyncio
+    async def test_get_items_with_size(self, db: Database, current_user: User, server: Server):
+        members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
+        assert members is not None
+        assert len(members) == 1

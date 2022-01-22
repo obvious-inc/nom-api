@@ -1,10 +1,10 @@
+import asyncio
 import logging
 from typing import Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from starlette import status
-from starlette.background import BackgroundTasks
 
 from app.helpers.database import get_db
 from app.helpers.websockets import pusher_client
@@ -31,7 +31,7 @@ async def process_webhook_events(events: list[dict]):
                 if client_event == "client-connection-request":
                     user = await get_user_by_id(user_id)
                     if not user:
-                        raise Exception("Missing user. [user_id=%s]", user_id)
+                        raise Exception(f"Missing user. [user_id={user_id}]")
                     await broadcast_connection_ready(current_user=user, channel=channel_name)
                 return
             else:
@@ -48,7 +48,6 @@ async def post_pusher_webhooks(
     x_pusher_key: Optional[str] = Header(None),
     x_pusher_signature: Optional[str] = Header(None),
     db=Depends(get_db),
-    background_tasks: BackgroundTasks = None,
 ):
     webhook_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -65,6 +64,6 @@ async def post_pusher_webhooks(
         logger.exception("Error validating webhook signature.")
         raise webhook_exception
 
-    background_tasks.add_task(process_webhook_events, events=webhook["events"])
+    asyncio.create_task(process_webhook_events(events=webhook["events"]))
 
     return {"received": "ok"}
