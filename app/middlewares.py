@@ -15,7 +15,9 @@ def get_request_id() -> str:
 
 
 async def add_canonical_log_line(request: Request, call_next):
+    logger.debug("middleware: begin")
     start_time = time.time()
+    logger.debug(f"middleware: start_time {start_time}")
 
     # heroku has their own request id. use that if available
     request_id = request.headers.get("X-Request-ID") or uuid.uuid4()
@@ -29,7 +31,9 @@ async def add_canonical_log_line(request: Request, call_next):
 
     request.state.request_id = request_id
 
+    logger.debug("middleware: wait...")
     response = await call_next(request)
+    logger.debug("middleware: got response")
     process_time = (time.time() - start_time) * 1000
     formatted_process_time = "{0:.2f}".format(process_time)
 
@@ -55,5 +59,7 @@ async def add_canonical_log_line(request: Request, call_next):
     log_line = " ".join([f"{key}={value}" for key, value in sorted_dict.items()])
     logger.info(f"canonical-log {log_line}")
 
+    logger.debug("middleware: done")
     _request_id_ctx_var.reset(request_id)
+
     return response
