@@ -69,6 +69,15 @@ async def current_user(private_key: bytes, wallet: str) -> User:
 
 
 @pytest.fixture
+async def guest_user() -> User:
+    key = secrets.token_bytes(32)
+    priv = binascii.hexlify(key).decode("ascii")
+    private_key = "0x" + priv
+    acct = Account.from_key(private_key)
+    return await create_user(UserCreateSchema(wallet_address=acct.address), fetch_ens=False)
+
+
+@pytest.fixture
 async def server(current_user: User) -> Union[Server, APIDocument]:
     server_model = ServerCreateSchema(name="NewShades DAO")
     return await create_server(server_model, current_user=current_user)

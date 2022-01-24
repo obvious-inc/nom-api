@@ -8,7 +8,7 @@ from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema
-from app.services.crud import create_item
+from app.services.crud import create_item, get_items
 from app.services.websockets import get_online_channels
 
 
@@ -68,7 +68,7 @@ class TestWebsocketRoutes:
             item=message_model, result_obj=Message, current_user=current_user, user_field="author"
         )
 
-        members = await ServerMember.find().to_list(None)
+        members = await get_items(filters={}, result_obj=ServerMember, current_user=current_user, size=None)
         assert len(members) == 1
         member = members[0]
         assert member.server == server

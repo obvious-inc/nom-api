@@ -21,20 +21,32 @@ async def create_item(
     return db_object
 
 
-async def get_item_by_id(id_: str, result_obj: Type[APIDocument], current_user: User) -> APIDocument:
+async def get_item_by_id(id_: str, result_obj: Type[APIDocument], current_user: Optional[User] = None) -> APIDocument:
     item = await result_obj.find_one({"_id": ObjectId(id_)})
     return item
 
 
 async def get_items(
-    filters: dict, result_obj: Type[APIDocument], current_user: User, size: Optional[int] = None
+    filters: dict,
+    result_obj: Type[APIDocument],
+    current_user: User,
+    size: Optional[int] = None,
+    sort_by_field: str = "created_at",
+    sort_by_direction: int = -1,
 ) -> [APIDocument]:
     # TODO: add paging default size to settings
-    items = await result_obj.find(filters).sort("created_at", -1).to_list(length=size)
+
+    deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
+    filters.update(deleted_filter)
+
+    items = await result_obj.find(filters).sort(sort_by_field, sort_by_direction).to_list(length=size)
     return items
 
 
-async def get_item(filters: dict, result_obj: Type[APIDocument], current_user: User) -> APIDocument:
+async def get_item(filters: dict, result_obj: Type[APIDocument], current_user: Optional[User] = None) -> APIDocument:
+    deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
+    filters.update(deleted_filter)
+
     item = await result_obj.find_one(filters)
     return item
 

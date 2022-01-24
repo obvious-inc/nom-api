@@ -2,13 +2,12 @@ import json
 
 import arrow
 import pytest
-from bson import ObjectId
 from eth_account.messages import encode_defunct
 from web3 import Web3
 
 from app.helpers.jwt import decode_jwt_token
-from app.models.user import User
 from app.services.auth import generate_wallet_token
+from app.services.users import get_user_by_id
 
 
 class TestAuthService:
@@ -26,6 +25,6 @@ class TestAuthService:
         token_user_id = decrypted_token.get("sub")
         assert token_user_id != wallet
 
-        user = await User.find_one({"_id": ObjectId(token_user_id)})
+        user = await get_user_by_id(user_id=token_user_id)
         assert user is not None
         assert user.wallet_address == wallet
