@@ -3,7 +3,13 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.models.channel import Channel
+from app.models.message import Message
+from app.models.server import Server, ServerMember
 from app.models.user import User
+from app.schemas.messages import MessageCreateSchema
+from app.services.crud import create_item
+from app.services.websockets import get_online_channels
 
 
 class TestWebsocketRoutes:
@@ -46,3 +52,34 @@ class TestWebsocketRoutes:
         assert response.status_code == 200
         assert "auth" in response.json()
         assert response.json()["auth"] is not None
+
+    @pytest.mark.asyncio
+    async def test_websocket_get_online_channels(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        message_model = MessageCreateSchema(content="hey", server=str(server.id), channel=str(server_channel.id))
+        message = await create_item(
+            item=message_model, result_obj=Message, current_user=current_user, user_field="author"
+        )
+
+        members = await ServerMember.find().to_list(None)
+        assert len(members) == 1
+        member = members[0]
+        assert member.server == server
+        assert member.user == current_user
+
+        current_user.online_channels = [f"private-{str(current_user.id)}"]
+        await current_user.commit()
+
+        channels = await get_online_channels(message=message, current_user=current_user)
+        assert len(channels) == 1
+        channels = await get_online_channels(message=message, current_user=current_user)
+        assert len(channels) == 1
+        channels = await get_online_channels(message=message, current_user=current_user)
+        assert len(channels) == 1

@@ -1,7 +1,6 @@
+import asyncio
 import logging
 from typing import List, Union
-
-from starlette.background import BackgroundTasks
 
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -14,13 +13,9 @@ from app.services.websockets import broadcast_new_message
 logger = logging.getLogger(__name__)
 
 
-async def create_message(
-    message_model: MessageCreateSchema, current_user: User, background_tasks: BackgroundTasks
-) -> Union[Message, APIDocument]:
+async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
-
-    background_tasks.add_task(broadcast_new_message, message=message, current_user=current_user)
-
+    asyncio.create_task(broadcast_new_message(str(message.id), str(current_user.id)))
     return message
 
 

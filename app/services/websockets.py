@@ -1,17 +1,20 @@
 import logging
+from typing import Union
 
 from app.helpers.websockets import pusher_client
+from app.models.base import APIDocument
 from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.services.channels import get_server_channels
-from app.services.crud import get_item, get_items
+from app.services.crud import get_item, get_item_by_id, get_items
 from app.services.servers import get_server_members, get_user_servers
+from app.services.users import get_user_by_id
 
 logger = logging.getLogger(__name__)
 
 
-async def get_online_channels(message: Message, current_user: User) -> [str]:
+async def get_online_channels(message: Union[Message, APIDocument], current_user: User) -> [str]:
     server = message.server  # type: Server
     server_members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
     server_users = [await member.user.fetch() for member in server_members]
@@ -33,13 +36,14 @@ async def pusher_broadcast_messages(channels: [str], event_name: str, data: dict
 
 
 async def broadcast_new_message(
-    message: Message,
-    current_user: User,
+    message_id: str,
+    author_id: str,
 ):
+    user = await get_user_by_id(user_id=author_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
     event_name = "MESSAGE_CREATE"
     ws_data = message.dump()
-    channels = await get_online_channels(message, current_user)
-
+    channels = await get_online_channels(message=message, current_user=user)
     await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
 
 

@@ -1,7 +1,6 @@
 import http
 
 from fastapi import APIRouter, Body, Depends
-from starlette.background import BackgroundTasks
 
 from app.dependencies import get_current_user
 from app.helpers.database import get_db
@@ -22,6 +21,5 @@ async def post_create_message(
     message: MessageCreateSchema = Body(...),
     db=Depends(get_db),
     current_user: User = Depends(get_current_user),
-    background_tasks: BackgroundTasks = None,
 ):
-    return await create_message(message, current_user=current_user, background_tasks=background_tasks)
+    return await create_message(message, current_user=current_user)
