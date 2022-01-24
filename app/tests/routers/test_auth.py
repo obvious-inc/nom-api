@@ -1,9 +1,14 @@
+import asyncio
+import binascii
 import json
+import random
+import secrets
 import time
 
 import arrow
 import pytest
 from bson import ObjectId
+from eth_account import Account
 from eth_account.datastructures import SignedMessage
 from eth_account.messages import encode_defunct
 from fastapi import FastAPI
@@ -12,6 +17,7 @@ from pymongo.database import Database
 from web3 import Web3
 
 from app.helpers.jwt import decode_jwt_token
+from app.models.server import Server, ServerMember
 from app.models.user import User
 
 
@@ -95,3 +101,45 @@ class TestAuthRoutes:
 
         response = await client.post("/auth/login", json=data)
         assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_create_token_wallet_default_server(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        current_user: User,
+        server: Server,
+        event_loop,
+    ):
+        key = secrets.token_bytes(32)
+        priv = binascii.hexlify(key).decode("ascii")
+        private_key = "0x" + priv
+        acct = Account.from_key(private_key)
+        wallet = acct.address
+        message_data = {"address": wallet, "signed_at": arrow.utcnow().isoformat()}
+        str_message = json.dumps(message_data, separators=(",", ":"))
+        message = encode_defunct(text=str_message)
+        signed_message = Web3().eth.account.sign_message(message, private_key=private_key)  # type: SignedMessage
+        data = {"message": message_data, "signature": signed_message.signature.hex()}
+
+        members = await ServerMember.find({"server": server.id}).to_list(None)
+        assert len(members) == 1
+
+        response = await client.post("/auth/login", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert "access_token" in json_response
+        assert "token_type" in json_response
+        assert json_response.get("token_type") == "bearer"
+        token = json_response.get("access_token")
+        decrypted_token = decode_jwt_token(token)
+        token_user_id = decrypted_token.get("sub")
+        assert token_user_id != wallet
+        user = await User.find_one({"_id": ObjectId(token_user_id)})
+        assert user is not None
+        assert user.wallet_address == wallet
+
+        await asyncio.sleep(random.random(), loop=event_loop)
+        members = await ServerMember.find({"server": server.id}).to_list(None)
+        assert len(members) == 2
