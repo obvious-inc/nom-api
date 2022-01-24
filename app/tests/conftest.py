@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from web3 import Web3
 
-from app.helpers.database import get_client, get_db, override_get_db
+from app.helpers.connection import get_client, get_db
 from app.main import get_application
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -29,8 +29,7 @@ from app.services.users import create_user
 
 @pytest.fixture
 def app() -> FastAPI:
-    app = get_application()
-    app.dependency_overrides[get_db] = override_get_db
+    app = get_application(testing=True)
     return app
 
 
@@ -42,13 +41,12 @@ async def client(app: FastAPI) -> AsyncClient:
 
 
 @pytest.fixture
-async def db():
-    # TODO: is this the best way for cleaning DB on every test?
-    client = await get_client()
-    db = await override_get_db()
-    await client.drop_database(db.name)
+async def db(app, client):
+    db_client = await get_client()
+    db = await get_db()
+    await db_client.drop_database(db.name)
     yield db
-    await client.drop_database(db.name)
+    await db_client.drop_database(db.name)
 
 
 @pytest.fixture

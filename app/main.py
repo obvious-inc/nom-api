@@ -8,7 +8,8 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
-from app.middlewares import add_canonical_log_line
+from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, override_connect_to_mongo
+from app.middlewares import add_canonical_log_line, profile_request
 from app.routers import auth, base, channels, messages, servers, users, webhooks, websockets
 from logconf import log_configuration
 
@@ -16,8 +17,15 @@ logging.config.dictConfig(log_configuration)
 logger = logging.getLogger(__name__)
 
 
-def get_application():
+def get_application(testing=False):
     app_ = FastAPI(title="NewShades API", default_response_class=ORJSONResponse)
+
+    if testing:
+        app_.add_event_handler("startup", override_connect_to_mongo)
+    else:
+        app_.add_event_handler("startup", connect_to_mongo)
+
+    app_.add_event_handler("shutdown", close_mongo_connection)
 
     origins = ["*"]  # TODO: change this later
 
@@ -45,6 +53,9 @@ def get_application():
         app_.add_middleware(HTTPSRedirectMiddleware)
 
     app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
+
+    if settings.profiling:
+        app_.add_middleware(BaseHTTPMiddleware, dispatch=profile_request)
 
     return app_
 

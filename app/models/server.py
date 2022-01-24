@@ -2,7 +2,7 @@ import datetime
 
 from umongo import fields
 
-from app.helpers.database import instance
+from app.helpers.db_utils import instance
 from app.models.base import APIDocument
 from app.models.user import User
 
