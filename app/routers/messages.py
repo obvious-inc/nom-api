@@ -1,5 +1,4 @@
 import http
-import logging
 
 from fastapi import APIRouter, Body, Depends
 
@@ -9,8 +8,6 @@ from app.schemas.messages import MessageCreateSchema, MessageSchema
 from app.services.messages import create_message
 
 router = APIRouter()
-
-logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -23,5 +20,4 @@ async def post_create_message(
     message: MessageCreateSchema = Body(...),
     current_user: User = Depends(get_current_user),
 ):
-    logger.debug(f"creating message: {message}")
     return await create_message(message, current_user=current_user)
