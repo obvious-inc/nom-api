@@ -1,6 +1,8 @@
+import http
 from typing import Union
 
 from bson import ObjectId
+from fastapi import HTTPException
 
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -56,6 +58,6 @@ async def delete_channel(channel_id, current_user: User):
     server_owner = server.owner
 
     if not current_user == channel_owner or not current_user == server_owner:
-        raise Exception("user can't delete channel")
+        raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
     return await delete_item(item=channel)

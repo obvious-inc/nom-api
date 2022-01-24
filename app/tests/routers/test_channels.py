@@ -6,6 +6,8 @@ from pymongo.database import Database
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
+from app.schemas.servers import ServerCreateSchema
+from app.services.servers import create_server
 
 
 class TestChannelsRoutes:
@@ -132,3 +134,32 @@ class TestChannelsRoutes:
         assert json_channel["id"] == str(server_channel.id)
         assert json_channel["name"] == server_channel.name
         assert json_channel["server"] == str(server.id)
+
+    @pytest.mark.asyncio
+    async def test_delete_channel_ok(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server, server_channel: Channel
+    ):
+        response = await authorized_client.delete(f"/channels/{str(server_channel.id)}")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response["id"] == str(server_channel.id)
+        assert json_response["name"] == server_channel.name
+        assert json_response["server"] == str(server.id)
+        assert json_response["deleted"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_channel_no_permission(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        guest_user: User,
+    ):
+        server = await create_server(ServerCreateSchema(name="test Server"), current_user=guest_user)
+        new_channel = Channel(server=server.id, owner=guest_user.id, kind="server")
+        await new_channel.commit()
+
+        response = await authorized_client.delete(f"/channels/{str(new_channel.id)}")
+        assert response.status_code == 403
