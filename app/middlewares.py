@@ -15,12 +15,17 @@ def get_request_id() -> str:
 
 
 async def add_canonical_log_line(request: Request, call_next):
-
     start_time = time.time()
 
     # heroku has their own request id. use that if available
     request_id = request.headers.get("X-Request-ID") or uuid.uuid4()
     request_id = _request_id_ctx_var.set(request_id)
+
+    logger.info(
+        "%s %s",
+        request.method,
+        request.url.path,
+    )
 
     request.state.request_id = request_id
 

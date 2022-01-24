@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 async def create_item(
     item: APIBaseCreateSchema, result_obj: Type[APIDocument], current_user: User, user_field: Optional[str] = "user"
 ) -> APIDocument:
+    logger.debug("creating new object. [object_type=%s]", result_obj.__name__)
     db_object = result_obj(**item.dict())
     if user_field:
         db_object[user_field] = current_user
