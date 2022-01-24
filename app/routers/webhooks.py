@@ -6,7 +6,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from starlette import status
 
-from app.helpers.database import get_db
+from app.helpers.connection import get_db
 from app.helpers.websockets import pusher_client
 from app.models.user import User
 from app.services.users import get_user_by_id

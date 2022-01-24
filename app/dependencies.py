@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from starlette.requests import Request
 
-from app.helpers.database import get_db
+from app.helpers.connection import get_db
 from app.helpers.jwt import decode_jwt_token
 from app.services.users import get_user_by_id
 

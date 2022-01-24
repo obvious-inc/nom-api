@@ -1,7 +1,7 @@
 from marshmallow import ValidationError
 from umongo import fields, validate
 
-from app.helpers.database import instance
+from app.helpers.db_utils import instance
 from app.models.base import APIDocument
 from app.models.server import Server
 from app.models.user import User

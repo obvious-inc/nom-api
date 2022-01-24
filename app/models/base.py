@@ -2,7 +2,7 @@ import datetime
 
 from umongo import Document, MixinDocument, Reference, fields
 
-from app.helpers.database import instance
+from app.helpers.db_utils import instance
 
 
 @instance.register

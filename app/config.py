@@ -6,6 +6,8 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
     testing: bool = True
+    profiling: bool = False
+
     mongodb_url: str = ""
     mongodb_db: str = ""
 
