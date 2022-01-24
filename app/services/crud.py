@@ -37,3 +37,13 @@ async def get_items(
 async def get_item(filters: dict, result_obj: Type[APIDocument], current_user: User) -> APIDocument:
     item = await result_obj.find_one(filters)
     return item
+
+
+async def update_item(item: APIDocument, data: dict) -> APIDocument:
+    item.update(data)
+    await item.commit()
+    return item
+
+
+async def delete_item(item: APIDocument) -> APIDocument:
+    return await update_item(item, {"deleted": True})

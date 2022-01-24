@@ -27,6 +27,7 @@ class APIBaseSchema(BaseModel):
     id: PyObjectId = Field()
     created_at: datetime
     updated_at: datetime = None  # TODO: fix this in umongo doc
+    deleted: bool = False
 
     class Config:
         orm_mode = True

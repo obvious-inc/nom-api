@@ -15,6 +15,8 @@ class DatetimeMixin(MixinDocument):
 
 @instance.register
 class APIDocument(Document, DatetimeMixin):
+    deleted = fields.BoolField(default=False)
+
     async def to_dict(self, expand: bool = False, expand_fields: [str] = None):
         dumped_obj = self.dump()
         if not expand:
