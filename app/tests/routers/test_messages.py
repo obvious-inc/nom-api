@@ -73,7 +73,7 @@ class TestMessagesRoutes:
         channel_message: Message,
         guest_user: User,
     ):
-        channel_message.reactions.append(MessageReaction(emoji="😍", count=1, users=[guest_user.pk]))
+        channel_message.reactions = [MessageReaction(emoji="😍", count=1, users=[guest_user.pk])]
         await channel_message.commit()
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
@@ -162,3 +162,57 @@ class TestMessagesRoutes:
         json_message = json_response[0]
         assert "reactions" in json_message
         assert len(json_message["reactions"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_remove_reaction_from_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+        guest_user: User,
+    ):
+        channel_message.reactions = [MessageReaction(emoji="😍", count=1, users=[current_user.pk])]
+        await channel_message.commit()
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message == channel_message
+        assert len(message.reactions) == 1
+
+        response = await authorized_client.delete(f"/messages/{str(message.id)}/reactions/😍")
+        assert response.status_code == 204
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert len(message.reactions) == 0
+
+    @pytest.mark.asyncio
+    async def test_remove_reaction_from_message_with_multiple_reactions(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+        guest_user: User,
+    ):
+        channel_message.reactions = [MessageReaction(emoji="😍", count=2, users=[current_user.pk, guest_user.pk])]
+        await channel_message.commit()
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message == channel_message
+        assert len(message.reactions) == 1
+
+        response = await authorized_client.delete(f"/messages/{str(message.id)}/reactions/😍")
+        assert response.status_code == 204
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert len(message.reactions) == 1
+        reaction = message.reactions[0]
+        assert reaction.emoji == "😍"
+        assert reaction.count == 1
+        assert [user.pk for user in reaction.users] == [guest_user.id]

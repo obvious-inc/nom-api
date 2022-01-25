@@ -7,7 +7,7 @@ from app.models.message import Message, MessageReaction
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema, MessageReactionCreateSchema
 from app.services.crud import create_item, get_item_by_id, get_items
-from app.services.websockets import broadcast_new_message
+from app.services.websockets import broadcast_new_message, broadcast_new_reaction, broadcast_remove_reaction
 
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
@@ -51,4 +51,43 @@ async def add_reaction_to_message(message_id, reaction_model: MessageReactionCre
         existing_reactions.append(reaction)
 
     await message.commit()
+
+    asyncio.create_task(
+        broadcast_new_reaction(message_id=message_id, reaction=reaction, author_id=str(current_user.id))
+    )
+
+    return message
+
+
+async def remove_reaction_from_message(message_id, reaction_emoji: str, current_user: User):
+    message = await get_item_by_id(
+        id_=message_id, result_obj=Message, current_user=current_user
+    )  # type: Union[Message, APIDocument]
+
+    reaction = MessageReaction(emoji=reaction_emoji)
+
+    existing_reactions = message.reactions
+
+    remove_index = None
+    for index, existing_reaction in enumerate(existing_reactions):  # type: MessageReaction
+        if existing_reaction.emoji == reaction.emoji:
+            if current_user not in existing_reaction.users:
+                break
+
+            if existing_reaction.count > 1:
+                existing_reaction.count -= 1
+                existing_reaction.users.remove(current_user)
+            else:
+                remove_index = index
+            break
+
+    if remove_index is not None:
+        del existing_reactions[remove_index]
+
+    await message.commit()
+
+    asyncio.create_task(
+        broadcast_remove_reaction(message_id=message_id, reaction=reaction, author_id=str(current_user.id))
+    )
+
     return message
