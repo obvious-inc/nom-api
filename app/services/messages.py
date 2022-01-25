@@ -38,6 +38,7 @@ async def add_reaction_to_message(message_id, reaction_model: MessageReactionCre
     existing_reactions = message.reactions
 
     found = False
+    added = False
     for existing_reaction in existing_reactions:  # type: MessageReaction
         if existing_reaction.emoji == reaction.emoji:
             found = True
@@ -45,16 +46,18 @@ async def add_reaction_to_message(message_id, reaction_model: MessageReactionCre
                 break
             existing_reaction.count += 1
             existing_reaction.users.append(current_user.pk)
+            added = True
             break
 
     if not found:
         existing_reactions.append(reaction)
+        added = True
 
-    await message.commit()
-
-    asyncio.create_task(
-        broadcast_new_reaction(message_id=message_id, reaction=reaction, author_id=str(current_user.id))
-    )
+    if added:
+        await message.commit()
+        asyncio.create_task(
+            broadcast_new_reaction(message_id=message_id, reaction=reaction, author_id=str(current_user.id))
+        )
 
     return message
 
@@ -69,6 +72,7 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
     existing_reactions = message.reactions
 
     remove_index = None
+    removed = False
     for index, existing_reaction in enumerate(existing_reactions):  # type: MessageReaction
         if existing_reaction.emoji == reaction.emoji:
             if current_user not in existing_reaction.users:
@@ -77,17 +81,19 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
             if existing_reaction.count > 1:
                 existing_reaction.count -= 1
                 existing_reaction.users.remove(current_user)
+                removed = True
             else:
                 remove_index = index
             break
 
     if remove_index is not None:
+        removed = True
         del existing_reactions[remove_index]
 
-    await message.commit()
-
-    asyncio.create_task(
-        broadcast_remove_reaction(message_id=message_id, reaction=reaction, author_id=str(current_user.id))
-    )
+    if removed:
+        await message.commit()
+        asyncio.create_task(
+            broadcast_remove_reaction(message_id=message_id, reaction=reaction, author_id=str(current_user.id))
+        )
 
     return message
