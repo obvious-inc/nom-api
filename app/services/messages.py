@@ -3,9 +3,9 @@ from typing import List, Union
 
 from app.models.base import APIDocument
 from app.models.channel import Channel
-from app.models.message import Message
+from app.models.message import Message, MessageReaction
 from app.models.user import User
-from app.schemas.messages import MessageCreateSchema
+from app.schemas.messages import MessageCreateSchema, MessageReactionCreateSchema
 from app.services.crud import create_item, get_item_by_id, get_items
 from app.services.websockets import broadcast_new_message
 
@@ -27,3 +27,28 @@ async def get_messages(channel_id: str, size: int, current_user: User) -> List[M
         size=size,
     )
     return messages
+
+
+async def add_reaction_to_message(message_id, reaction_model: MessageReactionCreateSchema, current_user: User):
+    message = await get_item_by_id(
+        id_=message_id, result_obj=Message, current_user=current_user
+    )  # type: Union[Message, APIDocument]
+
+    reaction = MessageReaction(**reaction_model.dict(), count=1, users=[current_user])
+    existing_reactions = message.reactions
+
+    found = False
+    for existing_reaction in existing_reactions:  # type: MessageReaction
+        if existing_reaction.emoji == reaction.emoji:
+            found = True
+            if current_user in existing_reaction.users:
+                break
+            existing_reaction.count += 1
+            existing_reaction.users.append(current_user.pk)
+            break
+
+    if not found:
+        existing_reactions.append(reaction)
+
+    await message.commit()
+    return message
