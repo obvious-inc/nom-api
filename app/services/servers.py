@@ -8,7 +8,7 @@ from app.models.base import APIDocument
 from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.servers import ServerCreateSchema
-from app.services.crud import create_item
+from app.services.crud import create_item, get_item, get_items
 
 
 async def create_server(server_model: ServerCreateSchema, current_user: User) -> Union[Server, APIDocument]:
@@ -27,14 +27,22 @@ async def join_server(server: Union[Server, APIDocument], current_user: User, di
 
 
 async def get_user_servers(current_user: User) -> [Server]:
-    server_members = await ServerMember.find({"user": current_user.id}).to_list(length=None)
+    server_members = await get_items(
+        {"user": current_user.id}, result_obj=ServerMember, current_user=current_user, size=None
+    )
     return [await member.server.fetch() for member in server_members]
 
 
 async def get_server_members(server_id: str, current_user: User):
-    user_belongs_to_server = await ServerMember.find_one({"server": ObjectId(server_id), "user": current_user.id})
+    user_belongs_to_server = await get_item(
+        filters={"server": ObjectId(server_id), "user": current_user.id},
+        result_obj=ServerMember,
+        current_user=current_user,
+    )
     if not user_belongs_to_server:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
 
-    server_members = await ServerMember.find({"server": ObjectId(server_id)}).to_list(length=None)
+    server_members = await get_items(
+        {"server": ObjectId(server_id)}, result_obj=ServerMember, current_user=current_user, size=None
+    )
     return server_members

@@ -7,7 +7,6 @@ import time
 
 import arrow
 import pytest
-from bson import ObjectId
 from eth_account import Account
 from eth_account.datastructures import SignedMessage
 from eth_account.messages import encode_defunct
@@ -19,6 +18,8 @@ from web3 import Web3
 from app.helpers.jwt import decode_jwt_token
 from app.models.server import Server, ServerMember
 from app.models.user import User
+from app.services.crud import get_items
+from app.services.users import get_user_by_id
 
 
 class TestAuthRoutes:
@@ -43,7 +44,7 @@ class TestAuthRoutes:
         decrypted_token = decode_jwt_token(token)
         token_user_id = decrypted_token.get("sub")
         assert token_user_id != wallet
-        user = await User.find_one({"_id": ObjectId(token_user_id)})
+        user = await get_user_by_id(user_id=token_user_id)
         assert user is not None
         assert user.wallet_address == wallet
 
@@ -68,7 +69,7 @@ class TestAuthRoutes:
         decrypted_token = decode_jwt_token(token)
         token_user_id = decrypted_token.get("sub")
         assert token_user_id != wallet
-        user = await User.find_one({"_id": ObjectId(token_user_id)})
+        user = await get_user_by_id(user_id=token_user_id)
         assert user is not None
         assert user.wallet_address == wallet
 
@@ -123,7 +124,7 @@ class TestAuthRoutes:
         signed_message = Web3().eth.account.sign_message(message, private_key=private_key)  # type: SignedMessage
         data = {"message": message_data, "signature": signed_message.signature.hex()}
 
-        members = await ServerMember.find({"server": server.id}).to_list(None)
+        members = await get_items({"server": server.id}, result_obj=ServerMember, current_user=current_user, size=None)
         assert len(members) == 1
 
         response = await client.post("/auth/login", json=data)
@@ -136,10 +137,10 @@ class TestAuthRoutes:
         decrypted_token = decode_jwt_token(token)
         token_user_id = decrypted_token.get("sub")
         assert token_user_id != wallet
-        user = await User.find_one({"_id": ObjectId(token_user_id)})
+        user = await get_user_by_id(user_id=token_user_id)
         assert user is not None
         assert user.wallet_address == wallet
 
         await asyncio.sleep(random.random(), loop=event_loop)
-        members = await ServerMember.find({"server": server.id}).to_list(None)
+        members = await get_items({"server": server.id}, result_obj=ServerMember, current_user=current_user, size=None)
         assert len(members) == 2

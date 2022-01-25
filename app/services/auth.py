@@ -7,13 +7,14 @@ from app.helpers.jwt import generate_jwt_token
 from app.helpers.w3 import checksum_address, get_wallet_address_from_signed_message
 from app.models.server import Server
 from app.schemas.users import UserCreateSchema
+from app.services.crud import get_items
 from app.services.servers import join_server
 from app.services.users import create_user, get_user_by_id, get_user_by_wallet_address
 
 
 async def add_user_to_default_server(user_id):
     user = await get_user_by_id(user_id=user_id)
-    servers = await Server.find({}).sort("created_at", 1).to_list(1)
+    servers = await get_items(filters={}, result_obj=Server, current_user=user, size=1, sort_by_direction=1)
     server = servers[0]
     await join_server(server=server, current_user=user)
 

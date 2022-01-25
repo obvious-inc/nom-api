@@ -10,6 +10,7 @@ from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
+from app.services.crud import get_item, get_items
 from app.services.servers import create_server
 from app.services.users import create_user
 
@@ -34,9 +35,9 @@ class TestServerRoutes:
         server_name = "test"
         response = await authorized_client.post("/servers", json={"name": server_name})
         assert response.status_code == 201
-        obj = await db["servers"].find_one()
-        assert type(obj["_id"]) != str
-        assert type(obj["_id"]) == ObjectId
+        obj = await get_item(filters={}, result_obj=Server)
+        assert type(obj["id"]) != str
+        assert type(obj["id"]) == ObjectId
 
     @pytest.mark.asyncio
     async def test_create_server_add_member(
@@ -58,7 +59,9 @@ class TestServerRoutes:
         assert "owner" in json_response
         assert json_response["owner"] == str(current_user.id)
 
-        members = await ServerMember.find({"server": ObjectId(json_response["id"])}).to_list(length=None)
+        members = await get_items(
+            {"server": ObjectId(json_response["id"])}, result_obj=ServerMember, current_user=current_user, size=None
+        )
         assert len(members) == 1
         assert members[0].user == current_user
         assert members[0].joined_at < datetime.utcnow()
