@@ -9,6 +9,7 @@ from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema
+from app.services.channels import update_channel_last_message
 from app.services.crud import create_item, get_item_by_id, get_items
 from app.services.websockets import broadcast_new_message, broadcast_new_reaction, broadcast_remove_reaction
 
@@ -16,6 +17,9 @@ from app.services.websockets import broadcast_new_message, broadcast_new_reactio
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
     asyncio.create_task(broadcast_new_message(str(message.id), str(current_user.id)))
+    asyncio.create_task(
+        update_channel_last_message(channel_id=message.channel, message=message, current_user=current_user)
+    )
     return message
 
 

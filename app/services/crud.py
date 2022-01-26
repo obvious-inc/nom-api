@@ -2,6 +2,7 @@ import logging
 from typing import Optional, Type
 
 from bson import ObjectId
+from umongo import Reference
 
 from app.models.base import APIDocument
 from app.models.user import User
@@ -22,7 +23,15 @@ async def create_item(
 
 
 async def get_item_by_id(id_: str, result_obj: Type[APIDocument], current_user: Optional[User] = None) -> APIDocument:
-    item = await result_obj.find_one({"_id": ObjectId(id_)})
+    if type(id_) == str:
+        id_ = ObjectId(id_)
+    elif isinstance(id_, ObjectId):
+        pass
+    elif isinstance(id_, Reference):
+        id_ = id_.pk
+    else:
+        raise Exception(f"unexpected id type: {type(id_)}")
+    item = await result_obj.find_one({"_id": id_})
     return item
 
 
@@ -51,7 +60,7 @@ async def get_item(filters: dict, result_obj: Type[APIDocument], current_user: O
     return item
 
 
-async def update_item(item: APIDocument, data: dict) -> APIDocument:
+async def update_item(item: APIDocument, data: dict, current_user: Optional[User] = None) -> APIDocument:
     item.update(data)
     await item.commit()
     return item

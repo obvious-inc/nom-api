@@ -1,4 +1,5 @@
 import http
+from datetime import timezone
 from typing import Union
 
 from bson import ObjectId
@@ -6,9 +7,10 @@ from fastapi import HTTPException
 
 from app.models.base import APIDocument
 from app.models.channel import Channel
+from app.models.message import Message
 from app.models.user import User
 from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
-from app.services.crud import create_item, delete_item, get_item_by_id, get_items
+from app.services.crud import create_item, delete_item, get_item_by_id, get_items, update_item
 
 
 async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
@@ -71,3 +73,10 @@ async def delete_channel(channel_id, current_user: User):
         raise Exception(f"unexpected kind of channel: {channel.kind}")
 
     return await delete_item(item=channel)
+
+
+async def update_channel_last_message(channel_id, message: Union[Message, APIDocument], current_user: User):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
+    message_ts = message.created_at.replace(tzinfo=timezone.utc).timestamp()
+    if not channel.last_message_ts or message_ts > channel.last_message_ts:
+        await update_item(item=channel, data={"last_message_ts": message_ts}, current_user=current_user)

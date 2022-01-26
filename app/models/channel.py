@@ -4,16 +4,17 @@ from umongo import fields, validate
 from app.helpers.db_utils import instance
 from app.models.base import APIDocument
 from app.models.server import Server
-from app.models.user import User
 
 
 @instance.register
 class Channel(APIDocument):
     kind: str = fields.StrField(validate=validate.OneOf(["dm", "server"]), required=True)  # TODO: make enum?
-    owner = fields.ReferenceField(User, required=True)
+    owner = fields.ReferenceField("User", required=True)
+
+    last_message_ts = fields.FloatField()
 
     # DM fields
-    members = fields.ListField(fields.ReferenceField(User))
+    members = fields.ListField(fields.ReferenceField("User"))
 
     # Server fields
     server = fields.ReferenceField(Server)
