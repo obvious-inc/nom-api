@@ -6,7 +6,7 @@ from app.models.base import APIDocument
 from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
-from app.services.channels import get_server_channels
+from app.services.channels import get_dm_channels, get_server_channels
 from app.services.crud import get_item, get_item_by_id, get_items
 from app.services.servers import get_server_members, get_user_servers
 from app.services.users import get_user_by_id
@@ -16,10 +16,15 @@ logger = logging.getLogger(__name__)
 
 async def get_online_channels(message: Union[Message, APIDocument], current_user: User) -> [str]:
     server = message.server  # type: Server
-    server_members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
-    server_users = [await member.user.fetch() for member in server_members]
+    if server:
+        members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
+        users = [await member.user.fetch() for member in members]
+    else:
+        channel = await message.channel.fetch()
+        users = [await member.fetch() for member in channel.members]
+
     channels = []
-    for user in server_users:  # type: User
+    for user in users:  # type: User
         channels.extend(user.online_channels)
     return channels
 
@@ -72,6 +77,8 @@ async def broadcast_connection_ready(current_user: User, channel: str):
 
         data["servers"].append(server_data)
 
+    dm_channels = await get_dm_channels(current_user=current_user)
+    data["dms"] = [dm_channel.dump() for dm_channel in dm_channels]
     push_channels = [channel]
     await pusher_broadcast_messages(push_channels, event_name, data)
 

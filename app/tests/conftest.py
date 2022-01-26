@@ -18,12 +18,12 @@ from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
-from app.schemas.channels import ServerChannelCreateSchema
+from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.auth import generate_wallet_token
-from app.services.channels import create_server_channel
+from app.services.channels import create_dm_channel, create_server_channel
 from app.services.messages import create_message
 from app.services.servers import create_server
 from app.services.users import create_user
@@ -89,6 +89,12 @@ async def server(current_user: User) -> Union[Server, APIDocument]:
 async def server_channel(current_user: User, server: Server) -> Union[Channel, APIDocument]:
     server_channel = ServerChannelCreateSchema(kind="server", server=str(server.id), name="testing-channel")
     return await create_server_channel(server_channel, current_user=current_user)
+
+
+@pytest.fixture
+async def dm_channel(current_user: User, server: Server) -> Union[Channel, APIDocument]:
+    dm_channel = DMChannelCreateSchema(kind="dm", members=[str(current_user.id)])
+    return await create_dm_channel(dm_channel, current_user=current_user)
 
 
 @pytest.fixture

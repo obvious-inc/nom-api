@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,13 +18,13 @@ class MessageReactionSchema(BaseModel):
 
 class MessageSchema(APIBaseSchema):
     author: PyObjectId = Field()
-    server: PyObjectId = Field()
+    server: Optional[PyObjectId] = Field()
     channel: PyObjectId = Field()
     content: str
     reactions: List[MessageReactionSchema]
 
 
 class MessageCreateSchema(APIBaseCreateSchema):
-    server: str
+    server: Optional[str]
     channel: str
     content: str
