@@ -74,3 +74,21 @@ async def broadcast_connection_ready(current_user: User, channel: str):
 
     push_channels = [channel]
     await pusher_broadcast_messages(push_channels, event_name, data)
+
+
+async def broadcast_new_reaction(message_id, reaction, author_id):
+    user = await get_user_by_id(user_id=author_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    event_name = "MESSAGE_REACTION_ADD"
+    ws_data = {"message": message_id, "user": user.dump(), "reaction": reaction.dump()}
+    channels = await get_online_channels(message=message, current_user=user)
+    await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
+
+
+async def broadcast_remove_reaction(message_id, reaction, author_id):
+    user = await get_user_by_id(user_id=author_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    event_name = "MESSAGE_REACTION_REMOVE"
+    ws_data = {"message": message_id, "user": user.dump(), "reaction": reaction.dump()}
+    channels = await get_online_channels(message=message, current_user=user)
+    await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
