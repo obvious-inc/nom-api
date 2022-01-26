@@ -51,6 +51,10 @@ async def get_server_channels(server_id, current_user: User) -> [Channel]:
     return await get_items(filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user)
 
 
+async def get_dm_channels(current_user: User) -> [Channel]:
+    return await get_items(filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user)
+
+
 async def delete_channel(channel_id, current_user: User):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
     channel_owner = channel.owner

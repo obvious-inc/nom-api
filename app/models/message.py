@@ -16,8 +16,8 @@ class MessageReaction(EmbeddedDocument):
 
 @instance.register
 class Message(APIDocument):
-    channel = fields.ReferenceField(Channel, required=False)
-    server = fields.ReferenceField(Server, required=False)
+    channel = fields.ReferenceField(Channel, required=True)
+    server = fields.ReferenceField(Server, required=False, default=None)
     author = fields.ReferenceField(User, required=True)
 
     content = fields.StrField()  # TODO: prolly not only a string

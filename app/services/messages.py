@@ -1,5 +1,8 @@
 import asyncio
+import http
 from typing import List, Union
+
+from fastapi import HTTPException
 
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -19,13 +22,22 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
 async def get_messages(channel_id: str, size: int, current_user: User) -> List[Message]:
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
 
-    # TODO: make sure user can list channel's messages (in server + proper permissions)
+    filters = None
+    if channel.kind == "server":
+        # TODO: make sure user can list channel's messages (in server + proper permissions)
+        filters = {"channel": channel.id, "server": channel.server.pk}
+    elif channel.kind == "dm":
+        if current_user not in channel.members:
+            raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
+        filters = {"channel": channel.id}
+
     messages = await get_items(
-        filters={"channel": channel.id, "server": channel.server.pk},
+        filters=filters,
         result_obj=Message,
         current_user=current_user,
         size=size,
     )
+
     return messages
 
 
