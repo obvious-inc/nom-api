@@ -148,6 +148,13 @@ class TestChannelsRoutes:
         assert json_response["deleted"] is True
 
     @pytest.mark.asyncio
+    async def test_delete_dm_channel(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server, dm_channel: Channel
+    ):
+        response = await authorized_client.delete(f"/channels/{str(dm_channel.id)}")
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_delete_channel_no_permission(
         self,
         app: FastAPI,

@@ -58,10 +58,16 @@ async def get_dm_channels(current_user: User) -> [Channel]:
 async def delete_channel(channel_id, current_user: User):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
     channel_owner = channel.owner
-    server = await channel.server.fetch()
-    server_owner = server.owner
+    is_channel_owner = channel_owner == current_user
 
-    if not current_user == channel_owner or not current_user == server_owner:
+    if channel.kind == "server":
+        server = await channel.server.fetch()
+        server_owner = server.owner
+        if not is_channel_owner or not current_user == server_owner:
+            raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
+    elif channel.kind == "dm":
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
+    else:
+        raise Exception(f"unexpected kind of channel: {channel.kind}")
 
     return await delete_item(item=channel)
