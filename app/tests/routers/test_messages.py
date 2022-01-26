@@ -50,14 +50,13 @@ class TestMessagesRoutes:
         assert message == channel_message
         assert len(message.reactions) == 0
 
-        reaction_data = {"emoji": "🙌"}
-        response = await authorized_client.post(f"/messages/{str(message.id)}/reactions", json=reaction_data)
+        response = await authorized_client.post(f"/messages/{str(message.id)}/reactions/🙌")
         assert response.status_code == 204
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
         assert len(message.reactions) == 1
         reaction = message.reactions[0]
-        assert reaction.emoji == reaction_data["emoji"]
+        assert reaction.emoji == "🙌"
         assert reaction.count == 1
         assert [user.pk for user in reaction.users] == [current_user.id]
 
@@ -73,21 +72,21 @@ class TestMessagesRoutes:
         channel_message: Message,
         guest_user: User,
     ):
-        channel_message.reactions = [MessageReaction(emoji="😍", count=1, users=[guest_user.pk])]
+        emoji = "😍"
+        channel_message.reactions = [MessageReaction(emoji=emoji, count=1, users=[guest_user.pk])]
         await channel_message.commit()
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
         assert message == channel_message
         assert len(message.reactions) == 1
 
-        reaction_data = {"emoji": "😍"}
-        response = await authorized_client.post(f"/messages/{str(message.id)}/reactions", json=reaction_data)
+        response = await authorized_client.post(f"/messages/{str(message.id)}/reactions/{emoji}")
         assert response.status_code == 204
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
         assert len(message.reactions) == 1
         reaction = message.reactions[0]
-        assert reaction.emoji == reaction_data["emoji"]
+        assert reaction.emoji == emoji
         assert reaction.count == 2
         assert [user.pk for user in reaction.users] == [guest_user.id, current_user.id]
 
@@ -103,21 +102,21 @@ class TestMessagesRoutes:
         channel_message: Message,
         guest_user: User,
     ):
-        channel_message.reactions = [MessageReaction(emoji="😍", count=1, users=[current_user.pk])]
+        emoji = "😍"
+        channel_message.reactions = [MessageReaction(emoji=emoji, count=1, users=[current_user.pk])]
         await channel_message.commit()
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
         assert message == channel_message
         assert len(message.reactions) == 1
 
-        reaction_data = {"emoji": "😍"}
-        response = await authorized_client.post(f"/messages/{str(message.id)}/reactions", json=reaction_data)
+        response = await authorized_client.post(f"/messages/{str(message.id)}/reactions/{emoji}")
         assert response.status_code == 204
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
         assert len(message.reactions) == 1
         reaction = message.reactions[0]
-        assert reaction.emoji == reaction_data["emoji"]
+        assert reaction.emoji == emoji
         assert reaction.count == 1
         assert [user.pk for user in reaction.users] == [current_user.id]
 
@@ -140,8 +139,8 @@ class TestMessagesRoutes:
         assert message == channel_message
         assert len(message.reactions) == 1
 
-        reaction_data = {"emoji": "💪"}
-        response = await authorized_client.post(f"/messages/{str(message.id)}/reactions", json=reaction_data)
+        new_emoji = "💪"
+        response = await authorized_client.post(f"/messages/{str(message.id)}/reactions/{new_emoji}")
         assert response.status_code == 204
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
@@ -152,7 +151,7 @@ class TestMessagesRoutes:
         assert [user.pk for user in first_reaction.users] == [guest_user.id]
 
         second_reaction = message.reactions[1]
-        assert second_reaction.emoji == reaction_data["emoji"]
+        assert second_reaction.emoji == new_emoji
         assert second_reaction.count == 1
         assert [user.pk for user in second_reaction.users] == [current_user.id]
 

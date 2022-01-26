@@ -16,10 +16,6 @@ class MessageReactionSchema(BaseModel):
         arbitrary_types_allowed = True
 
 
-class MessageReactionCreateSchema(APIBaseCreateSchema):
-    emoji: str
-
-
 class MessageSchema(APIBaseSchema):
     author: PyObjectId = Field()
     server: PyObjectId = Field()
