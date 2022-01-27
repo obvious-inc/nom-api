@@ -1,5 +1,4 @@
 import asyncio
-import json
 
 import arrow
 
@@ -10,6 +9,8 @@ from app.schemas.users import UserCreateSchema
 from app.services.crud import get_items
 from app.services.servers import join_server
 from app.services.users import create_user, get_user_by_id, get_user_by_wallet_address
+
+SIGNATURE_VALID_SECONDS = 30
 
 
 async def add_user_to_default_server(user_id):
@@ -26,16 +27,19 @@ async def generate_wallet_token(data: dict) -> str:
     if not message or not signature:
         raise Exception("missing params")
 
-    json_message = json.dumps(message).replace(" ", "")  # JSON.stringify() in JS removes all spaces
+    address = data.get("address")
+    signed_at = arrow.get(data.get("signed_at"))
+    nonce = data.get("nonce")
 
     try:
-        signed_address = get_wallet_address_from_signed_message(json_message, signature)
+        signed_address = get_wallet_address_from_signed_message(message, signature)
     except Exception as e:
         raise e
 
-    assert signed_address == checksum_address(message.get("address"))
-    signed_at = arrow.get(message.get("signed_at"))
-    assert signed_at > arrow.utcnow().shift(seconds=-5)
+    assert signed_address == checksum_address(address)
+    assert signed_address.lower() in message.lower()
+    assert signed_at > arrow.utcnow().shift(seconds=-SIGNATURE_VALID_SECONDS)
+    assert f"nonce: {nonce}" in message.lower()
 
     user = await get_user_by_wallet_address(wallet_address=signed_address)
     if not user:
