@@ -37,3 +37,13 @@ class Channel(APIDocument):
 
     class Meta:
         collection_name = "channels"
+
+
+@instance.register
+class ChannelReadState(APIDocument):
+    user = fields.ReferenceField("User")
+    channel = fields.ReferenceField("Channel")
+    last_read_ts = fields.FloatField()
+
+    class Meta:
+        collection_name = "channels_read_states"

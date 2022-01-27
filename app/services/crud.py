@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Type
+from typing import Optional, Type, Union
 
 from bson import ObjectId
 from umongo import Reference
@@ -12,7 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 async def create_item(
-    item: APIBaseCreateSchema, result_obj: Type[APIDocument], current_user: User, user_field: Optional[str] = "user"
+    item: APIBaseCreateSchema,
+    result_obj: Type[APIDocument],
+    current_user: Union[User, APIDocument],
+    user_field: Optional[str] = "user",
 ) -> APIDocument:
     db_object = result_obj(**item.dict())
     if user_field:

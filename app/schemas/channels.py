@@ -51,3 +51,8 @@ class DMChannelCreateSchema(ChannelCreateSchema):
 class ServerChannelCreateSchema(ChannelCreateSchema):
     server: str
     name: str
+
+
+class ChannelReadStateCreateSchema(APIBaseCreateSchema):
+    channel: str
+    last_read_ts: float
