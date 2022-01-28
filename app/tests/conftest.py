@@ -112,8 +112,7 @@ async def authorized_client(client: AsyncClient, private_key: bytes, current_use
 
     URI: localhost
     Nonce: {nonce}
-    Issued At: {signed_at}`;
-    """
+    Issued At: {signed_at}"""
 
     encoded_message = encode_defunct(text=message)
     signed_message = Web3().eth.account.sign_message(encoded_message, private_key=private_key)

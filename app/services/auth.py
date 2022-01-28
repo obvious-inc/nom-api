@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import arrow
 
@@ -11,6 +12,8 @@ from app.services.servers import join_server
 from app.services.users import create_user, get_user_by_id, get_user_by_wallet_address
 
 SIGNATURE_VALID_SECONDS = 30
+NONCE_SIGNATURE_REGEX = re.compile(r"nonce:\s?(.+?)\b", flags=re.IGNORECASE)
+SIGNED_AT_SIGNATURE_REGEX = re.compile(r"issued at:\s?(.+?)$", flags=re.IGNORECASE)
 
 
 async def add_user_to_default_server(user_id):
@@ -38,8 +41,15 @@ async def generate_wallet_token(data: dict) -> str:
 
     assert signed_address == checksum_address(address)
     assert signed_address.lower() in message.lower()
+
+    message_signed_at_str = re.search(SIGNED_AT_SIGNATURE_REGEX, message).group(1)
+    message_signed_at = arrow.get(message_signed_at_str)
+    assert signed_at == message_signed_at
     assert signed_at > arrow.utcnow().shift(seconds=-SIGNATURE_VALID_SECONDS)
-    assert f"nonce: {nonce}" in message.lower()
+
+    # check nonce
+    message_nonce = re.search(NONCE_SIGNATURE_REGEX, message).group(1)
+    assert int(message_nonce) == nonce
 
     user = await get_user_by_wallet_address(wallet_address=signed_address)
     if not user:
