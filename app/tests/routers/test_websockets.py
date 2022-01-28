@@ -74,7 +74,7 @@ class TestWebsocketRoutes:
         assert member.server == server
         assert member.user == current_user
 
-        current_user.online_channels = [f"private-{str(current_user.id)}"]
+        current_user.online_channels = [{"channel_name": f"private-{str(current_user.id)}"}]
         await current_user.commit()
 
         channels = await get_online_channels(message=message, current_user=current_user)

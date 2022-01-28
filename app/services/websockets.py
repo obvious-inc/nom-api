@@ -1,17 +1,33 @@
 import logging
 from typing import Union
 
+from starlette.datastructures import FormData
+
 from app.helpers.websockets import pusher_client
 from app.models.base import APIDocument
 from app.models.message import Message
 from app.models.server import Server, ServerMember
-from app.models.user import User
+from app.models.user import OnlineChannel, User
 from app.services.channels import get_dm_channels, get_server_channels
 from app.services.crud import get_item, get_item_by_id, get_items
 from app.services.servers import get_server_members, get_user_servers
 from app.services.users import get_user_by_id
 
 logger = logging.getLogger(__name__)
+
+
+async def create_online_channel(form_data: FormData, current_user: User):
+    mutable_form_data = dict(form_data)
+    channel_name = mutable_form_data.pop("channel_name")
+    socket_id = mutable_form_data.pop("socket_id")
+    provider = mutable_form_data.pop("provider")
+
+    online_channel = OnlineChannel(
+        channel_name=channel_name, socket_id=socket_id, provider=provider, ready=False, props=mutable_form_data
+    )
+
+    current_user.online_channels.append(online_channel)
+    await current_user.commit()
 
 
 async def get_online_channels(message: Union[Message, APIDocument], current_user: User) -> [str]:
@@ -25,7 +41,8 @@ async def get_online_channels(message: Union[Message, APIDocument], current_user
 
     channels = []
     for user in users:  # type: User
-        channels.extend(user.online_channels)
+        ready_channels = [channel.channel_name for channel in user.online_channels if channel.ready]
+        channels.extend(ready_channels)
     return channels
 
 

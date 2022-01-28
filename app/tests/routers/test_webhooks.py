@@ -21,9 +21,11 @@ class TestWebhookRoutes:
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, event_loop
     ):
         settings = get_settings()
-        assert current_user.online_channels == []
-
         channel_id = f"private-{str(current_user.id)}"
+
+        current_user.online_channels = [{"channel_name": channel_id, "ready": False}]
+        await current_user.commit()
+
         current_time = time.time() * 1000
         json_data = {"time_ms": current_time, "events": [{"channel": channel_id, "name": "channel_occupied"}]}
         signature = hmac.new(
@@ -34,7 +36,10 @@ class TestWebhookRoutes:
         assert response.status_code == 200
         await asyncio.sleep(random.random(), loop=event_loop)
         await current_user.reload()
-        assert current_user.online_channels == [channel_id]
+
+        online_channels = current_user.online_channels
+        assert online_channels[0]["channel_name"] == channel_id
+        assert online_channels[0]["ready"] is True
 
     @pytest.mark.asyncio
     async def test_pusher_channel_vacated(

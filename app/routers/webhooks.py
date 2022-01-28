@@ -22,10 +22,12 @@ async def process_webhook_events(events: list[dict]):
         try:
             channel_name = event["channel"]
             user_id = channel_name.split("-")[1]
+            filters = {"_id": ObjectId(user_id)}
             if event["name"] == "channel_occupied":
-                update_data = {"$addToSet": {"online_channels": channel_name}}
+                filters = {"_id": ObjectId(user_id), "online_channels.channel_name": channel_name}
+                update_data = {"$set": {"online_channels.$.ready": True}}
             elif event["name"] == "channel_vacated":
-                update_data = {"$pull": {"online_channels": channel_name}}
+                update_data = {"$pull": {"online_channels": {"channel_name": channel_name}}}
             elif event["name"] == "client_event":
                 client_event = event["event"]
                 if client_event == "client-connection-request":
@@ -37,7 +39,7 @@ async def process_webhook_events(events: list[dict]):
             else:
                 raise NotImplementedError(f"not expected event: {event}")
 
-            await User.collection.update_one(filter={"_id": ObjectId(user_id)}, update=update_data)
+            await User.collection.update_one(filter=filters, update=update_data)
         except Exception:
             logger.exception("Problems handling webhook event. [event=%(name)s, channel=%(channel)s]", event)
 
