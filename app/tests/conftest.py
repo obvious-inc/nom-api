@@ -1,5 +1,4 @@
 import binascii
-import json
 import secrets
 from typing import Union
 
@@ -105,13 +104,27 @@ async def channel_message(current_user: User, server: Server, server_channel: Ch
 
 @pytest.fixture
 async def authorized_client(client: AsyncClient, private_key: bytes, current_user: User) -> AsyncClient:
-    message_data = {"address": current_user.wallet_address, "signed_at": arrow.utcnow().isoformat()}
+    nonce = 1234
+    signed_at = arrow.utcnow().isoformat()
+    message = f"""NewShades wants you to sign in with your web3 account
 
-    str_message = json.dumps(message_data, separators=(",", ":"))
-    message = encode_defunct(text=str_message)
-    signed_message = Web3().eth.account.sign_message(message, private_key=private_key)
+    {current_user.wallet_address}
 
-    data = {"message": message_data, "signature": signed_message.signature}
+    URI: localhost
+    Nonce: {nonce}
+    Issued At: {signed_at}`;
+    """
+
+    encoded_message = encode_defunct(text=message)
+    signed_message = Web3().eth.account.sign_message(encoded_message, private_key=private_key)
+
+    data = {
+        "message": message,
+        "signature": signed_message.signature.hex(),
+        "signed_at": signed_at,
+        "nonce": nonce,
+        "address": current_user.wallet_address,
+    }
 
     access_token = await generate_wallet_token(data)
 
