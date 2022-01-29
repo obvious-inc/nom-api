@@ -2,33 +2,32 @@ name: CI tests
 
 on:
   workflow_run:
-    workflows: ["CI build"]
-    types:
-      - completed
+    workflows: [CI build]
+    types: [completed]
 
 jobs:
-  flake8:
+  lint-flake8:
     runs-on: ubuntu-latest
     steps:
-    - name: Run flake8
+    - name: Run code linter - flake8
       env:
         $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
       run: |
         docker run $DOCKER_IMAGE_TAG flake8
 
-#  mypy:
+#  type-check-mypy:
 #    runs-on: ubuntu-latest
 #    steps:
-#    - name: Run mypy
+#    - name: Run static type checker - mypy
 #      env:
 #        $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
 #      run: |
 #        docker run $DOCKER_IMAGE_TAG mypy
 #
-#  pytest:
+#  unit-test-pytest:
 #    runs-on: ubuntu-latest
 #    steps:
-#    - name: Run pytest
+#    - name: Run unit tests - pytest
 #      env:
 #        $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
 #      run: |
