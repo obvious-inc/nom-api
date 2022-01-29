@@ -3,25 +3,25 @@ name: CI tests
 on:
   workflow_call:
     inputs:
-      docker_image_tag:
+      docker-image-tag:
         required: true
         type: string
 
 jobs:
   lint-flake8:
-    name: Run code linter - flake8
+    name: Lint >> flake8
     runs-on: ubuntu-latest
     steps:
-    - run: docker run ${{ inputs.docker_image_tag }} flake8
+    - run: docker run -v "/var/run/docker.sock":"/var/run/docker.sock" ${{ inputs.docker-image-tag }} flake8
 
 #  type-check-mypy:
-#    name: Run static type checker - mypy
+#    name: Type check >> mypy
 #    runs-on: ubuntu-latest
 #    steps:
 #    - run: docker run ${{ inputs.docker_image_tag }} mypy
 #
 #  unit-test-pytest:
-#    name: Run unit tests - pytest
+#    name: Unit test >> pytest
 #    runs-on: ubuntu-latest
 #    steps:
 #    - run: |
