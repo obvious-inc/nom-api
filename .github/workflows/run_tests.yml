@@ -7,28 +7,28 @@ on:
 
 jobs:
   lint-flake8:
+    name: Run code linter - flake8
     runs-on: ubuntu-latest
     steps:
-    - name: Run code linter - flake8
-      env:
-        $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
+    - env:
+        $DOCKER_IMAGE_TAG: ${{ github.event.repository }}:${{ github.event.sha }}
       run: |
         docker run $DOCKER_IMAGE_TAG flake8
 
 #  type-check-mypy:
+#    name: Run static type checker - mypy
 #    runs-on: ubuntu-latest
 #    steps:
-#    - name: Run static type checker - mypy
-#      env:
+#    - env:
 #        $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
 #      run: |
 #        docker run $DOCKER_IMAGE_TAG mypy
 #
 #  unit-test-pytest:
+#    name: Run unit tests - pytest
 #    runs-on: ubuntu-latest
 #    steps:
-#    - name: Run unit tests - pytest
-#      env:
+#    - env:
 #        $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
 #      run: |
 #        docker run $DOCKER_IMAGE_TAG pytest
