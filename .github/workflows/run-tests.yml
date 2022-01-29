@@ -12,17 +12,17 @@ jobs:
     name: Run code linter - flake8
     runs-on: ubuntu-latest
     steps:
-    - run: docker run ${{ docker_image_tag }} flake8
+    - run: docker run ${{ inputs.docker_image_tag }} flake8
 
 #  type-check-mypy:
 #    name: Run static type checker - mypy
 #    runs-on: ubuntu-latest
 #    steps:
-#    - run: docker run ${{ docker_image_tag }} mypy
+#    - run: docker run ${{ inputs.docker_image_tag }} mypy
 #
 #  unit-test-pytest:
 #    name: Run unit tests - pytest
 #    runs-on: ubuntu-latest
 #    steps:
 #    - run: |
-#        docker run ${{ docker_image_tag }} pytest
+#        docker run ${{ inputs.docker_image_tag }} pytest
