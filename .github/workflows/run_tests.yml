@@ -1,0 +1,35 @@
+name: CI tests
+
+on:
+  workflow_run:
+    workflows: ["CI build"]
+    types:
+      - completed
+
+jobs:
+  flake8:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Run flake8
+      env:
+        $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
+      run: |
+        docker run $DOCKER_IMAGE_TAG flake8
+
+#  mypy:
+#    runs-on: ubuntu-latest
+#    steps:
+#    - name: Run mypy
+#      env:
+#        $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
+#      run: |
+#        docker run $DOCKER_IMAGE_TAG mypy
+#
+#  pytest:
+#    runs-on: ubuntu-latest
+#    steps:
+#    - name: Run pytest
+#      env:
+#        $DOCKER_IMAGE_TAG: ${{ github.repository }}:${{ github.sha }}
+#      run: |
+#        docker run $DOCKER_IMAGE_TAG pytest
