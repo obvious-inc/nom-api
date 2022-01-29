@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: docker://${{ inputs.docker-image-tag }}
-      run: flake8
 
 #  type-check-mypy:
 #    name: type check / mypy
