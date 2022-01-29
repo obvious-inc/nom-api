@@ -9,19 +9,25 @@ on:
 
 jobs:
   lint-flake8:
-    name: Lint >> flake8
+    name: lint / flake8
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up docker buildx
+      uses: docker/setup-buildx-action@v1
+
     - run: docker run -v "/var/run/docker.sock":"/var/run/docker.sock" ${{ inputs.docker-image-tag }} flake8
 
 #  type-check-mypy:
-#    name: Type check >> mypy
+#    name: type check / mypy
 #    runs-on: ubuntu-latest
 #    steps:
 #    - run: docker run ${{ inputs.docker_image_tag }} mypy
 #
 #  unit-test-pytest:
-#    name: Unit test >> pytest
+#    name: unit test / pytest
 #    runs-on: ubuntu-latest
 #    steps:
 #    - run: |

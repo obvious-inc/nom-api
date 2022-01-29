@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build:
-    name: Build
+    name: build
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -41,7 +41,7 @@ jobs:
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   tests:
-    name: Test
+    name: test
     needs: build
     uses: ./.github/workflows/run-tests.yml
     with:
