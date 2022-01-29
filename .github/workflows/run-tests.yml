@@ -21,11 +21,16 @@ jobs:
 #    name: type check / mypy
 #    runs-on: ubuntu-latest
 #    steps:
-#    - run: docker run ${{ inputs.docker_image_tag }} mypy
+#    - uses: addnab/docker-run-action@v3
+#      with:
+#        image: ${{ inputs.docker-image-tag }}
+#        run: mypy
 #
 #  unit-test-pytest:
 #    name: unit test / pytest
 #    runs-on: ubuntu-latest
 #    steps:
-#    - run: |
-#        docker run ${{ inputs.docker_image_tag }} pytest
+#    - uses: addnab/docker-run-action@v3
+#      with:
+#        image: ${{ inputs.docker-image-tag }}
+#        run: pytest
