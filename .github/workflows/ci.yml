@@ -30,7 +30,7 @@ jobs:
         tags: ${{ github.repository }}:${{ github.sha }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-        outputs: type=docker,dest=/tmp/image.tar
+        outputs: type=docker
 
     - name: Post build move docker image layer cache
       # temporary fix
@@ -39,10 +39,6 @@ jobs:
       run: |
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-    - name: Load docker image
-      run: |
-        docker load --input /tmp/image.tar
 
     - name: Run linter >> flake8
       uses: addnab/docker-run-action@v3
