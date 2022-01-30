@@ -7,6 +7,12 @@ jobs:
     name: ci
     runs-on: ubuntu-latest
     steps:
+    - name: Set repository name to lower case
+      run: |
+        echo "REPO_NAME_LC=${REPO_NAME,,}" >>${GITHUB_ENV}
+      env:
+        REPO_NAME: '${{ github.repository }}'
+
     - name: Checkout
       uses: actions/checkout@v2
 
@@ -17,9 +23,9 @@ jobs:
       uses: actions/cache@v2
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.repository }}-${{ github.sha }}
+        key: ${{ runner.os }}-buildx-${{ env.REPO_NAME_LC }}-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-buildx-${{ github.repository }}-
+          ${{ runner.os }}-buildx-${{ env.REPO_NAME_LC }}-
           ${{ runner.os }}-buildx-
 
     - name: Build docker image
@@ -27,7 +33,7 @@ jobs:
       with:
         context: .
         file: ./Dockerfile
-        tags: ${{ github.repository }}:${{ github.sha }}
+        tags: ${{ env.REPO_NAME_LC }}:${{ github.sha }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
         outputs: type=docker
@@ -43,5 +49,5 @@ jobs:
     - name: Run linter >> flake8
       uses: addnab/docker-run-action@v3
       with:
-        image: ${{ github.repository }}:${{ github.sha }}
+        image: ${{ env.REPO_NAME_LC }}:${{ github.sha }}
         run: flake8
