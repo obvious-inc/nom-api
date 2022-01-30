@@ -21,8 +21,7 @@ class TestWebsocketRoutes:
         current_user: User,
         authorized_client: AsyncClient,
     ):
-        form_data = {}
-        response = await authorized_client.post("/websockets/auth", data=form_data)
+        response = await authorized_client.post("/websockets/auth")
         assert response.status_code == 422
 
     @pytest.mark.asyncio

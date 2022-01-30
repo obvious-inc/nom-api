@@ -16,6 +16,6 @@ router = APIRouter()
     status_code=http.HTTPStatus.CREATED,
 )
 async def login_with_wallet(data: AuthWalletSchema = Body(...), db=Depends(get_db)):
-    token = await generate_wallet_token(data.dict())
+    token = await generate_wallet_token(data)
     response = AccessTokenSchema(access_token=token)
     return response

@@ -16,7 +16,7 @@ class TestCRUDService:
     async def test_create_user_ok(self, db: Database):
         wallet_address = "0x123"
         model = UserCreateSchema(wallet_address=wallet_address)
-        user = await create_item(item=model, result_obj=User, current_user=None, user_field=None)
+        user = await create_item(item=model, result_obj=User, user_field=None)
         assert user is not None
         assert user.wallet_address == wallet_address
 
@@ -24,7 +24,7 @@ class TestCRUDService:
     async def test_create_user_fields_ok(self, db: Database):
         wallet_address = "0x1234"
         model = UserCreateSchema(wallet_address=wallet_address)
-        created_user = await create_item(item=model, result_obj=User, current_user=None, user_field=None)
+        created_user = await create_item(item=model, result_obj=User, user_field=None)
         assert created_user is not None
         assert created_user.wallet_address == wallet_address
         assert "created_at" in created_user._fields
