@@ -51,3 +51,9 @@ jobs:
       with:
         image: ${{ env.REPO_NAME_LC }}:${{ github.sha }}
         run: flake8
+
+    - name: Run linter >> mypy
+      uses: addnab/docker-run-action@v3
+      with:
+        image: ${{ env.REPO_NAME_LC }}:${{ github.sha }}
+        run: mypy .
