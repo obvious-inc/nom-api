@@ -9,9 +9,9 @@ from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, override_connect_to_mongo
+from app.helpers.logconf import log_configuration
 from app.middlewares import add_canonical_log_line, profile_request
 from app.routers import auth, base, channels, messages, servers, users, webhooks, websockets
-from logconf import log_configuration
 
 logging.config.dictConfig(log_configuration)
 logger = logging.getLogger(__name__)
