@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import List, Union
 
 from app.helpers.websockets import pusher_client
 from app.models.base import APIDocument
@@ -14,7 +14,7 @@ from app.services.users import get_user_by_id
 logger = logging.getLogger(__name__)
 
 
-async def get_online_channels(message: Union[Message, APIDocument], current_user: User) -> [str]:
+async def get_online_channels(message: Union[Message, APIDocument], current_user: User) -> List[str]:
     server = message.server  # type: Server
     if server:
         members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
@@ -29,7 +29,7 @@ async def get_online_channels(message: Union[Message, APIDocument], current_user
     return channels
 
 
-async def pusher_broadcast_messages(channels: [str], event_name: str, data: dict):
+async def pusher_broadcast_messages(channels: List[str], event_name: str, data: dict):
     while len(channels) > 0:
         push_channels = channels[:90]
         try:

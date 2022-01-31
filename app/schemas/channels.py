@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Union
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
 
@@ -45,9 +45,16 @@ class ChannelCreateSchema(APIBaseCreateSchema):
 
 
 class DMChannelCreateSchema(ChannelCreateSchema):
+    kind: str = "dm"
     members: List[str]
 
 
 class ServerChannelCreateSchema(ChannelCreateSchema):
+    kind: str = "server"
     server: str
     name: str
+
+
+# Need this EitherChannel class due to mypy and fastapi issue: https://github.com/tiangolo/fastapi/issues/2279
+class EitherChannel(BaseModel):
+    __root__: Union[ServerChannelSchema, DMChannelSchema]

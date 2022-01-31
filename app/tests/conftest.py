@@ -17,6 +17,7 @@ from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
+from app.schemas.auth import AuthWalletSchema
 from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
@@ -35,7 +36,7 @@ def app() -> FastAPI:
 
 
 @pytest.fixture
-async def client(app: FastAPI) -> AsyncClient:
+async def client(app: FastAPI):
     async with LifespanManager(app):
         async with AsyncClient(app=app, base_url="http://testserver", follow_redirects=True) as client:
             yield client
@@ -59,8 +60,8 @@ def private_key() -> bytes:
 @pytest.fixture
 def wallet(private_key: bytes) -> str:
     priv = binascii.hexlify(private_key).decode("ascii")
-    private_key = "0x" + priv
-    acct = Account.from_key(private_key)
+    hex_private_key = "0x" + priv
+    acct = Account.from_key(hex_private_key)
     return acct.address
 
 
@@ -103,7 +104,7 @@ async def channel_message(current_user: User, server: Server, server_channel: Ch
 
 
 @pytest.fixture
-async def authorized_client(client: AsyncClient, private_key: bytes, current_user: User) -> AsyncClient:
+async def authorized_client(client: AsyncClient, private_key: bytes, current_user: User):
     nonce = 1234
     signed_at = arrow.utcnow().isoformat()
     message = f"""NewShades wants you to sign in with your web3 account
@@ -125,12 +126,9 @@ async def authorized_client(client: AsyncClient, private_key: bytes, current_use
         "address": current_user.wallet_address,
     }
 
-    access_token = await generate_wallet_token(data)
+    access_token = await generate_wallet_token(AuthWalletSchema(**data))
 
-    client.headers = {
-        **client.headers,
-        "Authorization": f"Bearer {access_token}",
-    }
+    client.headers.update({"Authorization": f"Bearer {access_token}"})
 
     yield client
     client.headers.pop("Authorization")

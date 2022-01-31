@@ -45,3 +45,9 @@ jobs:
       with:
         image: api:${{ github.sha }}
         run: flake8
+
+    - name: Run linter >> mypy
+      uses: addnab/docker-run-action@v3
+      with:
+        image: api:${{ github.sha }}
+        run: mypy .

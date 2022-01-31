@@ -4,6 +4,7 @@ from eth_account.messages import encode_defunct
 from web3 import Web3
 
 from app.helpers.jwt import decode_jwt_token
+from app.schemas.auth import AuthWalletSchema
 from app.services.auth import generate_wallet_token
 from app.services.users import get_user_by_id
 
@@ -32,7 +33,7 @@ class TestAuthService:
             "address": wallet,
         }
 
-        token = await generate_wallet_token(data)
+        token = await generate_wallet_token(AuthWalletSchema(**data))
         decrypted_token = decode_jwt_token(token)
         token_user_id = decrypted_token.get("sub")
         assert token_user_id != wallet
