@@ -26,7 +26,13 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
 
 async def delete_message(message_id: str, current_user: User):
     message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
-    if not message.author == current_user:
+    can_delete = message.author == current_user
+
+    if message.server:
+        server = await message.server.fetch()
+        can_delete |= server.owner == current_user
+
+    if not can_delete:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
     asyncio.create_task(broadcast_delete_message(str(message.id), str(current_user.id)))
