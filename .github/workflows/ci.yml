@@ -2,6 +2,9 @@ name: CI
 
 on: [push, pull_request]
 
+env:
+  MONGODB_VERSION: 4.2.7
+
 jobs:
   build:
     name: ci
@@ -57,3 +60,14 @@ jobs:
       with:
         image: ${{ env.REPO_NAME_LC }}:${{ github.sha }}
         run: mypy .
+
+    - name: Start MongoDB
+      uses: supercharge/mongodb-github-action@1.7.0
+      with:
+        mongodb-version: ${{ env.MONGODB_VERSION }}
+
+    - name: Run tests >> pytest
+      uses: addnab/docker-run-action@v3
+      with:
+        image: ${{ env.REPO_NAME_LC }}:${{ github.sha }}
+        run: pytest

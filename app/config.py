@@ -8,11 +8,11 @@ class Settings(BaseSettings):
     testing: bool = True
     profiling: bool = False
 
-    mongodb_url: str = ""
-    mongodb_db: str = ""
+    mongodb_url: str = "localhost:27017"
+    mongodb_db: str = "newshades"
 
     jwt_secret_key: str
-    jwt_expire_minutes: int
+    jwt_expire_minutes: Optional[int] = 60
 
     web3_provider_url_ws: Optional[str]
 
