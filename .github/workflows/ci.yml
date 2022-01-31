@@ -9,7 +9,6 @@ jobs:
   build:
     name: ci
     runs-on: ubuntu-latest
-    environment: newshades-tests
 
     steps:
     - name: Checkout
