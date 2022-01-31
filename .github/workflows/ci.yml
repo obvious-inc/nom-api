@@ -49,5 +49,5 @@ jobs:
     - name: Run linter >> mypy
       uses: addnab/docker-run-action@v3
       with:
-        image: ${{ env.REPO_NAME_LC }}:${{ github.sha }}
+        image: api:${{ github.sha }}
         run: mypy .
