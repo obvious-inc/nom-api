@@ -7,7 +7,8 @@ from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
 from app.models.server import Server
 from app.models.user import User
-from app.services.crud import get_item_by_id
+from app.schemas.messages import MessageCreateSchema
+from app.services.crud import create_item, get_item_by_id
 from app.services.messages import get_messages
 
 
@@ -215,3 +216,56 @@ class TestMessagesRoutes:
         assert reaction.emoji == "😍"
         assert reaction.count == 1
         assert [user.pk for user in reaction.users] == [guest_user.id]
+
+    @pytest.mark.asyncio
+    async def test_delete_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 1
+
+        response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
+        assert response.status_code == 204
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 0
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message.deleted is True
+
+    @pytest.mark.asyncio
+    async def test_delete_message_from_another_user(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        guest_user: User,
+    ):
+        channel_message = await create_item(
+            item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content="hey"),
+            result_obj=Message,
+            current_user=guest_user,
+            user_field="author",
+        )
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 1
+
+        response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
+        assert response.status_code == 403
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 1
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message.deleted is False
