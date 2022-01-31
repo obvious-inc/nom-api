@@ -3,6 +3,7 @@ import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
+from sentry_sdk import set_user
 from starlette.requests import Request
 
 from app.helpers.connection import get_db
@@ -41,5 +42,7 @@ async def get_current_user(
 
     request.state.user_id = user_id
     request.state.auth_type = "bearer"
+
+    set_user({"id": user_id})
 
     return user

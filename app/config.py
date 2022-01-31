@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     pusher_secret: Optional[str]
     pusher_cluster: Optional[str]
 
+    sentry_dsn: Optional[str]
+
     class Config:
         env_file = ".env"
 
