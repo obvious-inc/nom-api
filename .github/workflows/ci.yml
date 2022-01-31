@@ -27,7 +27,7 @@ jobs:
       with:
         context: .
         file: ./Dockerfile
-        tags: ${{ github.repository }}:${{ github.sha }}
+        tags: api:${{ github.sha }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
         outputs: type=docker
@@ -43,5 +43,5 @@ jobs:
     - name: Run linter >> flake8
       uses: addnab/docker-run-action@v3
       with:
-        image: ${{ github.repository }}:${{ github.sha }}
+        image: api:${{ github.sha }}
         run: flake8
