@@ -82,20 +82,18 @@ async def update_channel_last_message(channel_id, message: Union[Message, APIDoc
         await update_item(item=channel, data={"last_message_ts": message_ts}, current_user=current_user)
 
 
-async def update_channel_read_state(user_id: str, channel_id: str, last_read_ts: float):
+async def update_channels_read_state(user_id: str, channel_ids: List[str], last_read_ts: float):
     user = await get_item_by_id(id_=user_id, result_obj=User)
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-
     if isinstance(last_read_ts, int):
         # JS timestamps are diff format than Python
         last_read_ts = last_read_ts / 1000
 
-    read_state_model = ChannelReadStateCreateSchema(channel=str(channel.id), last_read_ts=last_read_ts)
+    for channel_id in channel_ids:
+        channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
 
-    read_state = await get_item(filters={"user": user, "channel": channel}, result_obj=ChannelReadState)
-    if not read_state:
-        await create_item(read_state_model, result_obj=ChannelReadState, current_user=user)
-    else:
-        read_state = await update_item(item=read_state, data={"last_read_ts": last_read_ts})
-
-    return read_state
+        read_state_model = ChannelReadStateCreateSchema(channel=str(channel.id), last_read_ts=last_read_ts)
+        read_state = await get_item(filters={"user": user, "channel": channel}, result_obj=ChannelReadState)
+        if not read_state:
+            await create_item(read_state_model, result_obj=ChannelReadState, current_user=user)
+        else:
+            await update_item(item=read_state, data={"last_read_ts": last_read_ts})
