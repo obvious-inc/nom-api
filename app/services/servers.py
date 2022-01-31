@@ -1,4 +1,4 @@
-from typing import Union
+from typing import List, Union
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -26,7 +26,7 @@ async def join_server(server: Union[Server, APIDocument], current_user: User, di
     return member
 
 
-async def get_user_servers(current_user: User) -> [Server]:
+async def get_user_servers(current_user: User) -> List[Server]:
     server_members = await get_items(
         {"user": current_user.id}, result_obj=ServerMember, current_user=current_user, size=None
     )

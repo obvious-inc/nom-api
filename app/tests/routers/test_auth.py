@@ -1,6 +1,5 @@
 import asyncio
 import binascii
-import json
 import random
 import secrets
 import time
@@ -27,12 +26,26 @@ class TestAuthRoutes:
     async def test_create_token_wallet_ok(
         self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
     ):
-        message_data = {"address": wallet, "signed_at": arrow.utcnow().isoformat()}
-        str_message = json.dumps(message_data, separators=(",", ":"))
-        message = encode_defunct(text=str_message)
-        signed_message = Web3().eth.account.sign_message(message, private_key=private_key)  # type: SignedMessage
+        nonce = 1234
+        signed_at = arrow.utcnow().isoformat()
+        message = f"""NewShades wants you to sign in with your web3 account
 
-        data = {"message": message_data, "signature": signed_message.signature.hex()}
+        {wallet}
+
+        URI: localhost
+        Nonce: {nonce}
+        Issued At: {signed_at}"""
+        encoded_message = encode_defunct(text=message)
+        signed_message = Web3().eth.account.sign_message(
+            encoded_message, private_key=private_key
+        )  # type: SignedMessage
+        data = {
+            "message": message,
+            "signature": signed_message.signature.hex(),
+            "signed_at": signed_at,
+            "nonce": nonce,
+            "address": wallet,
+        }
 
         response = await client.post("/auth/login", json=data)
         assert response.status_code == 201
@@ -52,12 +65,26 @@ class TestAuthRoutes:
     async def test_login_with_same_wallet(
         self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
     ):
-        message_data = {"address": wallet, "signed_at": arrow.utcnow().isoformat()}
-        str_message = json.dumps(message_data, separators=(",", ":"))
-        message = encode_defunct(text=str_message)
-        signed_message = Web3().eth.account.sign_message(message, private_key=private_key)  # type: SignedMessage
+        nonce = 1234
+        signed_at = arrow.utcnow().isoformat()
+        message = f"""NewShades wants you to sign in with your web3 account
 
-        data = {"message": message_data, "signature": signed_message.signature.hex()}
+        {wallet}
+
+        URI: localhost
+        Nonce: {nonce}
+        Issued At: {signed_at}"""
+        encoded_message = encode_defunct(text=message)
+        signed_message = Web3().eth.account.sign_message(
+            encoded_message, private_key=private_key
+        )  # type: SignedMessage
+        data = {
+            "message": message,
+            "signature": signed_message.signature.hex(),
+            "signed_at": signed_at,
+            "nonce": nonce,
+            "address": wallet,
+        }
 
         response = await client.post("/auth/login", json=data)
         assert response.status_code == 201
@@ -92,13 +119,26 @@ class TestAuthRoutes:
     async def test_login_wallet_with_lowercase_address(
         self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
     ):
-        message_data = {"address": wallet.lower(), "signed_at": arrow.utcnow().isoformat()}
+        nonce = 1234
+        signed_at = arrow.utcnow().isoformat()
+        message = f"""NewShades wants you to sign in with your web3 account
 
-        str_message = json.dumps(message_data, separators=(",", ":"))
-        message = encode_defunct(text=str_message)
-        signed_message = Web3().eth.account.sign_message(message, private_key=private_key)  # type: SignedMessage
+        {wallet}
 
-        data = {"message": message_data, "signature": signed_message.signature.hex()}
+        URI: localhost
+        Nonce: {nonce}
+        Issued At: {signed_at}"""
+        encoded_message = encode_defunct(text=message)
+        signed_message = Web3().eth.account.sign_message(
+            encoded_message, private_key=private_key
+        )  # type: SignedMessage
+        data = {
+            "message": message,
+            "signature": signed_message.signature.hex(),
+            "signed_at": signed_at,
+            "nonce": nonce,
+            "address": wallet.lower(),
+        }
 
         response = await client.post("/auth/login", json=data)
         assert response.status_code == 201
@@ -118,11 +158,27 @@ class TestAuthRoutes:
         private_key = "0x" + priv
         acct = Account.from_key(private_key)
         wallet = acct.address
-        message_data = {"address": wallet, "signed_at": arrow.utcnow().isoformat()}
-        str_message = json.dumps(message_data, separators=(",", ":"))
-        message = encode_defunct(text=str_message)
-        signed_message = Web3().eth.account.sign_message(message, private_key=private_key)  # type: SignedMessage
-        data = {"message": message_data, "signature": signed_message.signature.hex()}
+
+        nonce = 1234
+        signed_at = arrow.utcnow().isoformat()
+        message = f"""NewShades wants you to sign in with your web3 account
+
+        {wallet}
+
+        URI: localhost
+        Nonce: {nonce}
+        Issued At: {signed_at}"""
+        encoded_message = encode_defunct(text=message)
+        signed_message = Web3().eth.account.sign_message(
+            encoded_message, private_key=private_key
+        )  # type: SignedMessage
+        data = {
+            "message": message,
+            "signature": signed_message.signature.hex(),
+            "signed_at": signed_at,
+            "nonce": nonce,
+            "address": wallet,
+        }
 
         members = await get_items({"server": server.id}, result_obj=ServerMember, current_user=current_user, size=None)
         assert len(members) == 1

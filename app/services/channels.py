@@ -1,6 +1,6 @@
 import http
 from datetime import timezone
-from typing import Union
+from typing import List, Union
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -41,19 +41,19 @@ async def create_channel(
     channel_model: Union[DMChannelCreateSchema, ServerChannelCreateSchema], current_user: User
 ) -> Union[Channel, APIDocument]:
     kind = channel_model.kind
-    if kind == "dm":
+    if isinstance(channel_model, DMChannelCreateSchema):
         return await create_dm_channel(channel_model, current_user)
-    elif kind == "server":
+    elif isinstance(channel_model, ServerChannelCreateSchema):
         return await create_server_channel(channel_model, current_user)
     else:
         raise Exception(f"unexpected channel kind: {kind}")
 
 
-async def get_server_channels(server_id, current_user: User) -> [Channel]:
+async def get_server_channels(server_id, current_user: User) -> List[Union[Channel, APIDocument]]:
     return await get_items(filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user)
 
 
-async def get_dm_channels(current_user: User) -> [Channel]:
+async def get_dm_channels(current_user: User) -> List[Union[Channel, APIDocument]]:
     return await get_items(filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user)
 
 

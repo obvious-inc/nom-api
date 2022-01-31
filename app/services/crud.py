@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Type, Union
+from typing import List, Optional, Type, Union
 
 from bson import ObjectId
 from umongo import Reference
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 async def create_item(
     item: APIBaseCreateSchema,
     result_obj: Type[APIDocument],
-    current_user: Union[User, APIDocument],
+    current_user: Optional[Union[User, APIDocument]] = None,
     user_field: Optional[str] = "user",
 ) -> APIDocument:
     db_object = result_obj(**item.dict())
@@ -45,7 +45,7 @@ async def get_items(
     size: Optional[int] = None,
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
-) -> [APIDocument]:
+) -> List[APIDocument]:
     # TODO: add paging default size to settings
 
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}

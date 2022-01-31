@@ -1,17 +1,19 @@
 import logging.config
 
+import sentry_sdk
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, override_connect_to_mongo
+from app.helpers.logconf import log_configuration
 from app.middlewares import add_canonical_log_line, profile_request
 from app.routers import auth, base, channels, messages, servers, users, webhooks, websockets
-from logconf import log_configuration
 
 logging.config.dictConfig(log_configuration)
 logger = logging.getLogger(__name__)
@@ -37,6 +39,20 @@ def get_application(testing=False):
         allow_headers=["*"],
     )
 
+    settings = get_settings()
+
+    # Force HTTPS when not testing or local
+    if not settings.testing:
+        app_.add_middleware(HTTPSRedirectMiddleware)
+
+        sentry_sdk.init(dsn=settings.sentry_dsn)
+        app_.add_middleware(SentryAsgiMiddleware)
+
+    app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
+
+    if settings.profiling:
+        app_.add_middleware(BaseHTTPMiddleware, dispatch=profile_request)
+
     app_.include_router(base.router)
     app_.include_router(auth.router, prefix="/auth", tags=["auth"])
     app_.include_router(users.router, prefix="/users", tags=["users"])
@@ -45,17 +61,6 @@ def get_application(testing=False):
     app_.include_router(messages.router, prefix="/messages", tags=["messages"])
     app_.include_router(websockets.router, prefix="/websockets", tags=["websockets"])
     app_.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
-
-    settings = get_settings()
-
-    # Force HTTPS when not testing or local
-    if not settings.testing:
-        app_.add_middleware(HTTPSRedirectMiddleware)
-
-    app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
-
-    if settings.profiling:
-        app_.add_middleware(BaseHTTPMiddleware, dispatch=profile_request)
 
     return app_
 

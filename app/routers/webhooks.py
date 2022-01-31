@@ -60,20 +60,19 @@ async def post_pusher_webhooks(
     x_pusher_signature: Optional[str] = Header(None),
     db=Depends(get_db),
 ):
-    webhook_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate webhook",
-    )
-
     # need to use raw body
     data = await request.body()
     try:
         webhook = pusher_client.validate_webhook(key=x_pusher_key, signature=x_pusher_signature, body=data)
         if not webhook:
             raise Exception("No valid webhook extracted.")
-    except Exception as e:
+    except Exception:
         logger.exception("Error validating webhook signature.")
-        raise webhook_exception
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate webhook",
+        )
 
     asyncio.create_task(process_webhook_events(events=webhook["events"]))
 

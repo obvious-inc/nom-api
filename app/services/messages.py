@@ -26,7 +26,7 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
 async def get_messages(channel_id: str, size: int, current_user: User) -> List[Message]:
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
 
-    filters = None
+    filters = {}
     if channel.kind == "server":
         # TODO: make sure user can list channel's messages (in server + proper permissions)
         filters = {"channel": channel.id, "server": channel.server.pk}
@@ -89,7 +89,7 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
 
     remove_index = None
     removed = False
-    for index, existing_reaction in enumerate(existing_reactions):  # type: MessageReaction
+    for index, existing_reaction in enumerate(existing_reactions):  # type: (int, MessageReaction)
         if existing_reaction.emoji == reaction.emoji:
             if current_user not in existing_reaction.users:
                 break

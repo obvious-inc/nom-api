@@ -1,15 +1,20 @@
 import asyncio
-import json
+import re
 
 import arrow
 
 from app.helpers.jwt import generate_jwt_token
 from app.helpers.w3 import checksum_address, get_wallet_address_from_signed_message
 from app.models.server import Server
+from app.schemas.auth import AuthWalletSchema
 from app.schemas.users import UserCreateSchema
 from app.services.crud import get_items
 from app.services.servers import join_server
 from app.services.users import create_user, get_user_by_id, get_user_by_wallet_address
+
+SIGNATURE_VALID_SECONDS = 30
+NONCE_SIGNATURE_REGEX = re.compile(r"nonce:\s?(.+?)\b", flags=re.IGNORECASE)
+SIGNED_AT_SIGNATURE_REGEX = re.compile(r"issued at:\s?(.+?)$", flags=re.IGNORECASE)
 
 
 async def add_user_to_default_server(user_id):
@@ -19,23 +24,39 @@ async def add_user_to_default_server(user_id):
     await join_server(server=server, current_user=user)
 
 
-async def generate_wallet_token(data: dict) -> str:
-    message = data.get("message")
-    signature = data.get("signature")
+async def generate_wallet_token(data: AuthWalletSchema) -> str:
+    message = data.message
+    signature = data.signature
 
     if not message or not signature:
         raise Exception("missing params")
 
-    json_message = json.dumps(message).replace(" ", "")  # JSON.stringify() in JS removes all spaces
+    address = data.address
+    signed_at = arrow.get(data.signed_at)
+    nonce = data.nonce
 
     try:
-        signed_address = get_wallet_address_from_signed_message(json_message, signature)
+        signed_address = get_wallet_address_from_signed_message(message, signature)
     except Exception as e:
         raise e
 
-    assert signed_address == checksum_address(message.get("address"))
-    signed_at = arrow.get(message.get("signed_at"))
-    assert signed_at > arrow.utcnow().shift(seconds=-5)
+    assert signed_address == checksum_address(address)
+    assert signed_address.lower() in message.lower()
+
+    signed_at_groups = re.search(SIGNED_AT_SIGNATURE_REGEX, message)
+    if not signed_at_groups:
+        raise AssertionError("signed_at not found")
+    message_signed_at_str = signed_at_groups.group(1)
+    message_signed_at = arrow.get(message_signed_at_str)
+    assert signed_at == message_signed_at
+    assert signed_at > arrow.utcnow().shift(seconds=-SIGNATURE_VALID_SECONDS)
+
+    # check nonce
+    nonce_groups = re.search(NONCE_SIGNATURE_REGEX, message)
+    if not nonce_groups:
+        raise AssertionError("nonce not found")
+    message_nonce = nonce_groups.group(1)
+    assert int(message_nonce) == nonce
 
     user = await get_user_by_wallet_address(wallet_address=signed_address)
     if not user:
