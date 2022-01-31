@@ -64,6 +64,11 @@ jobs:
 
     - name: Run tests >> pytest
       uses: addnab/docker-run-action@v3
+      env:
+        PUSHER_APP_ID: ${{ secrets.PUSHER_APP_ID }}
+        PUSHER_KEY: ${{ secrets.PUSHER_KEY }}
+        PUSHER_SECRET: ${{ secrets.PUSHER_SECRET }}
+        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
       with:
         image: api:${{ github.sha }}
         run: pytest
