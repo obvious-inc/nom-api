@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Depends
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema, MessageSchema
-from app.services.messages import add_reaction_to_message, create_message, remove_reaction_from_message
+from app.services.messages import add_reaction_to_message, create_message, delete_message, remove_reaction_from_message
 
 router = APIRouter()
 
@@ -21,6 +21,18 @@ async def post_create_message(
     current_user: User = Depends(get_current_user),
 ):
     return await create_message(message, current_user=current_user)
+
+
+@router.delete(
+    "/{message_id}",
+    summary="Remove message",
+    status_code=http.HTTPStatus.NO_CONTENT,
+)
+async def delete_remove_message(
+    message_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    await delete_message(message_id, current_user=current_user)
 
 
 @router.post(
