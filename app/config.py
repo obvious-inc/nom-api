@@ -23,6 +23,9 @@ class Settings(BaseSettings):
 
     sentry_dsn: Optional[str]
 
+    cloudflare_account_id: Optional[str]
+    cloudflare_images_api_token: Optional[str]
+
     class Config:
         env_file = ".env"
 
