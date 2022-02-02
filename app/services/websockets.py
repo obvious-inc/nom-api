@@ -3,7 +3,7 @@ from typing import List, Union
 
 from app.helpers.websockets import pusher_client
 from app.models.base import APIDocument
-from app.models.channel import ChannelReadState
+from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
@@ -124,3 +124,13 @@ async def broadcast_remove_reaction(message_id, reaction, author_id):
     ws_data = {"message": message_id, "user": user.dump(), "reaction": reaction.dump()}
     channels = await get_online_channels(message=message, current_user=user)
     await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
+
+
+async def broadcast_channel_read(user_id, channel_id, message_id):
+    user = await get_user_by_id(user_id=user_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=user)
+    read_at = message.created_at.isoformat()
+    event_name = "CHANNEL_READ"
+    data = {"user": user.dump(), "channel": channel.dump(), "read_at": read_at}
+    await pusher_broadcast_messages(user.online_channels, event_name=event_name, data=data)

@@ -12,6 +12,7 @@ from app.schemas.messages import MessageCreateSchema
 from app.services.channels import update_channel_last_message
 from app.services.crud import create_item, delete_item, get_item_by_id, get_items
 from app.services.websockets import (
+    broadcast_channel_read,
     broadcast_delete_message,
     broadcast_new_message,
     broadcast_new_reaction,
@@ -25,6 +26,12 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
     asyncio.create_task(
         update_channel_last_message(channel_id=message.channel, message=message, current_user=current_user)
     )
+    asyncio.create_task(
+        broadcast_channel_read(
+            user_id=str(current_user.id), channel_id=str(message.channel.pk), message_id=str(message.id)
+        )
+    )
+
     return message
 
 
