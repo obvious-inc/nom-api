@@ -1,7 +1,6 @@
-import datetime
-
 from umongo import fields
 
+from app.helpers.dates import get_mongo_utc_date
 from app.helpers.db_utils import instance
 from app.models.base import APIDocument
 from app.models.user import User
@@ -23,7 +22,7 @@ class ServerMember(APIDocument):
     user = fields.ReferenceField(User, required=True)
 
     display_name = fields.StrField()
-    joined_at = fields.AwareDateTimeField(default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    joined_at = fields.AwareDateTimeField(default=get_mongo_utc_date)
 
     class Meta:
         collection_name = "server_members"
