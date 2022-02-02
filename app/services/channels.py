@@ -84,11 +84,7 @@ async def update_channel_last_message(channel_id, message: Union[Message, APIDoc
 
 
 async def update_channels_read_state(event_model: CreateMarkChannelReadEvent, current_user: User):
-    channel_ids = event_model.channel_ids
-    if not channel_ids:
-        channel_ids = [event_model.channel_id]
-
-    for channel_id in channel_ids:
+    for channel_id in event_model.channel_ids:
         channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
 
         read_state_model = ChannelReadStateCreateSchema(channel=str(channel.id), last_read_at=event_model.last_read_at)

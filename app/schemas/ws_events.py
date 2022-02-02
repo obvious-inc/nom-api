@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel
 
@@ -9,6 +9,5 @@ class EventBase(BaseModel):
 
 
 class CreateMarkChannelReadEvent(EventBase):
-    channel_id: Optional[str]
-    channel_ids: Optional[List[str]]
+    channel_ids: List[str]
     last_read_at: datetime

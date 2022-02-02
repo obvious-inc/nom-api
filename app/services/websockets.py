@@ -101,7 +101,8 @@ async def broadcast_connection_ready(current_user: User, channel: str):
         filters={"user": current_user}, result_obj=ChannelReadState, current_user=current_user, size=None
     )
     data["read_states"] = [
-        {"channel": str(read_state.channel.pk), "last_read_at": read_state.last_read_at} for read_state in read_states
+        {"channel": str(read_state.channel.pk), "last_read_at": read_state.last_read_at.isoformat()}
+        for read_state in read_states
     ]
 
     push_channels = [channel]

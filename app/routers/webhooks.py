@@ -39,6 +39,9 @@ async def process_webhook_events(events: list[dict]):
                     await broadcast_connection_ready(current_user=user, channel=channel_name)
                 elif client_event.startswith("client-channel-mark"):
                     event_data = json.loads(event["data"])
+                    single_channel_id = event_data.pop("channel_id")
+                    if single_channel_id:
+                        event_data["channel_ids"] = [single_channel_id]
                     event_model = CreateMarkChannelReadEvent(**event_data)
                     await update_channels_read_state(event_model=event_model, current_user=user)
 
