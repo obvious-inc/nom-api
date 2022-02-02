@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, TypeVar
 
 from bson import ObjectId
 from umongo import Reference
@@ -10,13 +10,15 @@ from app.schemas.base import APIBaseCreateSchema
 
 logger = logging.getLogger(__name__)
 
+APIDocumentType = TypeVar("APIDocumentType", bound=APIDocument)
+
 
 async def create_item(
     item: APIBaseCreateSchema,
-    result_obj: Type[APIDocument],
-    current_user: Optional[Union[User, APIDocument]] = None,
+    result_obj: Type[APIDocumentType],
+    current_user: Optional[User] = None,
     user_field: Optional[str] = "user",
-) -> APIDocument:
+) -> APIDocumentType:
     db_object = result_obj(**item.dict())
     if user_field:
         db_object[user_field] = current_user
@@ -25,7 +27,9 @@ async def create_item(
     return db_object
 
 
-async def get_item_by_id(id_: str, result_obj: Type[APIDocument], current_user: Optional[User] = None) -> APIDocument:
+async def get_item_by_id(
+    id_: str, result_obj: Type[APIDocumentType], current_user: Optional[User] = None
+) -> APIDocumentType:
     if type(id_) == str:
         id_ = ObjectId(id_)
     elif isinstance(id_, ObjectId):
@@ -40,12 +44,12 @@ async def get_item_by_id(id_: str, result_obj: Type[APIDocument], current_user: 
 
 async def get_items(
     filters: dict,
-    result_obj: Type[APIDocument],
+    result_obj: Type[APIDocumentType],
     current_user: User,
     size: Optional[int] = None,
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
-) -> List[APIDocument]:
+) -> List[APIDocumentType]:
     # TODO: add paging default size to settings
 
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
@@ -55,7 +59,9 @@ async def get_items(
     return items
 
 
-async def get_item(filters: dict, result_obj: Type[APIDocument], current_user: Optional[User] = None) -> APIDocument:
+async def get_item(
+    filters: dict, result_obj: Type[APIDocumentType], current_user: Optional[User] = None
+) -> APIDocumentType:
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
     filters.update(deleted_filter)
 
@@ -63,11 +69,11 @@ async def get_item(filters: dict, result_obj: Type[APIDocument], current_user: O
     return item
 
 
-async def update_item(item: APIDocument, data: dict, current_user: Optional[User] = None) -> APIDocument:
+async def update_item(item: APIDocumentType, data: dict, current_user: Optional[User] = None) -> APIDocumentType:
     item.update(data)
     await item.commit()
     return item
 
 
-async def delete_item(item: APIDocument) -> APIDocument:
+async def delete_item(item: APIDocumentType) -> APIDocumentType:
     return await update_item(item, {"deleted": True})

@@ -1,3 +1,5 @@
+from typing import Callable
+
 import arrow
 import pytest
 from fastapi import FastAPI
@@ -8,7 +10,8 @@ from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
 from app.models.server import Server
 from app.models.user import User
-from app.services.crud import get_item_by_id
+from app.schemas.messages import MessageCreateSchema
+from app.services.crud import create_item, get_item_by_id
 from app.services.messages import get_messages
 
 
@@ -244,3 +247,93 @@ class TestMessagesRoutes:
         created_at = arrow.get(json_response["created_at"])
         last_message_ts = arrow.get(channel.last_message_ts)
         assert created_at == last_message_ts
+
+    @pytest.mark.asyncio
+    async def test_delete_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 1
+
+        response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
+        assert response.status_code == 204
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 0
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message.deleted is True
+
+    @pytest.mark.asyncio
+    async def test_delete_message_from_another_user(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+
+        guest_user_1 = await create_new_user()
+        guest_user_2 = await create_new_user()
+
+        channel_message = await create_item(
+            item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content="hey"),
+            result_obj=Message,
+            current_user=guest_user_1,
+            user_field="author",
+        )
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 1
+
+        guest_2_client = await get_authorized_client(guest_user_2)
+        response = await guest_2_client.delete(f"/messages/{str(channel_message.id)}")
+        assert response.status_code == 403
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 1
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message.deleted is False
+
+    @pytest.mark.asyncio
+    async def test_delete_message_as_server_owner(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+    ):
+        guest_user = await create_new_user()
+        channel_message = await create_item(
+            item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content="hey"),
+            result_obj=Message,
+            current_user=guest_user,
+            user_field="author",
+        )
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 1
+
+        response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
+        assert response.status_code == 204
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 0
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message.deleted is True

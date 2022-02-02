@@ -23,7 +23,7 @@ class ServerMember(APIDocument):
     user = fields.ReferenceField(User, required=True)
 
     display_name = fields.StrField()
-    joined_at = fields.DateTimeField(default=datetime.datetime.utcnow)
+    joined_at = fields.AwareDateTimeField(default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     class Meta:
         collection_name = "server_members"

@@ -10,8 +10,13 @@ from app.models.message import Message, MessageReaction
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema
 from app.services.channels import update_channel_last_message
-from app.services.crud import create_item, get_item_by_id, get_items
-from app.services.websockets import broadcast_new_message, broadcast_new_reaction, broadcast_remove_reaction
+from app.services.crud import create_item, delete_item, get_item_by_id, get_items
+from app.services.websockets import (
+    broadcast_delete_message,
+    broadcast_new_message,
+    broadcast_new_reaction,
+    broadcast_remove_reaction,
+)
 
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
@@ -21,6 +26,22 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
         update_channel_last_message(channel_id=message.channel, message=message, current_user=current_user)
     )
     return message
+
+
+async def delete_message(message_id: str, current_user: User):
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+    can_delete = message.author == current_user
+
+    if message.server:
+        server = await message.server.fetch()
+        can_delete |= server.owner == current_user
+
+    if not can_delete:
+        raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
+
+    asyncio.create_task(broadcast_delete_message(str(message.id), str(current_user.id)))
+
+    await delete_item(item=message)
 
 
 async def get_messages(channel_id: str, size: int, current_user: User) -> List[Message]:
