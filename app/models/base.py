@@ -8,10 +8,10 @@ from app.helpers.db_utils import instance
 
 @instance.register
 class DatetimeMixin(MixinDocument):
-    created_at = fields.DateTimeField(default=datetime.datetime.utcnow)
+    created_at = fields.AwareDateTimeField(default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     # TODO: add default updated_at + trigger on each update
-    updated_at = fields.DateTimeField()
+    updated_at = fields.AwareDateTimeField()
 
 
 @instance.register
