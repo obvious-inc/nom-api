@@ -1,5 +1,4 @@
 import http
-from datetime import timezone
 from typing import List, Union
 
 from bson import ObjectId
@@ -78,9 +77,8 @@ async def delete_channel(channel_id, current_user: User):
 
 async def update_channel_last_message(channel_id, message: Union[Message, APIDocument], current_user: User):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
-    message_ts = message.created_at.replace(tzinfo=timezone.utc).timestamp()
-    if not channel.last_message_ts or message_ts > channel.last_message_ts:
-        await update_item(item=channel, data={"last_message_ts": message_ts}, current_user=current_user)
+    if not channel.last_message_at or message.created_at > channel.last_message_at:
+        await update_item(item=channel, data={"last_message_at": message.created_at}, current_user=current_user)
 
 
 async def update_channels_read_state(event_model: CreateMarkChannelReadEvent, current_user: User):

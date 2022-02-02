@@ -221,7 +221,7 @@ class TestMessagesRoutes:
         assert [user.pk for user in reaction.users] == [guest_user.id]
 
     @pytest.mark.asyncio
-    async def test_create_message_update_last_message_ts(
+    async def test_create_message_update_last_message_at(
         self,
         app: FastAPI,
         db: Database,
@@ -232,7 +232,7 @@ class TestMessagesRoutes:
     ):
         data = {"content": "gm", "server": str(server.id), "channel": str(server_channel.id)}
         channel = await get_item_by_id(id_=server_channel.id, result_obj=Channel)
-        assert channel.last_message_ts is None
+        assert channel.last_message_at is None
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         json_response = response.json()
@@ -243,10 +243,10 @@ class TestMessagesRoutes:
         assert json_response["channel"] == data["channel"] == str(server_channel.id)
 
         channel = await get_item_by_id(id_=server_channel.id, result_obj=Channel)
-        assert channel.last_message_ts is not None
+        assert channel.last_message_at is not None
         created_at = arrow.get(json_response["created_at"])
-        last_message_ts = arrow.get(channel.last_message_ts)
-        assert created_at == last_message_ts
+        last_message_at = arrow.get(channel.last_message_at)
+        assert created_at == last_message_at
 
     @pytest.mark.asyncio
     async def test_delete_message(

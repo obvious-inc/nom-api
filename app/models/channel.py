@@ -11,7 +11,7 @@ class Channel(APIDocument):
     kind: str = fields.StrField(validate=validate.OneOf(["dm", "server"]), required=True)  # TODO: make enum?
     owner = fields.ReferenceField("User", required=True)
 
-    last_message_ts = fields.FloatField()
+    last_message_at = fields.AwareDateTimeField()
 
     # DM fields
     members = fields.ListField(fields.ReferenceField("User"))
