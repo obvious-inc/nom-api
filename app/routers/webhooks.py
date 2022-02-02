@@ -10,6 +10,7 @@ from starlette import status
 from app.helpers.connection import get_db
 from app.helpers.websockets import pusher_client
 from app.models.user import User
+from app.schemas.ws_events import CreateMarkChannelReadEvent
 from app.services.channels import update_channels_read_state
 from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_connection_ready
@@ -33,23 +34,13 @@ async def process_webhook_events(events: list[dict]):
                 if not user:
                     raise Exception(f"Missing user. [user_id={user_id}]")
 
-                client_event = event["event"]
+                client_event: str = event["event"]
                 if client_event == "client-connection-request":
                     await broadcast_connection_ready(current_user=user, channel=channel_name)
-                elif client_event == "client-channel-mark":
+                elif client_event.startswith("client-channel-mark"):
                     event_data = json.loads(event["data"])
-                    channel_id = event_data.get("channel_id")
-                    last_read_ts = event_data.get("last_read_ts")
-                    await update_channels_read_state(
-                        user_id=user_id, channel_ids=[channel_id], last_read_ts=last_read_ts
-                    )
-                elif client_event == "client-channel-mark-bulk":
-                    event_data = json.loads(event["data"])
-                    channel_ids = event_data.get("channel_ids")
-                    last_read_ts = event_data.get("last_read_ts")
-                    await update_channels_read_state(
-                        user_id=user_id, channel_ids=channel_ids, last_read_ts=last_read_ts
-                    )
+                    event_model = CreateMarkChannelReadEvent(**event_data)
+                    await update_channels_read_state(event_model=event_model, current_user=user)
 
                 logger.info(
                     "client event handled successfully. [client_event=%s, channel=%s]", client_event, channel_name

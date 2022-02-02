@@ -10,6 +10,7 @@ from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema, DMChannelCreateSchema, ServerChannelCreateSchema
+from app.schemas.ws_events import CreateMarkChannelReadEvent
 from app.services.crud import create_item, delete_item, get_item, get_item_by_id, get_items, update_item
 
 
@@ -82,18 +83,17 @@ async def update_channel_last_message(channel_id, message: Union[Message, APIDoc
         await update_item(item=channel, data={"last_message_ts": message_ts}, current_user=current_user)
 
 
-async def update_channels_read_state(user_id: str, channel_ids: List[str], last_read_ts: float):
-    user = await get_item_by_id(id_=user_id, result_obj=User)
-    if isinstance(last_read_ts, int):
-        # JS timestamps are diff format than Python
-        last_read_ts = last_read_ts / 1000
+async def update_channels_read_state(event_model: CreateMarkChannelReadEvent, current_user: User):
+    channel_ids = event_model.channel_ids
+    if not channel_ids:
+        channel_ids = [event_model.channel_id]
 
     for channel_id in channel_ids:
         channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
 
-        read_state_model = ChannelReadStateCreateSchema(channel=str(channel.id), last_read_ts=last_read_ts)
-        read_state = await get_item(filters={"user": user, "channel": channel}, result_obj=ChannelReadState)
+        read_state_model = ChannelReadStateCreateSchema(channel=str(channel.id), last_read_at=event_model.last_read_at)
+        read_state = await get_item(filters={"user": current_user.pk, "channel": channel}, result_obj=ChannelReadState)
         if not read_state:
-            await create_item(read_state_model, result_obj=ChannelReadState, current_user=user)
+            await create_item(read_state_model, result_obj=ChannelReadState, current_user=current_user)
         else:
-            await update_item(item=read_state, data={"last_read_ts": last_read_ts})
+            await update_item(item=read_state, data={"last_read_at": event_model.last_read_at})
