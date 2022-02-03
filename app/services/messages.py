@@ -5,7 +5,7 @@ from typing import List, Union
 
 from fastapi import HTTPException
 
-from app.helpers.ws_events import WebSocketEvent
+from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
@@ -19,7 +19,7 @@ from app.services.websockets import broadcast_channel_event, broadcast_message_e
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
     asyncio.create_task(
-        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketEvent.MESSAGE_CREATE)
+        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_CREATE)
     )
     asyncio.create_task(
         update_channel_last_message(channel_id=message.channel, message=message, current_user=current_user)
@@ -28,7 +28,7 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
         broadcast_channel_event(
             channel_id=str(message.channel.pk),
             user_id=str(current_user.id),
-            event=WebSocketEvent.CHANNEL_READ,
+            event=WebSocketServerEvent.CHANNEL_READ,
             custom_data={"read_at": message.created_at.isoformat()},
         )
     )
@@ -51,7 +51,7 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
 
     if changed_content:
         asyncio.create_task(
-            broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketEvent.MESSAGE_EDIT)
+            broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_EDIT)
         )
 
     return updated_item
@@ -69,7 +69,7 @@ async def delete_message(message_id: str, current_user: User):
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
     asyncio.create_task(
-        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketEvent.MESSAGE_REMOVE)
+        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_REMOVE)
     )
 
     await delete_item(item=message)
@@ -127,7 +127,7 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
             broadcast_message_event(
                 str(message.id),
                 str(current_user.id),
-                event=WebSocketEvent.MESSAGE_REACTION_ADD,
+                event=WebSocketServerEvent.MESSAGE_REACTION_ADD,
                 custom_data={"reaction": reaction.dump()},
             )
         )
@@ -169,7 +169,7 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
             broadcast_message_event(
                 str(message.id),
                 str(current_user.id),
-                event=WebSocketEvent.MESSAGE_REACTION_REMOVE,
+                event=WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
                 custom_data={"reaction": reaction.dump()},
             )
         )

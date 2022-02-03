@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional, Union
 
 from app.helpers.websockets import pusher_client
-from app.helpers.ws_events import WebSocketEvent
+from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
@@ -32,7 +32,7 @@ async def get_online_channels(message: Union[Message, APIDocument], current_user
 
 
 async def pusher_broadcast_messages(
-    event: WebSocketEvent,
+    event: WebSocketServerEvent,
     current_user: User,
     data: dict,
     message: Optional[Message] = None,
@@ -61,7 +61,7 @@ async def pusher_broadcast_messages(
 
 
 async def broadcast_message_event(
-    message_id: str, user_id: str, event: WebSocketEvent, custom_data: Optional[dict] = None
+    message_id: str, user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
     user = await get_user_by_id(user_id=user_id)
     message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
@@ -109,11 +109,11 @@ async def broadcast_connection_ready(current_user: User, channel: str):
     ]
 
     await pusher_broadcast_messages(
-        event=WebSocketEvent.CONNECTION_READY, data=data, current_user=current_user, pusher_channel=channel
+        event=WebSocketServerEvent.CONNECTION_READY, data=data, current_user=current_user, pusher_channel=channel
     )
 
 
-async def broadcast_channel_event(channel_id: str, user_id: str, event: WebSocketEvent, custom_data: dict):
+async def broadcast_channel_event(channel_id: str, user_id: str, event: WebSocketServerEvent, custom_data: dict):
     user = await get_user_by_id(user_id=user_id)
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=user)
 
