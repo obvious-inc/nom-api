@@ -11,8 +11,8 @@ from app.helpers.connection import get_db
 from app.helpers.websockets import pusher_client
 from app.models.user import User
 from app.schemas.ws_events import CreateMarkChannelReadEvent
-from app.services.channels import update_channels_read_state
 from app.services.users import get_user_by_id
+from app.services.webhooks import process_channel_mark_event
 from app.services.websockets import broadcast_connection_ready
 
 logger = logging.getLogger(__name__)
@@ -43,8 +43,7 @@ async def process_webhook_events(events: list[dict]):
                     if single_channel_id:
                         event_data["channel_ids"] = [single_channel_id]
                     event_model = CreateMarkChannelReadEvent(**event_data)
-                    await update_channels_read_state(event_model=event_model, current_user=user)
-
+                    await process_channel_mark_event(event_model=event_model, current_user=user)
                 logger.info(
                     "client event handled successfully. [client_event=%s, channel=%s]", client_event, channel_name
                 )
