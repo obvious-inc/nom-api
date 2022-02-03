@@ -64,6 +64,18 @@ async def broadcast_delete_message(
     await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
 
 
+async def broadcast_edit_message(
+    message_id: str,
+    author_id: str,
+):
+    user = await get_user_by_id(user_id=author_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    event_name = "MESSAGE_UPDATED"
+    ws_data = message.dump()
+    channels = await get_online_channels(message=message, current_user=user)
+    await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
+
+
 async def broadcast_connection_ready(current_user: User, channel: str):
     event_name = "CONNECTION_READY"
     data = {"user": current_user.dump(), "servers": []}

@@ -24,5 +24,7 @@ class Message(APIDocument):
 
     reactions = fields.ListField(fields.EmbeddedField(MessageReaction), default=[])
 
+    edited_at = fields.AwareDateTimeField(required=False, default=None)
+
     class Meta:
         collection_name = "messages"

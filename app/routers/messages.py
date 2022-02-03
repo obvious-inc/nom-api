@@ -4,8 +4,14 @@ from fastapi import APIRouter, Body, Depends
 
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.messages import MessageCreateSchema, MessageSchema
-from app.services.messages import add_reaction_to_message, create_message, delete_message, remove_reaction_from_message
+from app.schemas.messages import MessageCreateSchema, MessageSchema, MessageUpdateSchema
+from app.services.messages import (
+    add_reaction_to_message,
+    create_message,
+    delete_message,
+    edit_message,
+    remove_reaction_from_message,
+)
 
 router = APIRouter()
 
@@ -21,6 +27,19 @@ async def post_create_message(
     current_user: User = Depends(get_current_user),
 ):
     return await create_message(message, current_user=current_user)
+
+
+@router.patch(
+    "/{message_id}",
+    response_model=MessageSchema,
+    summary="Edit message",
+)
+async def patch_edit_message(
+    message_id: str,
+    update_data: MessageUpdateSchema = Body(...),
+    current_user: User = Depends(get_current_user),
+):
+    return await edit_message(message_id, update_data=update_data, current_user=current_user)
 
 
 @router.delete(
