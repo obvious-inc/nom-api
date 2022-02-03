@@ -1,8 +1,9 @@
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, PyObjectId
 
 
 class MessageReactionSchema(BaseModel):
@@ -22,9 +23,14 @@ class MessageSchema(APIBaseSchema):
     channel: PyObjectId = Field()
     content: str
     reactions: List[MessageReactionSchema]
+    edited_at: Optional[datetime]
 
 
 class MessageCreateSchema(APIBaseCreateSchema):
     server: Optional[str]
     channel: str
     content: str
+
+
+class MessageUpdateSchema(APIBaseUpdateSchema):
+    content: Optional[str]

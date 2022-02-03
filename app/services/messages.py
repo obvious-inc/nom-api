@@ -1,5 +1,6 @@
 import asyncio
 import http
+from datetime import datetime, timezone
 from typing import List, Union
 
 from fastapi import HTTPException
@@ -8,12 +9,13 @@ from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
 from app.models.user import User
-from app.schemas.messages import MessageCreateSchema
+from app.schemas.messages import MessageCreateSchema, MessageUpdateSchema
 from app.services.channels import update_channel_last_message
-from app.services.crud import create_item, delete_item, get_item_by_id, get_items
+from app.services.crud import create_item, delete_item, get_item_by_id, get_items, update_item
 from app.services.websockets import (
     broadcast_channel_read,
     broadcast_delete_message,
+    broadcast_edit_message,
     broadcast_new_message,
     broadcast_new_reaction,
     broadcast_remove_reaction,
@@ -33,6 +35,25 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
     )
 
     return message
+
+
+async def update_message(message_id: str, update_data: MessageUpdateSchema, current_user: User):
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+    if not message.author == current_user:
+        raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
+
+    data = update_data.dict()
+
+    changed_content = update_data.content is not None
+    if changed_content:
+        data.update({"edited_at": datetime.now(timezone.utc)})
+
+    updated_item = await update_item(item=message, data=data)
+
+    if changed_content:
+        asyncio.create_task(broadcast_edit_message(str(message.id), str(current_user.id)))
+
+    return updated_item
 
 
 async def delete_message(message_id: str, current_user: User):

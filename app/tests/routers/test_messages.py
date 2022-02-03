@@ -337,3 +337,31 @@ class TestMessagesRoutes:
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
         assert message.deleted is True
+
+    @pytest.mark.asyncio
+    async def test_edit_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        message = await get_item_by_id(
+            id_=channel_message.id, result_obj=Message, current_user=current_user
+        )  # type: Message
+        assert message.edited_at is None
+
+        data = {"content": "new message update!"}
+        response = await authorized_client.patch(f"/messages/{str(channel_message.id)}", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message is not None
+        assert json_response["id"] == str(message.id)
+        assert json_response["content"] == message.content == data["content"]
+        assert message.edited_at is not None
+        assert message.edited_at != message.created_at
