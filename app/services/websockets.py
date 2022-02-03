@@ -3,6 +3,7 @@ from typing import List, Union
 
 from app.helpers.websockets import pusher_client
 from app.models.base import APIDocument
+from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
@@ -30,14 +31,18 @@ async def get_online_channels(message: Union[Message, APIDocument], current_user
 
 
 async def pusher_broadcast_messages(channels: List[str], event_name: str, data: dict):
+    has_errors = False
     while len(channels) > 0:
         push_channels = channels[:90]
         try:
             await pusher_client.trigger(push_channels, event_name, data)
         except Exception:
             logger.exception("Problem broadcasting event to Pusher channel. [event_name=%s]", event_name)
+            has_errors = True
         channels = channels[90:]
-    logger.debug("Event broadcast successful. [event_name=%s]", event_name)
+
+    if not has_errors:
+        logger.debug("Event broadcast successful. [event_name=%s]", event_name)
 
 
 async def broadcast_new_message(
@@ -91,6 +96,15 @@ async def broadcast_connection_ready(current_user: User, channel: str):
 
     dm_channels = await get_dm_channels(current_user=current_user)
     data["dms"] = [dm_channel.dump() for dm_channel in dm_channels]
+
+    read_states = await get_items(
+        filters={"user": current_user}, result_obj=ChannelReadState, current_user=current_user, size=None
+    )
+    data["read_states"] = [
+        {"channel": str(read_state.channel.pk), "last_read_at": read_state.last_read_at.isoformat()}
+        for read_state in read_states
+    ]
+
     push_channels = [channel]
     await pusher_broadcast_messages(push_channels, event_name, data)
 
@@ -111,3 +125,13 @@ async def broadcast_remove_reaction(message_id, reaction, author_id):
     ws_data = {"message": message_id, "user": user.dump(), "reaction": reaction.dump()}
     channels = await get_online_channels(message=message, current_user=user)
     await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
+
+
+async def broadcast_channel_read(user_id, channel_id, message_id):
+    user = await get_user_by_id(user_id=user_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=user)
+    read_at = message.created_at.isoformat()
+    event_name = "CHANNEL_READ"
+    data = {"user": user.dump(), "channel": channel.dump(), "read_at": read_at}
+    await pusher_broadcast_messages(user.online_channels, event_name=event_name, data=data)

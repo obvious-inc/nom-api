@@ -1,14 +1,14 @@
-import datetime
 from typing import List
 
 from umongo import Document, MixinDocument, Reference, fields
 
+from app.helpers.dates import get_mongo_utc_date
 from app.helpers.db_utils import instance
 
 
 @instance.register
 class DatetimeMixin(MixinDocument):
-    created_at = fields.AwareDateTimeField(default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = fields.AwareDateTimeField(default=get_mongo_utc_date)
 
     # TODO: add default updated_at + trigger on each update
     updated_at = fields.AwareDateTimeField()

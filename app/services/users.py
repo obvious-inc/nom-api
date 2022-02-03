@@ -1,7 +1,5 @@
 from typing import Union
 
-from bson import ObjectId
-
 from app.helpers.w3 import get_wallet_short_name
 from app.models.base import APIDocument
 from app.models.user import User
@@ -24,11 +22,4 @@ async def get_user_by_wallet_address(wallet_address: str) -> Union[User, APIDocu
 
 
 async def get_user_by_id(user_id) -> Union[User, APIDocument]:
-    if isinstance(user_id, ObjectId):
-        user_id = str(user_id)
-    elif isinstance(user_id, str):
-        pass
-    else:
-        raise Exception(f"unexpected user_id type: {type(user_id)}")
-
     return await get_item_by_id(id_=user_id, result_obj=User)
