@@ -49,10 +49,9 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
 
     updated_item = await update_item(item=message, data=data)
 
-    if changed_content:
-        asyncio.create_task(
-            broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_EDIT)
-        )
+    asyncio.create_task(
+        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_UPDATE)
+    )
 
     return updated_item
 
