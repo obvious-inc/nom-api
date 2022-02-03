@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Union
 
 from pydantic import BaseModel, Field
@@ -53,6 +54,11 @@ class ServerChannelCreateSchema(ChannelCreateSchema):
     kind: str = "server"
     server: str
     name: str
+
+
+class ChannelReadStateCreateSchema(APIBaseCreateSchema):
+    channel: str
+    last_read_at: datetime
 
 
 # Need this EitherChannel class due to mypy and fastapi issue: https://github.com/tiangolo/fastapi/issues/2279
