@@ -9,8 +9,8 @@ from app.services.messages import (
     add_reaction_to_message,
     create_message,
     delete_message,
-    edit_message,
     remove_reaction_from_message,
+    update_message,
 )
 
 router = APIRouter()
@@ -32,14 +32,14 @@ async def post_create_message(
 @router.patch(
     "/{message_id}",
     response_model=MessageSchema,
-    summary="Edit message",
+    summary="Update message",
 )
 async def patch_edit_message(
     message_id: str,
     update_data: MessageUpdateSchema = Body(...),
     current_user: User = Depends(get_current_user),
 ):
-    return await edit_message(message_id, update_data=update_data, current_user=current_user)
+    return await update_message(message_id, update_data=update_data, current_user=current_user)
 
 
 @router.delete(

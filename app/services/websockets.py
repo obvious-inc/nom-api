@@ -75,7 +75,7 @@ async def broadcast_edit_message(
 ):
     user = await get_user_by_id(user_id=author_id)
     message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
-    event_name = "MESSAGE_UPDATED"
+    event_name = "MESSAGE_EDITED"
     ws_data = message.dump()
     channels = await get_online_channels(message=message, current_user=user)
     await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)

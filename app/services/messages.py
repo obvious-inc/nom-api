@@ -37,16 +37,21 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
     return message
 
 
-async def edit_message(message_id: str, update_data: MessageUpdateSchema, current_user: User):
+async def update_message(message_id: str, update_data: MessageUpdateSchema, current_user: User):
     message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
     if not message.author == current_user:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
     data = update_data.dict()
-    data.update({"edited_at": datetime.now(timezone.utc)})
+
+    changed_content = update_data.content is not None
+    if changed_content:
+        data.update({"edited_at": datetime.now(timezone.utc)})
 
     updated_item = await update_item(item=message, data=data)
-    asyncio.create_task(broadcast_edit_message(str(message.id), str(current_user.id)))
+
+    if changed_content:
+        asyncio.create_task(broadcast_edit_message(str(message.id), str(current_user.id)))
 
     return updated_item
 
