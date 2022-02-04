@@ -101,7 +101,7 @@ async def broadcast_connection_ready(current_user: User, channel: str):
                 "channels": [
                     {
                         "id": str(channel.id),
-                        "last_message_at": channel.last_message_at.isoformat(),
+                        "last_message_at": channel.last_message_at.isoformat() if channel.last_message_at else None,
                         "name": channel.name,
                     }
                     for channel in channels
