@@ -7,7 +7,7 @@ from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
-from app.services.channels import get_dm_channels, get_server_channels
+from app.services.channels import get_server_channels
 from app.services.crud import get_item, get_item_by_id, get_items
 from app.services.servers import get_server_members, get_user_servers
 from app.services.users import get_user_by_id
@@ -87,7 +87,7 @@ async def broadcast_connection_ready(current_user: User, channel: str):
 
     servers = await get_user_servers(current_user=current_user)
     for server in servers:
-        server_data = server.dump()
+        server_data = {"id": str(server.id), "name": server.name, "owner": str(server.owner.pk)}
         channels = await get_server_channels(server_id=str(server.id), current_user=current_user)
         members = await get_server_members(server_id=str(server.id), current_user=current_user)
         user_member = await get_item(
@@ -98,16 +98,27 @@ async def broadcast_connection_ready(current_user: User, channel: str):
 
         server_data.update(
             {
-                "channels": [channel.dump() for channel in channels],
-                "members": [member.dump() for member in members],
-                "member": user_member.dump() if user_member else {},
+                "channels": [
+                    {
+                        "id": str(channel.id),
+                        "last_message_at": channel.last_message_at.isoformat(),
+                        "name": channel.name,
+                    }
+                    for channel in channels
+                ],
+                "members": [
+                    {
+                        "id": str(member.id),
+                        "user": str(member.user.pk),
+                        "server": str(member.server.pk),
+                        "display_name": member.display_name,
+                    }
+                    for member in members
+                ],
             }
         )
 
         data["servers"].append(server_data)
-
-    dm_channels = await get_dm_channels(current_user=current_user)
-    data["dms"] = [dm_channel.dump() for dm_channel in dm_channels]
 
     read_states = await get_items(
         filters={"user": current_user}, result_obj=ChannelReadState, current_user=current_user, size=None

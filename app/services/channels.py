@@ -40,6 +40,7 @@ async def create_server_channel(
 async def create_channel(
     channel_model: Union[DMChannelCreateSchema, ServerChannelCreateSchema], current_user: User
 ) -> Union[Channel, APIDocument]:
+    raise Exception("can't create channels for now")
     kind = channel_model.kind
     if isinstance(channel_model, DMChannelCreateSchema):
         return await create_dm_channel(channel_model, current_user)
