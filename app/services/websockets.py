@@ -1,7 +1,8 @@
 import logging
-from typing import List, Union
+from typing import List, Optional, Union
 
 from app.helpers.websockets import pusher_client
+from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
@@ -30,59 +31,49 @@ async def get_online_channels(message: Union[Message, APIDocument], current_user
     return channels
 
 
-async def pusher_broadcast_messages(channels: List[str], event_name: str, data: dict):
+async def pusher_broadcast_messages(
+    event: WebSocketServerEvent,
+    current_user: User,
+    data: dict,
+    message: Optional[Message] = None,
+    pusher_channel: Optional[str] = None,
+):
+    pusher_channels = current_user.online_channels
+    if message:
+        pusher_channels = await get_online_channels(message=message, current_user=current_user)
+
+    if pusher_channel:
+        pusher_channels = [pusher_channel]
+
+    event_name: str = event.value
     has_errors = False
-    while len(channels) > 0:
-        push_channels = channels[:90]
+    while len(pusher_channels) > 0:
+        push_channels = pusher_channels[:90]
         try:
             await pusher_client.trigger(push_channels, event_name, data)
         except Exception:
             logger.exception("Problem broadcasting event to Pusher channel. [event_name=%s]", event_name)
             has_errors = True
-        channels = channels[90:]
+        pusher_channels = pusher_channels[90:]
 
     if not has_errors:
         logger.debug("Event broadcast successful. [event_name=%s]", event_name)
 
 
-async def broadcast_new_message(
-    message_id: str,
-    author_id: str,
+async def broadcast_message_event(
+    message_id: str, user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
-    user = await get_user_by_id(user_id=author_id)
+    user = await get_user_by_id(user_id=user_id)
     message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
-    event_name = "MESSAGE_CREATE"
-    ws_data = message.dump()
-    channels = await get_online_channels(message=message, current_user=user)
-    await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
 
+    event_data = {"message": message.dump()}
+    if custom_data:
+        event_data.update(custom_data)
 
-async def broadcast_delete_message(
-    message_id: str,
-    author_id: str,
-):
-    user = await get_user_by_id(user_id=author_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
-    event_name = "MESSAGE_REMOVE"
-    ws_data = message.dump()
-    channels = await get_online_channels(message=message, current_user=user)
-    await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
-
-
-async def broadcast_edit_message(
-    message_id: str,
-    author_id: str,
-):
-    user = await get_user_by_id(user_id=author_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
-    event_name = "MESSAGE_EDITED"
-    ws_data = message.dump()
-    channels = await get_online_channels(message=message, current_user=user)
-    await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
+    await pusher_broadcast_messages(event=event, data=event_data, current_user=user, message=message)
 
 
 async def broadcast_connection_ready(current_user: User, channel: str):
-    event_name = "CONNECTION_READY"
     data = {"user": current_user.dump(), "servers": []}
 
     servers = await get_user_servers(current_user=current_user)
@@ -128,33 +119,17 @@ async def broadcast_connection_ready(current_user: User, channel: str):
         for read_state in read_states
     ]
 
-    push_channels = [channel]
-    await pusher_broadcast_messages(push_channels, event_name, data)
+    await pusher_broadcast_messages(
+        event=WebSocketServerEvent.CONNECTION_READY, data=data, current_user=current_user, pusher_channel=channel
+    )
 
 
-async def broadcast_new_reaction(message_id, reaction, author_id):
-    user = await get_user_by_id(user_id=author_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
-    event_name = "MESSAGE_REACTION_ADD"
-    ws_data = {"message": message_id, "user": user.dump(), "reaction": reaction.dump()}
-    channels = await get_online_channels(message=message, current_user=user)
-    await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
-
-
-async def broadcast_remove_reaction(message_id, reaction, author_id):
-    user = await get_user_by_id(user_id=author_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
-    event_name = "MESSAGE_REACTION_REMOVE"
-    ws_data = {"message": message_id, "user": user.dump(), "reaction": reaction.dump()}
-    channels = await get_online_channels(message=message, current_user=user)
-    await pusher_broadcast_messages(channels, event_name=event_name, data=ws_data)
-
-
-async def broadcast_channel_read(user_id, channel_id, message_id):
+async def broadcast_channel_event(channel_id: str, user_id: str, event: WebSocketServerEvent, custom_data: dict):
     user = await get_user_by_id(user_id=user_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=user)
-    read_at = message.created_at.isoformat()
-    event_name = "CHANNEL_READ"
-    data = {"user": user.dump(), "channel": channel.dump(), "read_at": read_at}
-    await pusher_broadcast_messages(user.online_channels, event_name=event_name, data=data)
+
+    event_data = {"channel": channel.dump()}
+    if custom_data:
+        event_data.update(custom_data)
+
+    await pusher_broadcast_messages(event=event, data=event_data, current_user=user)
