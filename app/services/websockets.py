@@ -9,7 +9,7 @@ from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.services.channels import get_server_channels
-from app.services.crud import get_item, get_item_by_id, get_items
+from app.services.crud import get_item_by_id, get_items
 from app.services.servers import get_server_members, get_user_servers
 from app.services.users import get_user_by_id
 
@@ -81,11 +81,6 @@ async def broadcast_connection_ready(current_user: User, channel: str):
         server_data = {"id": str(server.id), "name": server.name, "owner": str(server.owner.pk)}
         channels = await get_server_channels(server_id=str(server.id), current_user=current_user)
         members = await get_server_members(server_id=str(server.id), current_user=current_user)
-        user_member = await get_item(
-            filters={"server": server.id, "user": current_user.id},
-            result_obj=ServerMember,
-            current_user=current_user,
-        )
 
         server_data.update(
             {
