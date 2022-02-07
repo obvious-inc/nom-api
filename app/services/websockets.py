@@ -1,6 +1,8 @@
 import logging
 from typing import List, Optional, Union
 
+from app.config import get_settings
+from app.helpers.compression import compress_data
 from app.helpers.websockets import pusher_client
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -38,6 +40,12 @@ async def pusher_broadcast_messages(
     message: Optional[Message] = None,
     pusher_channel: Optional[str] = None,
 ):
+    settings = get_settings()
+    if settings.pusher_compression:
+        compressed_data = await compress_data(data, compression_type=settings.pusher_compression)
+        compressed_object = {"compressed": {"data": compressed_data, "alg": settings.pusher_compression}}
+        data = compressed_object
+
     pusher_channels = current_user.online_channels
     if message:
         pusher_channels = await get_online_channels(message=message, current_user=current_user)

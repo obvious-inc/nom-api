@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     pusher_key: Optional[str]
     pusher_secret: Optional[str]
     pusher_cluster: Optional[str]
+    pusher_compression: Optional[str]
 
     sentry_dsn: Optional[str]
 
