@@ -4,10 +4,12 @@ from typing import List, Union
 
 from bson import ObjectId
 from fastapi import HTTPException
+from starlette import status
 
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
+from app.models.server import Server
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema, DMChannelCreateSchema, ServerChannelCreateSchema
 from app.services.crud import create_item, delete_item, get_item, get_item_by_id, get_items, update_item
@@ -34,13 +36,19 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
 async def create_server_channel(
     channel_model: ServerChannelCreateSchema, current_user: User
 ) -> Union[Channel, APIDocument]:
+    server = await get_item_by_id(id_=str(channel_model.server), result_obj=Server, current_user=current_user)
+    if server.owner != current_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only owner can create channels",
+        )
+
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
 async def create_channel(
     channel_model: Union[DMChannelCreateSchema, ServerChannelCreateSchema], current_user: User
 ) -> Union[Channel, APIDocument]:
-    raise Exception("can't create channels for now")
     kind = channel_model.kind
     if isinstance(channel_model, DMChannelCreateSchema):
         return await create_dm_channel(channel_model, current_user)
