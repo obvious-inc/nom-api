@@ -1,3 +1,5 @@
+from typing import Callable
+
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
@@ -97,6 +99,28 @@ class TestChannelsRoutes:
         assert json_response["name"] == data["name"]
         assert "server" in json_response
         assert json_response["server"] == str(server.id)
+
+    @pytest.mark.asyncio
+    async def test_create_server_channel_not_owner(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        server: Server,
+        authorized_client: AsyncClient,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        data = {
+            "kind": "server",
+            "name": "fancy-announcements",
+            "server": str(server.id),
+        }
+        member = await create_new_user()
+        member_auth_client = await get_authorized_client(member)
+
+        response = await member_auth_client.post("/channels", json=data)
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_create_server_channel_with_emojis(
