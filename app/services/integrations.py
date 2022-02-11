@@ -1,10 +1,11 @@
+from typing import Optional
 from urllib.parse import urlparse
 
 from app.helpers.giphy import GiphyClient
 from app.helpers.tenor import TenorClient
 
 
-async def _get_giphy_search(search_term: str, media_filter: str):
+async def _get_giphy_search(search_term: str, media_filter: Optional[str]):
     gifs = []
     giphy_gifs = await GiphyClient().search_gifs(search_term=search_term, media_filter=media_filter)
     for gif in giphy_gifs:
@@ -21,7 +22,7 @@ async def _get_giphy_search(search_term: str, media_filter: str):
     return gifs
 
 
-async def _get_tenor_search(search_term: str, media_filter: str):
+async def _get_tenor_search(search_term: str, media_filter: Optional[str]):
     gifs = []
     tenor_gifs = await TenorClient().search_gifs(search_term=search_term, media_filter=media_filter)
     for gif in tenor_gifs:
@@ -38,7 +39,7 @@ async def _get_tenor_search(search_term: str, media_filter: str):
     return gifs
 
 
-async def get_gifs_search(search_term: str, media_filter: str, provider: str):
+async def get_gifs_search(search_term: str, media_filter: Optional[str], provider: str):
     if provider == "giphy":
         gifs = await _get_giphy_search(search_term=search_term, media_filter=media_filter)
     elif provider == "tenor":
@@ -52,7 +53,7 @@ async def get_gifs_search(search_term: str, media_filter: str, provider: str):
 async def get_gif_by_url(gif_url: str):
     parsed_url = urlparse(gif_url)
     gif_id = gif_url.split("-")[-1]
-    if "giphy" in parsed_url.hostname:
+    if parsed_url.hostname and "giphy" in parsed_url.hostname:
         giphy_gif = await GiphyClient().get_gif_by_id(gif_id=gif_id)
         image = giphy_gif.get("images").get("original")
         gif = {
@@ -63,7 +64,7 @@ async def get_gif_by_url(gif_url: str):
             "title": giphy_gif.get("title"),
             "src": image.get("url"),
         }
-    elif "tenor" in parsed_url.hostname:
+    elif parsed_url.hostname and "tenor" in parsed_url.hostname:
         tenor_gif = await TenorClient().get_gif_by_id(gif_id=gif_id)
         image = tenor_gif.get("media")[0].get("gif")
         gif = {
