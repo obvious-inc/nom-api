@@ -24,6 +24,7 @@ class MessageSchema(APIBaseSchema):
     content: str
     reactions: List[MessageReactionSchema]
     edited_at: Optional[datetime]
+    embeds: List[dict]
 
 
 class MessageCreateSchema(APIBaseCreateSchema):
