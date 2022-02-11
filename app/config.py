@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     cloudflare_account_id: Optional[str]
     cloudflare_images_api_token: Optional[str]
 
+    giphy_api_key: Optional[str]
+    tenor_api_key: Optional[str]
+
     class Config:
         env_file = ".env"
 

@@ -13,7 +13,7 @@ from app.config import get_settings
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, override_connect_to_mongo
 from app.helpers.logconf import log_configuration
 from app.middlewares import add_canonical_log_line, profile_request
-from app.routers import auth, base, channels, media, messages, servers, users, webhooks, websockets
+from app.routers import auth, base, channels, integrations, media, messages, servers, users, webhooks, websockets
 
 logging.config.dictConfig(log_configuration)
 logger = logging.getLogger(__name__)
@@ -62,6 +62,7 @@ def get_application(testing=False):
     app_.include_router(websockets.router, prefix="/websockets", tags=["websockets"])
     app_.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
     app_.include_router(media.router, prefix="/media", tags=["media"])
+    app_.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
 
     return app_
 
