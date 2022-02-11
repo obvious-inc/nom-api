@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from app.helpers.giphy import GiphyClient
 from app.helpers.tenor import TenorClient
 
@@ -45,3 +47,34 @@ async def get_gifs_search(search_term: str, media_filter: str, provider: str):
         raise Exception(f"unexpected GIF provider: {provider}")
 
     return gifs
+
+
+async def get_gif_by_url(gif_url: str):
+    parsed_url = urlparse(gif_url)
+    gif_id = gif_url.split("-")[-1]
+    if "giphy" in parsed_url.hostname:
+        giphy_gif = await GiphyClient().get_gif_by_id(gif_id=gif_id)
+        image = giphy_gif.get("images").get("original")
+        gif = {
+            "provider": "giphy",
+            "type": giphy_gif.get("type"),
+            "url": giphy_gif.get("url"),
+            "id": giphy_gif.get("id"),
+            "title": giphy_gif.get("title"),
+            "src": image.get("url"),
+        }
+    elif "tenor" in parsed_url.hostname:
+        tenor_gif = await TenorClient().get_gif_by_id(gif_id=gif_id)
+        image = tenor_gif.get("media")[0].get("gif")
+        gif = {
+            "provider": "tenor",
+            "type": tenor_gif.get("type", "gif"),
+            "url": tenor_gif.get("itemurl"),
+            "id": tenor_gif.get("id"),
+            "title": tenor_gif.get("content_description"),
+            "src": image.get("url"),
+        }
+    else:
+        raise Exception(f"unexpected GIF domain: {parsed_url.hostname}")
+
+    return gif

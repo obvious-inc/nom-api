@@ -10,6 +10,7 @@ class GiphyClient:
         settings = get_settings()
         self.api_key = settings.giphy_api_key
         self.search_endpoint = "https://api.giphy.com/v1/gifs/search"
+        self.gifs_endpoint = "https://api.giphy.com/v1/gifs"
         self.content_filter = "pg-13"
         self.media_filter = "original"
 
@@ -26,4 +27,16 @@ class GiphyClient:
             raise Exception(f"problem fetching gifs. q:{search_term} {response.status_code} {response.text}")
 
         gifs = response.json().get("data")
+        return gifs
+
+    async def get_gif_by_id(self, gif_id: str):
+        params = {
+            "ids": gif_id,
+            "api_key": self.api_key,
+        }
+        response = requests.get(self.gifs_endpoint, params=params)
+        if not response.ok:
+            raise Exception(f"problem getting gif with id {gif_id}: {response.status_code} {response.text}")
+
+        gifs = response.json().get("data")[0]
         return gifs

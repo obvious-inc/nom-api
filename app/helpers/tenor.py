@@ -10,6 +10,7 @@ class TenorClient:
         settings = get_settings()
         self.api_key = settings.tenor_api_key
         self.search_endpoint = "https://g.tenor.com/v1/search"
+        self.gifs_endpoint = "https://g.tenor.com/v1/gifs"
         self.content_filter = "low"
         self.media_filter = "minimal"
 
@@ -26,4 +27,16 @@ class TenorClient:
             raise Exception(f"problem fetching gifs. q:{search_term} {response.status_code} {response.text}")
 
         gifs = response.json().get("results")
+        return gifs
+
+    async def get_gif_by_id(self, gif_id: str):
+        params = {
+            "ids": gif_id,
+            "key": self.api_key,
+        }
+        response = requests.get(self.gifs_endpoint, params=params)
+        if not response.ok:
+            raise Exception(f"problem getting gif with id {gif_id}: {response.status_code} {response.text}")
+
+        gifs = response.json().get("results")[0]
         return gifs
