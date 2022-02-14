@@ -1,4 +1,6 @@
+import json
 import logging
+import sys
 from typing import List, Optional, Union
 
 from app.config import get_settings
@@ -41,7 +43,8 @@ async def pusher_broadcast_messages(
     pusher_channel: Optional[str] = None,
 ):
     settings = get_settings()
-    if settings.pusher_compression:
+    json_data_bytes = sys.getsizeof(json.dumps(data))
+    if settings.pusher_compression or json_data_bytes > 10_000:
         compressed_data = await compress_data(data, compression_type=settings.pusher_compression)
         compressed_object = {"compressed": {"data": compressed_data, "alg": settings.pusher_compression}}
         data = compressed_object

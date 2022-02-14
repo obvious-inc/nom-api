@@ -3,6 +3,7 @@ import logging
 import sys
 import zlib
 from base64 import b64encode
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,9 @@ def _zlib_compress(data: str):
     return compressed_data
 
 
-async def compress_data(data: dict, compression_type="zlib"):
+async def compress_data(data: dict, compression_type: Optional[str] = "zlib"):
+    if not compression_type:
+        compression_type = "zlib"
     json_data = json.dumps(data)
     original_size = sys.getsizeof(json_data)
     if compression_type == "zlib":
