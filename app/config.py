@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     mongodb_url: str = "localhost:27017"
     mongodb_db: str = "newshades"
+    mongodb_test_db: str = "newshades-test"
 
     jwt_secret_key: str
     jwt_expire_minutes: Optional[int] = 60
