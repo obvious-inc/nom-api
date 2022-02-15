@@ -6,6 +6,7 @@ env:
   MONGODB_VERSION: 4.2.7
   MONGODB_DB_NAME: ns-${{ github.sha }}-${{ github.run_id }}
   MONGODB_REPLICA_SET: newshades-gh-replica
+  PYTHON_VERSION: 3.9.9
 
 jobs:
   build:
@@ -19,7 +20,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v1
       with:
-        python-version: 3.9.10
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Install poetry
       run: curl -sL https://install.python-poetry.org | python -
