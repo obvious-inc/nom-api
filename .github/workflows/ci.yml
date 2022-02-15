@@ -53,6 +53,7 @@ jobs:
       uses: supercharge/mongodb-github-action@1.7.0
       with:
         mongodb-version: ${{ env.MONGODB_VERSION }}
+        mongodb-replica-set: ns-test-rs
 
     - name: Run tests >> pytest
       env:
