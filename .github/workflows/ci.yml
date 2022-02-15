@@ -60,5 +60,5 @@ jobs:
         PUSHER_KEY: ${{ secrets.PUSHER_KEY }}
         PUSHER_SECRET: ${{ secrets.PUSHER_SECRET }}
         JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-        MONGODB_TEST_DB: newshades-test-${{ github.sha }}-${{ github.run_id }}
+        MONGODB_TEST_DB: ns-${{ github.sha }}-${{ github.run_id }}
       run: poetry run python -m pytest
