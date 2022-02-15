@@ -4,6 +4,8 @@ on: [push, pull_request]
 
 env:
   MONGODB_VERSION: 4.2.7
+  MONGODB_DB_NAME: ns-${{ github.sha }}-${{ github.run_id }}
+  MONGODB_REPLICA_SET: newshades-gh-replica
 
 jobs:
   build:
@@ -21,7 +23,7 @@ jobs:
 
     - name: Install poetry
       run: |
-        curl -sL https://install.python-poetry.org | python - -y ${{ matrix.bootstrap-args }}
+        curl -sL https://install.python-poetry.org | python -
 
     - name: Update PATH
       run: echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -53,7 +55,7 @@ jobs:
       uses: supercharge/mongodb-github-action@1.7.0
       with:
         mongodb-version: ${{ env.MONGODB_VERSION }}
-        mongodb-replica-set: ns-test-rs
+        mongodb-replica-set: ${{ env.MONGODB_REPLICA_SET }}
 
     - name: Run tests >> pytest
       env:
@@ -61,5 +63,5 @@ jobs:
         PUSHER_KEY: ${{ secrets.PUSHER_KEY }}
         PUSHER_SECRET: ${{ secrets.PUSHER_SECRET }}
         JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-        MONGODB_TEST_DB: ns-${{ github.sha }}-${{ github.run_id }}
+        MONGODB_TEST_DB: ${{ env.MONGODB_DB_NAME }}
       run: poetry run python -m pytest
