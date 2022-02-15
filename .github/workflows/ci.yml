@@ -22,8 +22,7 @@ jobs:
         python-version: 3.9.10
 
     - name: Install poetry
-      run: |
-        curl -sL https://install.python-poetry.org | python -
+      run: curl -sL https://install.python-poetry.org | python -
 
     - name: Update PATH
       run: echo "$HOME/.local/bin" >> $GITHUB_PATH
