@@ -200,3 +200,31 @@ class TestAuthRoutes:
         await asyncio.sleep(random.random(), loop=event_loop)
         members = await get_items({"server": server.id}, result_obj=ServerMember, current_user=current_user, size=None)
         assert len(members) == 2
+
+    @pytest.mark.asyncio
+    async def test_login_wallet_with_assertion_error(
+        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
+    ):
+        nonce = 1234
+        signed_at = arrow.utcnow().isoformat()
+        message = f"""NewShades wants you to sign in with your web3 account
+
+            {wallet}
+
+            URI: localhost
+            Nonce: {nonce}
+            Issued At: {signed_at}"""
+        encoded_message = encode_defunct(text=message)
+        signed_message = Web3().eth.account.sign_message(
+            encoded_message, private_key=private_key
+        )  # type: SignedMessage
+        data = {
+            "message": message + "corrupt",
+            "signature": signed_message.signature.hex(),
+            "signed_at": signed_at,
+            "nonce": nonce,
+            "address": wallet.lower(),
+        }
+
+        response = await client.post("/auth/login", json=data)
+        assert response.status_code == 400

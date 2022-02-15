@@ -7,6 +7,8 @@ from pydantic import BaseSettings
 class Settings(BaseSettings):
     testing: bool = True
     profiling: bool = False
+    cdn_url: str = "https://cdn.newshades.xyz"
+    cdn_media_folder: str = "media"
 
     mongodb_url: str = ""
     mongodb_db: str = ""
@@ -25,6 +27,11 @@ class Settings(BaseSettings):
 
     cloudflare_account_id: Optional[str]
     cloudflare_images_api_token: Optional[str]
+
+    aws_access_key_id: Optional[str]
+    aws_secret_access_key: Optional[str]
+    aws_default_region: Optional[str]
+    aws_media_bucket: str = "cdn.newshades.xyz"
 
     giphy_api_key: Optional[str]
     tenor_api_key: Optional[str]
