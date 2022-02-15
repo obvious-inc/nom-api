@@ -1,3 +1,5 @@
+import asyncio
+import random
 from typing import Callable
 
 import arrow
@@ -229,6 +231,7 @@ class TestMessagesRoutes:
         authorized_client: AsyncClient,
         server: Server,
         server_channel: Channel,
+        event_loop,
     ):
         data = {"content": "gm", "server": str(server.id), "channel": str(server_channel.id)}
         channel = await get_item_by_id(id_=server_channel.id, result_obj=Channel)
@@ -242,6 +245,7 @@ class TestMessagesRoutes:
         assert json_response["server"] == data["server"] == str(server.id)
         assert json_response["channel"] == data["channel"] == str(server_channel.id)
 
+        await asyncio.sleep(random.random(), loop=event_loop)
         channel = await get_item_by_id(id_=server_channel.id, result_obj=Channel)
         assert channel.last_message_at is not None
         created_at = arrow.get(json_response["created_at"])
