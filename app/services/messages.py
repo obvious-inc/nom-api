@@ -5,6 +5,7 @@ from typing import List, Union
 
 from fastapi import HTTPException
 
+from app.helpers.message_utils import get_message_content_mentions
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -18,6 +19,14 @@ from app.services.websockets import broadcast_channel_event, broadcast_message_e
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
+    mentions = await get_message_content_mentions(message.content)
+    if mentions:
+        mentions_obj = [{"type": mention_type, "id": mention_id} for mention_type, mention_id in mentions]
+        data = {"mentions": mentions_obj}
+        message = await update_item(item=message, data=data)
+
+        # TODO: broadcast notifications...
+
     asyncio.create_task(
         broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_CREATE)
     )

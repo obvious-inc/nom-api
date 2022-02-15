@@ -1,4 +1,4 @@
-from umongo import EmbeddedDocument, fields
+from umongo import EmbeddedDocument, fields, validate
 
 from app.helpers.db_utils import instance
 from app.models.base import APIDocument
@@ -12,6 +12,12 @@ class MessageReaction(EmbeddedDocument):
 
 
 @instance.register
+class MessageMention(EmbeddedDocument):
+    type = fields.StrField(validate=validate.OneOf(["user"]), required=True)
+    id = fields.ObjectIdField(required=True)
+
+
+@instance.register
 class Message(APIDocument):
     channel = fields.ReferenceField("Channel", required=True)
     server = fields.ReferenceField("Server", required=False, default=None)
@@ -20,6 +26,7 @@ class Message(APIDocument):
     content = fields.StrField()  # TODO: prolly not only a string
 
     reactions = fields.ListField(fields.EmbeddedField(MessageReaction), default=[])
+    mentions = fields.ListField(fields.EmbeddedField(MessageMention), default=[])
 
     edited_at = fields.AwareDateTimeField(required=False, default=None)
 

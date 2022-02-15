@@ -1,20 +1,20 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, PyObjectId
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, APIEmbeddedBaseSchema, PyObjectId
 
 
-class MessageReactionSchema(BaseModel):
+class MessageReactionSchema(APIEmbeddedBaseSchema):
     emoji: str
     users: List[PyObjectId]
     count: int
 
-    class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
+
+class MessageMentionSchema(APIEmbeddedBaseSchema):
+    type: str
+    id: PyObjectId
 
 
 class MessageSchema(APIBaseSchema):
@@ -23,6 +23,7 @@ class MessageSchema(APIBaseSchema):
     channel: PyObjectId = Field()
     content: str
     reactions: List[MessageReactionSchema]
+    mentions: List[MessageMentionSchema]
     edited_at: Optional[datetime]
 
 
