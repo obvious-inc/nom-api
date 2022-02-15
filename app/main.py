@@ -10,10 +10,11 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
+from app.exceptions import assertion_exception_handler
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, override_connect_to_mongo
 from app.helpers.logconf import log_configuration
 from app.middlewares import add_canonical_log_line, profile_request
-from app.routers import auth, base, channels, messages, servers, users, webhooks, websockets
+from app.routers import auth, base, channels, media, messages, servers, users, webhooks, websockets
 
 logging.config.dictConfig(log_configuration)
 logger = logging.getLogger(__name__)
@@ -53,6 +54,8 @@ def get_application(testing=False):
     if settings.profiling:
         app_.add_middleware(BaseHTTPMiddleware, dispatch=profile_request)
 
+    app_.add_exception_handler(AssertionError, assertion_exception_handler)
+
     app_.include_router(base.router)
     app_.include_router(auth.router, prefix="/auth", tags=["auth"])
     app_.include_router(users.router, prefix="/users", tags=["users"])
@@ -61,6 +64,7 @@ def get_application(testing=False):
     app_.include_router(messages.router, prefix="/messages", tags=["messages"])
     app_.include_router(websockets.router, prefix="/websockets", tags=["websockets"])
     app_.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+    app_.include_router(media.router, prefix="/media", tags=["media"])
 
     return app_
 

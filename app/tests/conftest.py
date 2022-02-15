@@ -12,6 +12,7 @@ from httpx import AsyncClient
 from web3 import Web3
 
 from app.helpers.connection import get_client, get_db
+from app.helpers.jwt import generate_jwt_token
 from app.main import get_application
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -80,6 +81,18 @@ async def guest_user() -> User:
 
 
 @pytest.fixture
+async def create_new_user():
+    async def _create_new_user():
+        key = secrets.token_bytes(32)
+        priv = binascii.hexlify(key).decode("ascii")
+        private_key = "0x" + priv
+        acct = Account.from_key(private_key)
+        return await create_user(UserCreateSchema(wallet_address=acct.address), fetch_ens=False)
+
+    return _create_new_user
+
+
+@pytest.fixture
 async def server(current_user: User) -> Union[Server, APIDocument]:
     server_model = ServerCreateSchema(name="NewShades DAO")
     return await create_server(server_model, current_user=current_user)
@@ -132,3 +145,13 @@ async def authorized_client(client: AsyncClient, private_key: bytes, current_use
 
     yield client
     client.headers.pop("Authorization")
+
+
+@pytest.fixture
+async def get_authorized_client(client: AsyncClient):
+    async def _get_authorized_client(user: User):
+        access_token = generate_jwt_token(data={"sub": str(user.id)})
+        client.headers.update({"Authorization": f"Bearer {access_token}"})
+        return client
+
+    return _get_authorized_client

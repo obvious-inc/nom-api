@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from bson import ObjectId
@@ -64,7 +64,7 @@ class TestServerRoutes:
         )
         assert len(members) == 1
         assert members[0].user == current_user
-        assert members[0].joined_at < datetime.utcnow()
+        assert members[0].joined_at < datetime.now(timezone.utc)
 
     @pytest.mark.asyncio
     async def test_list_server_members(
