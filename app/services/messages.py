@@ -127,7 +127,7 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
                 str(message.id),
                 str(current_user.id),
                 event=WebSocketServerEvent.MESSAGE_REACTION_ADD,
-                custom_data={"reaction": reaction.dump()},
+                custom_data={"reaction": reaction.dump(), "user": str(current_user.id)},
             )
         )
 
@@ -169,7 +169,7 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
                 str(message.id),
                 str(current_user.id),
                 event=WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
-                custom_data={"reaction": reaction.dump()},
+                custom_data={"reaction": reaction.dump(), "user": str(current_user.id)},
             )
         )
 
