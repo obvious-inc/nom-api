@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from typing import Optional
 
@@ -6,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from starlette import status
 
 from app.helpers.connection import get_db
+from app.helpers.queue_utils import queue_bg_task
 from app.helpers.websockets import pusher_client
 from app.services.webhooks import handle_pusher_event
 
@@ -35,6 +35,6 @@ async def post_pusher_webhooks(
             detail="Could not validate webhook",
         )
 
-    [asyncio.create_task(handle_pusher_event(event=event)) for event in webhook["events"]]
+    [await queue_bg_task(handle_pusher_event, event) for event in webhook["events"]]
 
     return {"received": "ok"}

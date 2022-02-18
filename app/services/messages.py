@@ -5,6 +5,7 @@ from typing import List, Union
 
 from fastapi import HTTPException
 
+from app.helpers.queue_utils import queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -18,20 +19,22 @@ from app.services.websockets import broadcast_channel_event, broadcast_message_e
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
-    asyncio.create_task(
-        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_CREATE)
-    )
-    asyncio.create_task(
-        update_channel_last_message(channel_id=message.channel, message=message, current_user=current_user)
-    )
-    asyncio.create_task(
-        broadcast_channel_event(
-            channel_id=str(message.channel.pk),
-            user_id=str(current_user.id),
-            event=WebSocketServerEvent.CHANNEL_READ,
-            custom_data={"read_at": message.created_at.isoformat()},
-        )
-    )
+
+    bg_tasks = [
+        (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
+        (update_channel_last_message, (message.channel, message, current_user)),
+        (
+            broadcast_channel_event,
+            (
+                str(message.channel.pk),
+                str(current_user.id),
+                WebSocketServerEvent.CHANNEL_READ,
+                {"read_at": message.created_at.isoformat()},
+            ),
+        ),
+    ]
+
+    await queue_bg_tasks(bg_tasks, concurrent=True)
 
     return message
 
