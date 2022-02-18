@@ -1,11 +1,10 @@
-import asyncio
 import http
 from datetime import datetime, timezone
 from typing import List, Union
 
 from fastapi import HTTPException
 
-from app.helpers.queue_utils import queue_bg_tasks
+from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -52,8 +51,8 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
 
     updated_item = await update_item(item=message, data=data)
 
-    asyncio.create_task(
-        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_UPDATE)
+    await queue_bg_task(
+        broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_UPDATE
     )
 
     return updated_item
@@ -70,8 +69,8 @@ async def delete_message(message_id: str, current_user: User):
     if not can_delete:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
-    asyncio.create_task(
-        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_REMOVE)
+    await queue_bg_task(
+        broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_REMOVE
     )
 
     await delete_item(item=message)
@@ -125,13 +124,12 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
 
     if added:
         await message.commit()
-        asyncio.create_task(
-            broadcast_message_event(
-                str(message.id),
-                str(current_user.id),
-                event=WebSocketServerEvent.MESSAGE_REACTION_ADD,
-                custom_data={"reaction": reaction.dump()},
-            )
+        await queue_bg_task(
+            broadcast_message_event,
+            str(message.id),
+            str(current_user.id),
+            WebSocketServerEvent.MESSAGE_REACTION_ADD,
+            {"reaction": reaction.dump()},
         )
 
     return message
@@ -167,13 +165,12 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
 
     if removed:
         await message.commit()
-        asyncio.create_task(
-            broadcast_message_event(
-                str(message.id),
-                str(current_user.id),
-                event=WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
-                custom_data={"reaction": reaction.dump()},
-            )
+        await queue_bg_task(
+            broadcast_message_event,
+            str(message.id),
+            str(current_user.id),
+            WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
+            {"reaction": reaction.dump()},
         )
 
     return message
