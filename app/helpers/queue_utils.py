@@ -52,7 +52,7 @@ async def stop_background_tasks():
     except CancelledError:
         pass
     except Exception as e:
-        print(f"problem waiting for tasks to cancel: {e}")
+        logger.error(f"problem waiting for tasks to cancel: {e}")
         raise e
 
 
