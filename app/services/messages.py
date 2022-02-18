@@ -1,9 +1,11 @@
 import http
 from datetime import datetime, timezone
 from typing import List, Union
+from urllib.parse import urlparse
 
 from fastapi import HTTPException
 
+from app.helpers.message_utils import get_message_content_mentions
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -13,11 +15,20 @@ from app.models.user import User
 from app.schemas.messages import MessageCreateSchema, MessageUpdateSchema
 from app.services.channels import update_channel_last_message
 from app.services.crud import create_item, delete_item, get_item_by_id, get_items, update_item
+from app.services.integrations import get_gif_by_url
+from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_channel_event, broadcast_message_event
 
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
+    mentions = await get_message_content_mentions(message.content)
+    if mentions:
+        mentions_obj = [{"type": mention_type, "id": mention_id} for mention_type, mention_id in mentions]
+        data = {"mentions": mentions_obj}
+        message = await update_item(item=message, data=data)
+
+        # TODO: broadcast notifications...
 
     bg_tasks = [
         (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
@@ -31,6 +42,7 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
                 {"read_at": message.created_at.isoformat()},
             ),
         ),
+        (post_process_message_creation, (str(message.id), str(current_user.id))),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -131,7 +143,7 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
             str(message.id),
             str(current_user.id),
             WebSocketServerEvent.MESSAGE_REACTION_ADD,
-            {"reaction": reaction.dump()},
+            {"reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
     return message
@@ -172,7 +184,27 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
             str(message.id),
             str(current_user.id),
             WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
-            {"reaction": reaction.dump()},
+            {"reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
     return message
+
+
+async def post_process_message_creation(message_id: str, user_id: str):
+    user = await get_user_by_id(user_id=user_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    data = {}
+
+    # If a gif, embed it
+    try:
+        parsed_url = urlparse(message.content)
+        if parsed_url.hostname and any([provider in parsed_url.hostname for provider in ["giphy", "tenor"]]):
+            gif = await get_gif_by_url(gif_url=message.content)
+            data["embeds"] = [gif]
+    except Exception as e:
+        raise e
+
+    if not data:
+        return
+
+    await update_item(item=message, data=data, current_user=user)

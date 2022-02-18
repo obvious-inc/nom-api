@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     aws_default_region: Optional[str]
     aws_media_bucket: str = "cdn.newshades.xyz"
 
+    giphy_api_key: Optional[str]
+    tenor_api_key: Optional[str]
+
     class Config:
         env_file = ".env"
 
