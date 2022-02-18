@@ -1,4 +1,4 @@
-from umongo import EmbeddedDocument, fields
+from umongo import EmbeddedDocument, fields, validate
 
 from app.helpers.db_utils import instance
 from app.models.base import APIDocument
@@ -9,6 +9,12 @@ class MessageReaction(EmbeddedDocument):
     emoji = fields.StrField(required=True)
     count = fields.IntField(default=1)
     users = fields.ListField(fields.ReferenceField("User"))
+
+
+@instance.register
+class MessageMention(EmbeddedDocument):
+    type = fields.StrField(validate=validate.OneOf(["user"]), required=True)
+    id = fields.ObjectIdField(required=True)
 
 
 @instance.register
@@ -23,6 +29,7 @@ class Message(APIDocument):
 
     reactions = fields.ListField(fields.EmbeddedField(MessageReaction), default=[])
     embeds = fields.ListField(fields.DictField, default=[])
+    mentions = fields.ListField(fields.EmbeddedField(MessageMention), default=[])
 
     class Meta:
         collection_name = "messages"
