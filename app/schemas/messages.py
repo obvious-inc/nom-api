@@ -25,6 +25,7 @@ class MessageSchema(APIBaseSchema):
     reactions: List[MessageReactionSchema]
     mentions: List[MessageMentionSchema]
     edited_at: Optional[datetime]
+    embeds: List[dict]
 
 
 class MessageCreateSchema(APIBaseCreateSchema):

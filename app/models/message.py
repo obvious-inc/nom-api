@@ -25,10 +25,11 @@ class Message(APIDocument):
 
     content = fields.StrField()  # TODO: prolly not only a string
 
-    reactions = fields.ListField(fields.EmbeddedField(MessageReaction), default=[])
-    mentions = fields.ListField(fields.EmbeddedField(MessageMention), default=[])
-
     edited_at = fields.AwareDateTimeField(required=False, default=None)
+
+    reactions = fields.ListField(fields.EmbeddedField(MessageReaction), default=[])
+    embeds = fields.ListField(fields.DictField, default=[])
+    mentions = fields.ListField(fields.EmbeddedField(MessageMention), default=[])
 
     class Meta:
         collection_name = "messages"

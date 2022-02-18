@@ -28,5 +28,5 @@ async def upload_file(
             extra_args["ContentType"] = content_type
         s3_client.upload_fileobj(file, bucket, filename, ExtraArgs=extra_args)
     except ClientError as e:
-        logging.error(e)
+        logger.error(e)
         raise e
