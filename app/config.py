@@ -10,11 +10,12 @@ class Settings(BaseSettings):
     cdn_url: str = "https://cdn.newshades.xyz"
     cdn_media_folder: str = "media"
 
-    mongodb_url: str = ""
-    mongodb_db: str = ""
+    mongodb_url: str = "localhost:27017"
+    mongodb_db: str = "newshades"
+    mongodb_test_db: str = "newshades-test"
 
     jwt_secret_key: str
-    jwt_expire_minutes: int
+    jwt_expire_minutes: Optional[int] = 60
 
     web3_provider_url_ws: Optional[str]
 

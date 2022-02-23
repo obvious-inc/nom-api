@@ -17,7 +17,7 @@ async def connect_to_mongo():
 async def override_connect_to_mongo():
     settings = get_settings()
     conn.client = AsyncIOMotorClient(settings.mongodb_url)
-    conn.database = conn.client["newshades-test"]
+    conn.database = conn.client[settings.mongodb_test_db]
     instance.set_db(conn.database)
 
 
