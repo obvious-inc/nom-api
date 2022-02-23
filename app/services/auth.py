@@ -1,9 +1,9 @@
-import asyncio
 import re
 
 import arrow
 
 from app.helpers.jwt import generate_jwt_token
+from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address, get_wallet_address_from_signed_message
 from app.models.server import Server
 from app.schemas.auth import AuthWalletSchema
@@ -63,7 +63,7 @@ async def generate_wallet_token(data: AuthWalletSchema) -> str:
         user = await create_user(UserCreateSchema(wallet_address=signed_address), fetch_ens=True)
 
         # TODO: delete this once things are live
-        asyncio.create_task(add_user_to_default_server(user_id=str(user.id)))
+        await queue_bg_task(add_user_to_default_server, str(user.id))
 
     token = generate_jwt_token({"sub": str(user.id)})
     return token

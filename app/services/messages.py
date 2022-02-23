@@ -1,4 +1,3 @@
-import asyncio
 import http
 from datetime import datetime, timezone
 from typing import List, Union
@@ -7,6 +6,7 @@ from urllib.parse import urlparse
 from fastapi import HTTPException
 
 from app.helpers.message_utils import get_message_content_mentions
+from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel
@@ -30,22 +30,24 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
 
         # TODO: broadcast notifications...
 
-    asyncio.create_task(
-        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_CREATE)
-    )
-    asyncio.create_task(
-        update_channel_last_message(channel_id=message.channel, message=message, current_user=current_user)
-    )
-    asyncio.create_task(
-        broadcast_channel_event(
-            channel_id=str(message.channel.pk),
-            user_id=str(current_user.id),
-            event=WebSocketServerEvent.CHANNEL_READ,
-            custom_data={"read_at": message.created_at.isoformat()},
-        )
-    )
+    bg_tasks = [
+        (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
+        (update_channel_last_message, (message.channel, message, current_user)),
+        (
+            broadcast_channel_event,
+            (
+                str(message.channel.pk),
+                str(current_user.id),
+                WebSocketServerEvent.CHANNEL_READ,
+                {"read_at": message.created_at.isoformat()},
+            ),
+        ),
+        (post_process_message_creation, (str(message.id), str(current_user.id))),
+    ]
 
-    asyncio.create_task(post_process_message_creation(message_id=str(message.id), user_id=str(current_user.id)))
+    # mypy has some issues with changing Callable signatures so we have to exclude that type check:
+    # https://github.com/python/mypy/issues/10740
+    await queue_bg_tasks(bg_tasks, concurrent=True)  # type: ignore[arg-type]
 
     return message
 
@@ -63,8 +65,8 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
 
     updated_item = await update_item(item=message, data=data)
 
-    asyncio.create_task(
-        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_UPDATE)
+    await queue_bg_task(
+        broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_UPDATE
     )
 
     return updated_item
@@ -81,8 +83,8 @@ async def delete_message(message_id: str, current_user: User):
     if not can_delete:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
-    asyncio.create_task(
-        broadcast_message_event(str(message.id), str(current_user.id), event=WebSocketServerEvent.MESSAGE_REMOVE)
+    await queue_bg_task(
+        broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_REMOVE
     )
 
     await delete_item(item=message)
@@ -136,13 +138,12 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
 
     if added:
         await message.commit()
-        asyncio.create_task(
-            broadcast_message_event(
-                str(message.id),
-                str(current_user.id),
-                event=WebSocketServerEvent.MESSAGE_REACTION_ADD,
-                custom_data={"reaction": reaction.dump(), "user": str(current_user.id)},
-            )
+        await queue_bg_task(
+            broadcast_message_event,
+            str(message.id),
+            str(current_user.id),
+            WebSocketServerEvent.MESSAGE_REACTION_ADD,
+            {"reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
     return message
@@ -178,13 +179,12 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
 
     if removed:
         await message.commit()
-        asyncio.create_task(
-            broadcast_message_event(
-                str(message.id),
-                str(current_user.id),
-                event=WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
-                custom_data={"reaction": reaction.dump(), "user": str(current_user.id)},
-            )
+        await queue_bg_task(
+            broadcast_message_event,
+            str(message.id),
+            str(current_user.id),
+            WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
+            {"reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
     return message
