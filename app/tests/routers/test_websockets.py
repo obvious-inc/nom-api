@@ -53,6 +53,23 @@ class TestWebsocketRoutes:
         assert response.json()["auth"] is not None
 
     @pytest.mark.asyncio
+    async def test_websocket_auth_pusher_suffix_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+    ):
+        suffix = "123123"
+        channel_id = f"private-{str(current_user.id)}-{suffix}"
+        socket_id = "134137.34944081"
+        form_data = {"provider": "pusher", "channel_name": channel_id, "socket_id": socket_id}
+        response = await authorized_client.post("/websockets/auth", data=form_data)
+        assert response.status_code == 200
+        assert "auth" in response.json()
+        assert response.json()["auth"] is not None
+
+    @pytest.mark.asyncio
     async def test_websocket_get_online_channels(
         self,
         app: FastAPI,

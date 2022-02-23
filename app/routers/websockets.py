@@ -19,8 +19,8 @@ async def post_websocket_authentication(
     if not provider or provider != "pusher":
         raise NotImplementedError("can only use Pusher for auth.")
 
-    expected_channel_name = f"private-{str(current_user.id)}"
-    if channel_name != expected_channel_name:
+    expected_start_channel_name = f"private-{str(current_user.id)}"
+    if not channel_name.startswith(expected_start_channel_name):
         raise Exception(f"problem establishing connection: unexpected channel name {channel_name}")
     auth = pusher_client.authenticate(channel=channel_name, socket_id=socket_id)
     return auth
