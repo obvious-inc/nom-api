@@ -1,11 +1,14 @@
 import json
 import logging
 
+from app.helpers.queue_utils import queue_bg_task
+from app.helpers.ws_events import WebSocketServerEvent
 from app.models.user import User
 from app.schemas.ws_events import CreateMarkChannelReadEvent
 from app.services.channels import update_channels_read_state
+from app.services.crud import update_item
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_connection_ready
+from app.services.websockets import broadcast_connection_ready, broadcast_user_event
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +61,22 @@ async def handle_pusher_client_event(event: dict):
 
 
 async def process_channel_occupied_event(channel_name: str, current_user: User):
-    update_data = {"$addToSet": {"online_channels": channel_name}}
+    update_data = {"$addToSet": {"online_channels": channel_name}, "$set": {"status": "online"}}
     await User.collection.update_one(filter={"_id": current_user.pk}, update=update_data)
+    await queue_bg_task(
+        broadcast_user_event, str(current_user.id), WebSocketServerEvent.USER_PRESENCE_UPDATE, {"status": "online"}
+    )
 
 
 async def process_channel_vacated_event(channel_name: str, current_user: User):
     update_data = {"$pull": {"online_channels": channel_name}}
     await User.collection.update_one(filter={"_id": current_user.pk}, update=update_data)
+    await current_user.reload()
+    if len(current_user.online_channels) == 0:
+        await update_item(item=current_user, data={"status": "offline"})
+        await queue_bg_task(
+            broadcast_user_event, str(current_user.id), WebSocketServerEvent.USER_PRESENCE_UPDATE, {"status": "offline"}
+        )
 
 
 async def process_channel_mark_read_event(event_model: CreateMarkChannelReadEvent, current_user: User):

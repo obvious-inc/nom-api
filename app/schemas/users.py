@@ -8,6 +8,8 @@ class UserSchema(APIBaseSchema):
     wallet_address: Optional[str]
     email: Optional[str]
 
+    status: Optional[str]
+
     class Config:
         schema_extra = {
             "example": {
@@ -15,6 +17,7 @@ class UserSchema(APIBaseSchema):
                 "display_name": "vitalik.eth",
                 "wallet_address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
                 "email": "test@newshades.xyz",
+                "status": "online",
             }
         }
 
