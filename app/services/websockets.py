@@ -31,12 +31,10 @@ async def get_online_channels(
             users = [await member.fetch() for member in channel.members]
     elif servers:
         members = []
-        [
+        for server in servers:
             members.extend(
                 await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
             )
-            for server in servers
-        ]
 
         users = [await member.user.fetch() for member in members]
     else:
