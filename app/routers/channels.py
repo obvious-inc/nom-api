@@ -14,7 +14,7 @@ from app.schemas.channels import (
     ServerChannelSchema,
 )
 from app.schemas.messages import MessageSchema
-from app.services.channels import create_channel, delete_channel
+from app.services.channels import create_channel, create_typing_indicator, delete_channel
 from app.services.crud import get_items
 from app.services.messages import get_messages
 
@@ -52,3 +52,8 @@ async def get_list_messages(channel_id, size: int = 50, current_user: User = Dep
 async def delete_remove_channel(channel_id, current_user: User = Depends(get_current_user)):
     channel = await delete_channel(channel_id=channel_id, current_user=current_user)
     return channel
+
+
+@router.post("/{channel_id}/typing", summary="Notify typing", status_code=http.HTTPStatus.NO_CONTENT)
+async def post_user_typing_in_channel(channel_id, current_user: User = Depends(get_current_user)):
+    await create_typing_indicator(channel_id, current_user)
