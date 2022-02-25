@@ -2,7 +2,7 @@ import asyncio
 import itertools
 import logging
 from asyncio import CancelledError, Task
-from typing import Any, Callable, List, Tuple, cast
+from typing import Any, Callable, Dict, List, Tuple
 
 from sentry_sdk import capture_exception
 
@@ -16,10 +16,9 @@ async def _get_bg_task_name():
     return f"BackgroundTask-{_bg_task_name_counter}"
 
 
-async def _build_coro_from_function_tuple(f: Tuple[Callable, Tuple[Any, ...], dict]):
-    kwargs = {}
+async def _build_coro_from_function_tuple(f: Tuple[Any, ...]):
+    kwargs: Dict[Any, Any] = {}
     if len(f) == 2:
-        f = cast(Tuple[Callable, Tuple[Any, ...]], f)
         method, args = f
     else:
         method, args, kwargs = f

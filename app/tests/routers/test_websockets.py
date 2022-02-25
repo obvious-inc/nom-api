@@ -9,7 +9,7 @@ from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema
 from app.services.crud import create_item, get_items
-from app.services.websockets import get_online_channels
+from app.services.websockets import get_channel_online_channels
 
 
 class TestWebsocketRoutes:
@@ -93,9 +93,10 @@ class TestWebsocketRoutes:
         current_user.online_channels = [f"private-{str(current_user.id)}"]
         await current_user.commit()
 
-        channels = await get_online_channels(message=message, current_user=current_user)
+        message_channel = await message.channel.fetch()
+        channels = await get_channel_online_channels(channel=message_channel, current_user=current_user)
         assert len(channels) == 1
-        channels = await get_online_channels(message=message, current_user=current_user)
+        channels = await get_channel_online_channels(channel=message_channel, current_user=current_user)
         assert len(channels) == 1
-        channels = await get_online_channels(message=message, current_user=current_user)
+        channels = await get_channel_online_channels(channel=message_channel, current_user=current_user)
         assert len(channels) == 1

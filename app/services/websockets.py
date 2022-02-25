@@ -1,65 +1,88 @@
 import logging
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from app.helpers.websockets import pusher_client
 from app.helpers.ws_events import WebSocketServerEvent
-from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
-from app.services.base import get_connection_ready_data
 from app.services.crud import get_item_by_id, get_items
 from app.services.users import get_user_by_id
 
 logger = logging.getLogger(__name__)
 
 
-async def get_online_channels(
-    message: Optional[Union[Message, APIDocument]],
-    current_user: User,
-    servers: Optional[List[Server]] = None,
-) -> List[str]:
-
-    if message:
-        server = message.server  # type: Server
-        if server:
-            members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
-            users = [await member.user.fetch() for member in members]
-        else:
-            channel = await message.channel.fetch()
-            users = [await member.fetch() for member in channel.members]
-    elif servers:
-        members = []
-        for server in servers:
-            members.extend(
-                await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
-            )
-
-        users = [await member.user.fetch() for member in members]
-    else:
-        raise ValueError("expected one of 'message' or 'servers'")
-
+async def _get_users_online_channels(users: List[User]):
     channels = []
     for user in users:  # type: User
         channels.extend(user.online_channels)
-    return channels
+    return list(set(channels))
+
+
+async def get_server_online_channels(server: Server, current_user: User):
+    members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
+    users = [await member.user.fetch() for member in members]
+    return await _get_users_online_channels(users)
+
+
+async def get_channel_online_channels(channel: Channel, current_user: User):
+    members = []
+    if channel.kind == "dm":
+        members = channel.members
+    elif channel.kind == "server":
+        members = await get_items(
+            filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=current_user
+        )
+    users = [await member.user.fetch() for member in members]
+    return await _get_users_online_channels(users)
+
+
+async def get_servers_online_channels(servers: List[Server], current_user: User):
+    members = []
+    for server in servers:
+        members.extend(
+            await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
+        )
+
+    users = [await member.user.fetch() for member in members]
+    return await _get_users_online_channels(users)
 
 
 async def pusher_broadcast_messages(
     event: WebSocketServerEvent,
     current_user: User,
     data: dict,
+    user: Optional[User] = None,
     message: Optional[Message] = None,
+    channel: Optional[Channel] = None,
+    server: Server = None,
     servers: Optional[List[Server]] = None,
     pusher_channel: Optional[str] = None,
+    scope: str = None,
 ):
-    pusher_channels = current_user.online_channels
-    if message or servers:
-        pusher_channels = await get_online_channels(message=message, servers=servers, current_user=current_user)
-
-    if pusher_channel:
+    pusher_channels = []
+    if scope == "server" and server:
+        pusher_channels = await get_server_online_channels(server=server, current_user=current_user)
+    elif scope == "channel" and channel:
+        pusher_channels = await get_channel_online_channels(channel=channel, current_user=current_user)
+    elif scope == "message" and message:
+        channel = await message.channel.fetch()
+        if channel:
+            pusher_channels = await get_channel_online_channels(channel=channel, current_user=current_user)
+    elif scope == "user" and user:
+        pusher_channels = await _get_users_online_channels([user])
+    elif scope == "current_user" and current_user:
+        pusher_channels = await _get_users_online_channels([current_user])
+    elif scope == "servers" and servers:
+        pusher_channels = await get_servers_online_channels(servers, current_user=current_user)
+    elif scope == "user_servers" and servers:
+        pusher_channels = await get_servers_online_channels(servers, current_user=current_user)
+    elif scope == "pusher_channel" and pusher_channel:
         pusher_channels = [pusher_channel]
+
+    if not pusher_channels:
+        raise Exception(f"couldn't find pusher channels for scope {scope} and event {event}")
 
     event_name: str = event.value
     has_errors = False
@@ -74,47 +97,67 @@ async def pusher_broadcast_messages(
         pusher_channels = pusher_channels[90:]
 
     if not has_errors:
-        logger.debug("Event broadcast successful. [event_name=%s]", event_name)
+        logger.info("Event broadcast successful. [event_name=%s]", event_name)
 
 
 async def broadcast_message_event(
-    message_id: str, user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+    message_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
-    user = await get_user_by_id(user_id=user_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    current_user = await get_user_by_id(user_id=current_user_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
 
     event_data = {"message": message.dump()}
     if custom_data:
         event_data.update(custom_data)
 
-    await pusher_broadcast_messages(event=event, data=event_data, current_user=user, message=message)
-
-
-async def broadcast_connection_ready(current_user: User, channel: str):
-    data = await get_connection_ready_data(current_user=current_user)
     await pusher_broadcast_messages(
-        event=WebSocketServerEvent.CONNECTION_READY, data=data, current_user=current_user, pusher_channel=channel
+        event=event, data=event_data, current_user=current_user, scope="message", message=message
     )
 
 
-async def broadcast_channel_event(channel_id: str, user_id: str, event: WebSocketServerEvent, custom_data: dict):
-    user = await get_user_by_id(user_id=user_id)
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=user)
+async def broadcast_connection_ready(current_user: User, channel: str):
+    raise NotImplementedError("no longer in use!")
+
+
+async def broadcast_channel_event(
+    channel_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+):
+    current_user = await get_user_by_id(user_id=current_user_id)
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
 
     event_data = {"channel": channel.dump()}
     if custom_data:
         event_data.update(custom_data)
 
-    await pusher_broadcast_messages(event=event, data=event_data, current_user=user)
+    await pusher_broadcast_messages(
+        event=event, data=event_data, current_user=current_user, scope="channel", channel=channel
+    )
 
 
-async def broadcast_user_event(user_id: str, event: WebSocketServerEvent, custom_data: dict) -> None:
-    user = await get_user_by_id(user_id=user_id)
-    event_data = {"user": user.dump()}
+async def broadcast_current_user_event(
+    current_user_id, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+):
+    current_user = await get_user_by_id(user_id=current_user_id)
+
+    event_data = {}
     if custom_data:
         event_data.update(custom_data)
 
-    server_members = await get_items({"user": user.id}, result_obj=ServerMember, current_user=user, size=None)
+    await pusher_broadcast_messages(event=event, data=event_data, current_user=current_user, scope="current_user")
+
+
+async def broadcast_user_servers_event(current_user_id: str, event: WebSocketServerEvent, custom_data: dict) -> None:
+    current_user = await get_user_by_id(user_id=current_user_id)
+
+    event_data = {"user": current_user.dump()}
+    if custom_data:
+        event_data.update(custom_data)
+
+    server_members = await get_items(
+        {"user": current_user}, result_obj=ServerMember, current_user=current_user, size=None
+    )
     servers = [member.server for member in server_members]
 
-    await pusher_broadcast_messages(event=event, data=event_data, current_user=user, servers=servers)
+    await pusher_broadcast_messages(
+        event=event, data=event_data, current_user=current_user, scope="user_servers", servers=servers
+    )
