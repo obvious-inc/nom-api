@@ -47,7 +47,7 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
     # https://github.com/python/mypy/issues/10740
-    await queue_bg_tasks(bg_tasks, concurrent=True)  # type: ignore[arg-type]
+    await queue_bg_tasks(bg_tasks)  # type: ignore[arg-type]
 
     return message
 
