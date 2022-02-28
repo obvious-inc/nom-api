@@ -82,7 +82,7 @@ async def pusher_broadcast_messages(
         pusher_channels = [pusher_channel]
 
     if not pusher_channels:
-        logger.info("no online pusher channels for scope {scope} and event {event}")
+        logger.debug("no online pusher channels. [scope=%s, event=%s]", scope, event)
 
     event_name: str = event.value
     has_errors = False
