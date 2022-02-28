@@ -2,7 +2,7 @@ import asyncio
 import itertools
 import logging
 from asyncio import CancelledError, Task
-from typing import Any, Callable, List
+from typing import Any, Callable, Dict, List, Tuple
 
 from sentry_sdk import capture_exception
 
@@ -16,9 +16,13 @@ async def _get_bg_task_name():
     return f"BackgroundTask-{_bg_task_name_counter}"
 
 
-async def _build_coro_from_function_tuple(f: tuple[Callable, tuple[Any, ...]]):
-    method, args = f
-    return method(*args)
+async def _build_coro_from_function_tuple(f: Tuple[Any, ...]):
+    kwargs: Dict[Any, Any] = {}
+    if len(f) == 2:
+        method, args = f
+    else:
+        method, args, kwargs = f
+    return method(*args, **kwargs)
 
 
 async def _get_running_bg_tasks():
@@ -66,14 +70,14 @@ async def handle_results(results, tasks: List[Task]):
             capture_exception(result)
 
 
-async def dispatch_concurrent_fs(fs: List[tuple[Callable, tuple[Any, ...]]]):
+async def dispatch_concurrent_fs(fs: List[tuple[Callable, tuple[Any, ...], dict]]):
     coros = [await _build_coro_from_function_tuple(f) for f in fs]
     tasks = [asyncio.create_task(coro, name=await _get_bg_task_name()) for coro in coros]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     await handle_results(results, tasks)
 
 
-async def dispatch_serial_fs(fs: List[tuple[Callable, tuple[Any, ...]]]):
+async def dispatch_serial_fs(fs: List[tuple[Callable, tuple[Any, ...], dict]]):
     for f in fs:
         coro = await _build_coro_from_function_tuple(f)
         task = asyncio.create_task(coro, name=await _get_bg_task_name())
@@ -88,11 +92,11 @@ async def dispatch_serial_fs(fs: List[tuple[Callable, tuple[Any, ...]]]):
             break
 
 
-async def queue_bg_task(f: Callable, *args: Any):
-    asyncio.create_task(dispatch_concurrent_fs([(f, args)]))
+async def queue_bg_task(f: Callable, *args: Any, **kwargs: Any):
+    asyncio.create_task(dispatch_concurrent_fs([(f, args, kwargs)]))
 
 
-async def queue_bg_tasks(fs: List[tuple[Callable, tuple[Any, ...]]], concurrent=True):
+async def queue_bg_tasks(fs: List[tuple[Callable, tuple[Any, ...], dict]], concurrent=True):
     if not concurrent:
         asyncio.create_task(dispatch_serial_fs(fs))
     else:

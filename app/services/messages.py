@@ -17,7 +17,7 @@ from app.services.channels import update_channel_last_message
 from app.services.crud import create_item, delete_item, get_item_by_id, get_items, update_item
 from app.services.integrations import get_gif_by_url
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_channel_event, broadcast_message_event
+from app.services.websockets import broadcast_current_user_event, broadcast_message_event
 
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
@@ -34,12 +34,11 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
         (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
         (update_channel_last_message, (message.channel, message, current_user)),
         (
-            broadcast_channel_event,
+            broadcast_current_user_event,
             (
-                str(message.channel.pk),
                 str(current_user.id),
                 WebSocketServerEvent.CHANNEL_READ,
-                {"read_at": message.created_at.isoformat()},
+                {"channel": (await message.channel.fetch()).dump(), "read_at": message.created_at.isoformat()},
             ),
         ),
         (post_process_message_creation, (str(message.id), str(current_user.id))),

@@ -6,13 +6,16 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
+from app.helpers.queue_utils import queue_bg_task
+from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
-from app.models.server import Server
+from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema, DMChannelCreateSchema, ServerChannelCreateSchema
 from app.services.crud import create_item, delete_item, get_item, get_item_by_id, get_items, update_item
+from app.services.websockets import broadcast_channel_event
 
 
 async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
@@ -103,3 +106,27 @@ async def update_channels_read_state(channel_ids: List[str], current_user: User,
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=current_user)
         else:
             await update_item(item=read_state, data={"last_read_at": last_read_at})
+
+
+async def create_typing_indicator(channel_id: str, current_user: User) -> None:
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    notify = False
+
+    if channel.kind == "server":
+        user_member = await get_item(
+            filters={"user": current_user, "server": channel.server.pk},
+            result_obj=ServerMember,
+            current_user=current_user,
+        )
+        notify = True if user_member else False
+    elif channel.kind == "dm":
+        notify = str(current_user.id) in channel.members
+
+    if notify:
+        await queue_bg_task(
+            broadcast_channel_event,
+            channel_id,
+            str(current_user.id),
+            WebSocketServerEvent.USER_TYPING,
+            {"user": current_user.dump()},
+        )
