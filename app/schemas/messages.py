@@ -26,12 +26,14 @@ class MessageSchema(APIBaseSchema):
     mentions: List[MessageMentionSchema]
     edited_at: Optional[datetime]
     embeds: List[dict]
+    reply_to: Optional[PyObjectId]
 
 
 class MessageCreateSchema(APIBaseCreateSchema):
     server: Optional[str]
     channel: str
     content: str
+    reply_to: Optional[str]
 
 
 class MessageUpdateSchema(APIBaseUpdateSchema):

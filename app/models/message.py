@@ -31,5 +31,7 @@ class Message(APIDocument):
     embeds = fields.ListField(fields.DictField, default=[])
     mentions = fields.ListField(fields.EmbeddedField(MessageMention), default=[])
 
+    reply_to = fields.ReferenceField("Message", required=False, default=None)
+
     class Meta:
         collection_name = "messages"
