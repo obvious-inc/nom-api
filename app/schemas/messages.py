@@ -21,7 +21,8 @@ class MessageSchema(APIBaseSchema):
     author: PyObjectId = Field()
     server: Optional[PyObjectId] = Field()
     channel: PyObjectId = Field()
-    content: str
+    content: Optional[str]
+    blocks: Optional[List[dict]]
     reactions: List[MessageReactionSchema]
     mentions: List[MessageMentionSchema]
     edited_at: Optional[datetime]
@@ -31,8 +32,10 @@ class MessageSchema(APIBaseSchema):
 class MessageCreateSchema(APIBaseCreateSchema):
     server: Optional[str]
     channel: str
-    content: str
+    content: Optional[str]
+    blocks: List[dict]
 
 
 class MessageUpdateSchema(APIBaseUpdateSchema):
     content: Optional[str]
+    blocks: Optional[List[dict]]

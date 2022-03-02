@@ -1,11 +1,12 @@
 import http
+import logging
 from datetime import datetime, timezone
 from typing import List, Union
 from urllib.parse import urlparse
 
 from fastapi import HTTPException
 
-from app.helpers.message_utils import get_message_content_mentions
+from app.helpers.message_utils import blockify_content, get_message_content_mentions, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -19,8 +20,17 @@ from app.services.integrations import get_gif_by_url
 from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_current_user_event, broadcast_message_event
 
+logger = logging.getLogger(__name__)
+
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
+    if message_model.content and not message_model.blocks:
+        message_model.blocks = await blockify_content(message_model.content)
+    elif not message_model.content and message_model.blocks:
+        message_model.content = await stringify_blocks(message_model.blocks)
+    else:
+        logger.warning(f"unexpected situation with message_model: {message_model}")
+
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
     mentions = await get_message_content_mentions(message.content)
     if mentions:
