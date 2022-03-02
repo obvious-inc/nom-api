@@ -31,12 +31,12 @@ async def blockify_content(content: str) -> List[dict]:
 
 async def stringify_text_node(text_node):
     text = text_node.get("text", "")
-    if text_node.get("strikethrough"):
-        text = f"~{text}~"
-    if text_node.get("italic"):
-        text = f"_{text}_"
     if text_node.get("bold"):
         text = f"*{text}*"
+    if text_node.get("italic"):
+        text = f"_{text}_"
+    if text_node.get("strikethrough"):
+        text = f"~{text}~"
 
     return text
 
