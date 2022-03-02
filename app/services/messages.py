@@ -1,5 +1,4 @@
 import http
-import logging
 from datetime import datetime, timezone
 from typing import List, Union
 from urllib.parse import urlparse
@@ -20,16 +19,14 @@ from app.services.integrations import get_gif_by_url
 from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_current_user_event, broadcast_message_event
 
-logger = logging.getLogger(__name__)
-
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
-    if message_model.content and not message_model.blocks:
-        message_model.blocks = await blockify_content(message_model.content)
-    elif not message_model.content and message_model.blocks:
+    if message_model.blocks and not message_model.content:
         message_model.content = await stringify_blocks(message_model.blocks)
+    elif message_model.content and not message_model.blocks:
+        message_model.blocks = await blockify_content(message_model.content)
     else:
-        logger.warning(f"unexpected situation with message_model: {message_model}")
+        pass
 
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
     mentions = await get_message_content_mentions(message.content)
@@ -68,7 +65,14 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
 
     data = update_data.dict()
 
-    changed_content = update_data.content is not None
+    if update_data.blocks and not update_data.content:
+        update_data.content = await stringify_blocks(update_data.blocks)
+    elif update_data.content and not update_data.blocks:
+        update_data.blocks = await blockify_content(update_data.content)
+    else:
+        pass
+
+    changed_content = any([update_data.content, update_data.blocks])
     if changed_content:
         data.update({"edited_at": datetime.now(timezone.utc)})
 

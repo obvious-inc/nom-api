@@ -29,38 +29,46 @@ async def blockify_content(content: str) -> List[dict]:
     return blocks
 
 
-async def stringify_paragraph(paragraph_block):
-    paragraph_text = ""
-    for element in paragraph_block.get("children"):
-        text = element.get("text")
-        if element.get("bold"):
-            paragraph_text += f"**{text}**"
-        elif element.get("italic"):
-            paragraph_text += f"*{text}*"
-        elif element.get("strikethrough"):
-            paragraph_text += f"~~{text}~~"
-        elif element.get("type") == "user":
-            ref = element.get("ref")
-            paragraph_text += f"<@u:{ref}>"
-        else:
-            paragraph_text += text
-    return paragraph_text
+async def stringify_text_node(text_node):
+    text = text_node.get("text", "")
+    if text_node.get("bold"):
+        return f"**{text}**"
+    elif text_node.get("italic"):
+        return f"_{text}_"
+    elif text_node.get("strikethrough"):
+        return f"~~{text}~~"
+    else:
+        return text
+
+
+async def stringify_node(node: dict) -> str:
+    text = node.get("text")
+    if text:
+        return await stringify_text_node(node)
+    else:
+        return await stringify_element(node)
+
+
+async def stringify_element(element: dict) -> str:
+    children = "".join([await stringify_node(child) for child in element.get("children", [])])
+    el_type = element.get("type")
+
+    if el_type == "paragraph":
+        return children
+    elif el_type == "link":
+        return f"[{children}]({element.get('url')})"
+    elif el_type == "user":
+        return f"<@u:{element.get('ref')}>"
+    else:
+        logger.warning(f"unknown element type: {el_type}")
+        return ""
 
 
 async def stringify_blocks(blocks: List[dict]) -> str:
-    text_lines = []
+    elements = []
     for block in blocks:
-        logger.debug(f"block: {block}")
-        parsed_text = ""
-        block_type = block.get("type")
-        if block_type in ["paragraph", "link"]:
-            parsed_text = await stringify_paragraph(block)
-        else:
-            logger.warning(f"unknown block type: {block_type}")
+        elements.append(await stringify_element(block))
 
-        logger.debug(f"parsed text: {parsed_text}")
-        text_lines.append(parsed_text)
-
-    text = "\n".join(text_lines)
+    text = "\n".join(elements)
     logger.debug(f"text: {text}")
     return text
