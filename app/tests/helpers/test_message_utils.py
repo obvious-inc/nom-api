@@ -56,7 +56,7 @@ class TestMessageUtils:
                         "children": [{"text": "hey "}, {"text": "bold", "bold": True}, {"text": " text"}],
                     },
                 ],
-                "hey **bold** text",
+                "hey *bold* text",
             ),
             (
                 [
@@ -66,6 +66,32 @@ class TestMessageUtils:
                     },
                 ],
                 "hey _italic_ text",
+            ),
+            (
+                [
+                    {
+                        "type": "paragraph",
+                        "children": [
+                            {"text": "hey "},
+                            {"text": "strikethrough", "strikethrough": True},
+                            {"text": " text"},
+                        ],
+                    },
+                ],
+                "hey ~strikethrough~ text",
+            ),
+            (
+                [
+                    {
+                        "type": "paragraph",
+                        "children": [
+                            {"text": "hey "},
+                            {"strikethrough": True, "bold": True, "text": "all", "italic": True},
+                            {"text": " text"},
+                        ],
+                    },
+                ],
+                "hey *_~all~_* text",
             ),
             (
                 [
@@ -85,7 +111,7 @@ class TestMessageUtils:
                         ],
                     },
                 ],
-                "Hi **there**!\nHere's a link: [**google**](http://google.com/)",
+                "Hi *there*!\nHere's a link: [*google*](http://google.com/)",
             ),
             (
                 [
