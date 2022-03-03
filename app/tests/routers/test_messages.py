@@ -547,3 +547,57 @@ class TestMessagesRoutes:
         assert json_response["blocks"] == message.blocks == blocks
         assert message.edited_at is not None
         assert message.edited_at != message.created_at
+
+    @pytest.mark.asyncio
+    async def test_create_message_without_content_and_blocks_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        data = {"server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_edit_message_with_empty_blocks_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        message = await get_item_by_id(
+            id_=channel_message.id, result_obj=Message, current_user=current_user
+        )  # type: Message
+        assert message.edited_at is None
+
+        data: dict = {"blocks": []}
+        response = await authorized_client.patch(f"/messages/{str(channel_message.id)}", json=data)
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_edit_message_with_empty_content_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        message = await get_item_by_id(
+            id_=channel_message.id, result_obj=Message, current_user=current_user
+        )  # type: Message
+        assert message.edited_at is None
+
+        data = {"content": ""}
+        response = await authorized_client.patch(f"/messages/{str(channel_message.id)}", json=data)
+        assert response.status_code == 422

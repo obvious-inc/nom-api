@@ -70,5 +70,4 @@ async def stringify_blocks(blocks: List[dict]) -> str:
         elements.append(await stringify_element(block))
 
     text = "\n".join(elements)
-    logger.debug(f"text: {text}")
     return text
