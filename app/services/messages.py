@@ -63,8 +63,6 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
     if not message.author == current_user:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
-    data = update_data.dict()
-
     if update_data.blocks and not update_data.content:
         update_data.content = await stringify_blocks(update_data.blocks)
     elif update_data.content and not update_data.blocks:
@@ -72,6 +70,7 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
     else:
         pass
 
+    data = update_data.dict()
     changed_content = any([update_data.content, update_data.blocks])
     if changed_content:
         data.update({"edited_at": datetime.now(timezone.utc)})

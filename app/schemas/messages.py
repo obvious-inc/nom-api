@@ -32,10 +32,10 @@ class MessageSchema(APIBaseSchema):
 class MessageCreateSchema(APIBaseCreateSchema):
     server: Optional[str]
     channel: str
-    content: Optional[str]
+    content: Optional[str] = ""
     blocks: Optional[List[dict]] = []
 
 
 class MessageUpdateSchema(APIBaseUpdateSchema):
-    content: Optional[str]
+    content: Optional[str] = ""
     blocks: Optional[List[dict]] = []

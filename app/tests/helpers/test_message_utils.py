@@ -91,7 +91,7 @@ class TestMessageUtils:
                         ],
                     },
                 ],
-                "hey *_~all~_* text",
+                "hey ~_*all*_~ text",
             ),
             (
                 [
