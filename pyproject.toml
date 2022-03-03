@@ -10,6 +10,7 @@ python = "^3.9"
 arrow = "^1.2"
 asgi-lifespan = "^1.0"
 boto3 = "^1.20.51"
+coverage = "^6.3.2"
 cffi = "^1.15"
 cryptography = "^36.0"
 dnspython = "^2.1"
@@ -67,3 +68,18 @@ skip = ".git,.mypy_cache,.venv,.pytest_cache,.vscode,__pycache__"
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[tool.coverage.run]
+omit = ["*/test*"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+skip_empty = true
+skip_covered = true
+
+exclude_lines = [
+    "if __name__ == .__main__.:",  # ignore main runs
+    "if not settings.testing", # ignore production-specific setup
+    "if settings.profiling" # ignore profiling
+]
