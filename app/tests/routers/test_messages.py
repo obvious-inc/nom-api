@@ -601,3 +601,30 @@ class TestMessagesRoutes:
         data = {"content": ""}
         response = await authorized_client.patch(f"/messages/{str(channel_message.id)}", json=data)
         assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_reply_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 1
+
+        data = {"content": "reply!", "server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post(f"/messages/{str(channel_message.id)}/replies", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert "content" in json_response
+        assert json_response["content"] == data["content"]
+        assert json_response["server"] == data["server"] == str(server.id)
+        assert json_response["channel"] == data["channel"] == str(server_channel.id)
+        assert json_response["reply_to"] == str(channel_message.id)
+
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        assert len(messages) == 2

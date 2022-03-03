@@ -27,6 +27,7 @@ class MessageSchema(APIBaseSchema):
     mentions: List[MessageMentionSchema]
     edited_at: Optional[datetime]
     embeds: List[dict]
+    reply_to: Optional[PyObjectId]
 
 
 class MessageCreateSchema(APIBaseCreateSchema):
@@ -34,6 +35,7 @@ class MessageCreateSchema(APIBaseCreateSchema):
     channel: str
     content: Optional[str] = ""
     blocks: Optional[List[dict]] = []
+    reply_to: Optional[str]
 
     @root_validator(pre=True)
     def check_blocks_or_content_present(cls, values):
