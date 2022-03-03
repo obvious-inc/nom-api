@@ -8,6 +8,7 @@ from app.schemas.messages import MessageCreateSchema, MessageSchema, MessageUpda
 from app.services.messages import (
     add_reaction_to_message,
     create_message,
+    create_reply_message,
     delete_message,
     remove_reaction_from_message,
     update_message,
@@ -78,3 +79,17 @@ async def delete_remove_reaction(
     current_user: User = Depends(get_current_user),
 ):
     await remove_reaction_from_message(message_id, reaction_emoji, current_user=current_user)
+
+
+@router.post(
+    "/{message_id}/replies",
+    response_model=MessageSchema,
+    summary="Create reply to original message",
+    status_code=http.HTTPStatus.CREATED,
+)
+async def post_create_reply(
+    message_id: str,
+    message: MessageCreateSchema = Body(...),
+    current_user: User = Depends(get_current_user),
+):
+    return await create_reply_message(message_id, message_model=message, current_user=current_user)

@@ -207,3 +207,13 @@ async def post_process_message_creation(message_id: str, user_id: str):
         return
 
     await update_item(item=message, data=data, current_user=user)
+
+
+async def create_reply_message(
+    reply_to_message_id: str,
+    message_model: MessageCreateSchema,
+    current_user: User,
+) -> Union[Message, APIDocument]:
+    message_model.reply_to = reply_to_message_id
+    reply = await create_message(message_model=message_model, current_user=current_user)
+    return reply
