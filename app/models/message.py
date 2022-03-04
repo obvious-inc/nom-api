@@ -23,7 +23,8 @@ class Message(APIDocument):
     server = fields.ReferenceField("Server", required=False, default=None)
     author = fields.ReferenceField("User", required=True)
 
-    content = fields.StrField()  # TODO: prolly not only a string
+    content = fields.StrField(required=False, default="")
+    blocks = fields.ListField(fields.DictField, default=[])
 
     edited_at = fields.AwareDateTimeField(required=False, default=None)
 

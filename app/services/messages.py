@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException
 
-from app.helpers.message_utils import get_message_content_mentions
+from app.helpers.message_utils import blockify_content, get_message_content_mentions, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -21,6 +21,13 @@ from app.services.websockets import broadcast_current_user_event, broadcast_mess
 
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
+    if message_model.blocks and not message_model.content:
+        message_model.content = await stringify_blocks(message_model.blocks)
+    elif message_model.content and not message_model.blocks:
+        message_model.blocks = await blockify_content(message_model.content)
+    else:
+        pass
+
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
     mentions = await get_message_content_mentions(message.content)
     if mentions:
@@ -56,9 +63,15 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
     if not message.author == current_user:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
-    data = update_data.dict()
+    if update_data.blocks and not update_data.content:
+        update_data.content = await stringify_blocks(update_data.blocks)
+    elif update_data.content and not update_data.blocks:
+        update_data.blocks = await blockify_content(update_data.content)
+    else:
+        pass
 
-    changed_content = update_data.content is not None
+    data = update_data.dict()
+    changed_content = any([update_data.content, update_data.blocks])
     if changed_content:
         data.update({"edited_at": datetime.now(timezone.utc)})
 

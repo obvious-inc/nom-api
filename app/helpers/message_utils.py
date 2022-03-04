@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -20,3 +21,53 @@ async def get_message_content_mentions(content):
         mentions.append((mention_type, mention_id))
 
     return mentions
+
+
+async def blockify_content(content: str) -> List[dict]:
+    paragraphs = content.split("\n")
+    blocks = [{"type": "paragraph", "children": [{"text": paragraph}]} for paragraph in paragraphs]
+    return blocks
+
+
+async def stringify_text_node(text_node):
+    text = text_node.get("text", "")
+    if text_node.get("bold"):
+        text = f"*{text}*"
+    if text_node.get("italic"):
+        text = f"_{text}_"
+    if text_node.get("strikethrough"):
+        text = f"~{text}~"
+
+    return text
+
+
+async def stringify_node(node: dict) -> str:
+    text = node.get("text")
+    if text:
+        return await stringify_text_node(node)
+    else:
+        return await stringify_element(node)
+
+
+async def stringify_element(element: dict) -> str:
+    children = "".join([await stringify_node(child) for child in element.get("children", [])])
+    el_type = element.get("type")
+
+    if el_type == "paragraph":
+        return children
+    elif el_type == "link":
+        return f"[{children}]({element.get('url')})"
+    elif el_type == "user":
+        return f"<@u:{element.get('ref')}>"
+    else:
+        logger.warning(f"unknown element type: {el_type}")
+        return ""
+
+
+async def stringify_blocks(blocks: List[dict]) -> str:
+    elements = []
+    for block in blocks:
+        elements.append(await stringify_element(block))
+
+    text = "\n".join(elements)
+    return text

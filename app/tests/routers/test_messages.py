@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.helpers.message_utils import blockify_content
 from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
 from app.models.server import Server
@@ -465,6 +466,141 @@ class TestMessagesRoutes:
         assert len(mentions) == 1
         assert mentions[0]["type"] == "user"
         assert mentions[0]["id"] == str(guest_user.id)
+
+    @pytest.mark.asyncio
+    async def test_create_message_with_blocks(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        text = "gm!"
+        blocks = await blockify_content(content=text)
+        data = {"blocks": blocks, "server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "content" in json_response
+        assert "blocks" in json_response
+        assert json_response["content"] == text
+        assert json_response["blocks"] == blocks
+        assert json_response["server"] == data["server"] == str(server.id)
+        assert json_response["channel"] == data["channel"] == str(server_channel.id)
+
+    @pytest.mark.asyncio
+    async def test_create_message_with_blocks_and_content(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        text = "gm!"
+        blocks = await blockify_content(content=text)
+        # take client's content as final 'content' value
+        content = "random stuff"
+        data = {"blocks": blocks, "content": content, "server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "content" in json_response
+        assert "blocks" in json_response
+        assert json_response["content"] == content
+        assert json_response["blocks"] == blocks
+        assert json_response["server"] == data["server"] == str(server.id)
+        assert json_response["channel"] == data["channel"] == str(server_channel.id)
+
+    @pytest.mark.asyncio
+    async def test_edit_message_blocks(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        message = await get_item_by_id(
+            id_=channel_message.id, result_obj=Message, current_user=current_user
+        )  # type: Message
+        assert message.edited_at is None
+
+        content = "new message update!"
+        blocks = await blockify_content(content)
+        data = {"blocks": blocks}
+        response = await authorized_client.patch(f"/messages/{str(channel_message.id)}", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message is not None
+        assert json_response["id"] == str(message.id)
+        assert json_response["content"] == message.content == content
+        assert json_response["blocks"] == message.blocks == blocks
+        assert message.edited_at is not None
+        assert message.edited_at != message.created_at
+
+    @pytest.mark.asyncio
+    async def test_create_message_without_content_and_blocks_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        data = {"server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_edit_message_with_empty_blocks_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        message = await get_item_by_id(
+            id_=channel_message.id, result_obj=Message, current_user=current_user
+        )  # type: Message
+        assert message.edited_at is None
+
+        data: dict = {"blocks": []}
+        response = await authorized_client.patch(f"/messages/{str(channel_message.id)}", json=data)
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_edit_message_with_empty_content_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        message = await get_item_by_id(
+            id_=channel_message.id, result_obj=Message, current_user=current_user
+        )  # type: Message
+        assert message.edited_at is None
+
+        data = {"content": ""}
+        response = await authorized_client.patch(f"/messages/{str(channel_message.id)}", json=data)
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_reply_message(
