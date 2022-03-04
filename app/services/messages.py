@@ -1,4 +1,5 @@
 import http
+import logging
 from datetime import datetime, timezone
 from typing import List, Union
 from urllib.parse import urlparse
@@ -18,6 +19,8 @@ from app.services.crud import create_item, delete_item, get_item_by_id, get_item
 from app.services.integrations import get_gif_by_url
 from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_current_user_event, broadcast_message_event
+
+logger = logging.getLogger(__name__)
 
 
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
@@ -220,14 +223,10 @@ async def process_message_mentions(message_id: str, user_id: str):
     user = await get_user_by_id(user_id=user_id)
     message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
     mentions = await get_message_mentions(message)
-    if not mentions:
-        return
-
-    mentions_obj = [{"type": mention_type, "id": mention_id} for mention_type, mention_id in mentions]
-    data = {"mentions": mentions_obj}
-    await update_item(item=message, data=data)
-
-    # TODO: broadcast notifications...
+    for mention_type, mention_ref in mentions:
+        logger.debug(f"should send notification of type {mention_type} to {mention_ref}")
+        # TODO: Broadcast WebSocket events
+        # TODO: Broadcast push notifications
 
 
 async def create_reply_message(

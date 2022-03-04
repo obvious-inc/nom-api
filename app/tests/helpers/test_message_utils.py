@@ -137,7 +137,29 @@ class TestMessageUtils:
                         ],
                     },
                 ],
-                "hey <@u:123123123>, you around?",
+                "hey @<u:123123123>, you around?",
+            ),
+            (
+                [
+                    {
+                        "type": "paragraph",
+                        "children": [
+                            {"text": "hey "},
+                            {"type": "broadcast", "ref": "here"},
+                            {"text": "!"},
+                        ],
+                    },
+                ],
+                "hey @<b:here>!",
+            ),
+            (
+                [
+                    {
+                        "type": "unknown",
+                        "children": [{"text": "hey"}],
+                    },
+                ],
+                "",
             ),
         ],
     )

@@ -470,7 +470,7 @@ class TestMessagesRoutes:
     ):
 
         data = {
-            "content": f"hey @<b:here>, what up?",
+            "content": "hey @<b:here>, what up?",
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
