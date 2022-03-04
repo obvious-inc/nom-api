@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException
 
-from app.helpers.message_utils import blockify_content, get_message_content_mentions, stringify_blocks
+from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -29,13 +29,6 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
         pass
 
     message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
-    mentions = await get_message_content_mentions(message.content)
-    if mentions:
-        mentions_obj = [{"type": mention_type, "id": mention_id} for mention_type, mention_id in mentions]
-        data = {"mentions": mentions_obj}
-        message = await update_item(item=message, data=data)
-
-        # TODO: broadcast notifications...
 
     bg_tasks = [
         (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
@@ -49,6 +42,7 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
             ),
         ),
         (post_process_message_creation, (str(message.id), str(current_user.id))),
+        (process_message_mentions, (str(message.id), str(current_user.id))),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -220,6 +214,20 @@ async def post_process_message_creation(message_id: str, user_id: str):
         return
 
     await update_item(item=message, data=data, current_user=user)
+
+
+async def process_message_mentions(message_id: str, user_id: str):
+    user = await get_user_by_id(user_id=user_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    mentions = await get_message_mentions(message)
+    if not mentions:
+        return
+
+    mentions_obj = [{"type": mention_type, "id": mention_id} for mention_type, mention_id in mentions]
+    data = {"mentions": mentions_obj}
+    await update_item(item=message, data=data)
+
+    # TODO: broadcast notifications...
 
 
 async def create_reply_message(

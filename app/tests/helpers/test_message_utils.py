@@ -26,9 +26,22 @@ class TestMessageUtils:
                     ("user", "61ee8893e89d5fe35c198ef2"),
                 ],
             ),
+            ("hey\n\ntest @<u:61ee8893e89d5fe35c198ef2>", [("user", "61ee8893e89d5fe35c198ef2")]),
         ],
     )
-    async def test_get_mentions(self, content, mentions):
+    async def test_get_user_mentions(self, content, mentions):
+        assert await get_message_content_mentions(content) == mentions
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "content, mentions",
+        [
+            ("hey @<b:here>", [("broadcast", "here")]),
+            ("hey @<b:channel>", [("broadcast", "channel")]),
+            ("hey @<b:everyone>", [("broadcast", "everyone")]),
+        ],
+    )
+    async def test_get_broadcast_mentions(self, content, mentions):
         assert await get_message_content_mentions(content) == mentions
 
     @pytest.mark.asyncio
