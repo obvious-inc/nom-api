@@ -1,6 +1,9 @@
-from typing import Optional
+from typing import Optional, Union
+
+from pydantic import BaseModel
 
 from app.schemas.base import APIBaseCreateSchema, APIBaseSchema
+from app.schemas.servers import ServerMemberSchema
 
 
 class UserSchema(APIBaseSchema):
@@ -34,3 +37,11 @@ class UserCreateSchema(APIBaseCreateSchema):
                 "email": "test@newshades.xyz",
             }
         }
+
+
+class UserUpdateSchema(APIBaseCreateSchema):
+    display_name: Optional[str] = ""
+
+
+class EitherUserProfile(BaseModel):
+    __root__: Union[UserSchema, ServerMemberSchema]
