@@ -20,8 +20,8 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
     return created_server
 
 
-async def join_server(server: Union[Server, APIDocument], current_user: User, display_name: str = None) -> ServerMember:
-    member = ServerMember(server=server, user=current_user, display_name=display_name or current_user.display_name)
+async def join_server(server: Union[Server, APIDocument], current_user: User) -> ServerMember:
+    member = ServerMember(server=server, user=current_user)
     await member.commit()
     return member
 
