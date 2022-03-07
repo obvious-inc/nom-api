@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
-from app.helpers.message_utils import blockify_content
+from app.helpers.message_utils import blockify_content, get_message_mentions
 from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
 from app.models.server import Server
@@ -381,7 +381,6 @@ class TestMessagesRoutes:
         authorized_client: AsyncClient,
         server: Server,
         server_channel: Channel,
-        channel_message: Message,
         create_new_user: Callable,
     ):
         guest_user = await create_new_user()
@@ -392,15 +391,13 @@ class TestMessagesRoutes:
         }
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
-        json_response = response.json()
-        assert json_response != {}
-        assert "content" in json_response
-        assert json_response["content"] == data["content"]
-        assert "mentions" in json_response
-        mentions = json_response["mentions"]
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
         assert len(mentions) == 1
-        assert mentions[0]["type"] == "user"
-        assert mentions[0]["id"] == str(guest_user.id)
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user.id)
 
     @pytest.mark.asyncio
     async def test_create_message_with_user_multiple_mentions(
@@ -411,7 +408,6 @@ class TestMessagesRoutes:
         authorized_client: AsyncClient,
         server: Server,
         server_channel: Channel,
-        channel_message: Message,
         create_new_user: Callable,
     ):
         guest_user_1 = await create_new_user()
@@ -424,17 +420,16 @@ class TestMessagesRoutes:
         }
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
-        json_response = response.json()
-        assert json_response != {}
-        assert "content" in json_response
-        assert json_response["content"] == data["content"]
-        assert "mentions" in json_response
-        mentions = json_response["mentions"]
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
         assert len(mentions) == 2
-        assert mentions[0]["type"] == "user"
-        assert mentions[0]["id"] == str(guest_user_1.id)
-        assert mentions[1]["type"] == "user"
-        assert mentions[1]["id"] == str(guest_user_2.id)
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user_1.id)
+        mention_type, mention_ref = mentions[1]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user_2.id)
 
     @pytest.mark.asyncio
     async def test_create_message_with_unknown_mention_types(
@@ -445,27 +440,185 @@ class TestMessagesRoutes:
         authorized_client: AsyncClient,
         server: Server,
         server_channel: Channel,
-        channel_message: Message,
         create_new_user: Callable,
     ):
         guest_user = await create_new_user()
-
         data = {
-            "content": f"hey @<u:{str(guest_user.id)}> and @<r:{str(ObjectId())}>, what up?",
+            "content": f"hey @<u:{str(guest_user.id)}> and @<x:{str(ObjectId())}>, what up?",
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
-        json_response = response.json()
-        assert json_response != {}
-        assert "content" in json_response
-        assert json_response["content"] == data["content"]
-        assert "mentions" in json_response
-        mentions = json_response["mentions"]
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
         assert len(mentions) == 1
-        assert mentions[0]["type"] == "user"
-        assert mentions[0]["id"] == str(guest_user.id)
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user.id)
+
+    @pytest.mark.asyncio
+    async def test_create_message_with_broadcast_mention(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+
+        data = {
+            "content": "hey @<b:here>, what up?",
+            "server": str(server.id),
+            "channel": str(server_channel.id),
+        }
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
+        assert len(mentions) == 1
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "broadcast"
+        assert mention_ref == "here"
+
+    @pytest.mark.asyncio
+    async def test_create_message_with_broadcast_and_user_mentions(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+    ):
+        guest_user = await create_new_user()
+        data = {
+            "content": f"hey @<b:here> and @<u:{str(guest_user.id)}>, what up?",
+            "server": str(server.id),
+            "channel": str(server_channel.id),
+        }
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
+        assert len(mentions) == 2
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user.id)
+        mention_type, mention_ref = mentions[1]
+        assert mention_type == "broadcast"
+        assert mention_ref == "here"
+
+    @pytest.mark.asyncio
+    async def test_create_message_blocks_with_user_mentions(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+    ):
+        guest_user = await create_new_user()
+        blocks = [
+            {
+                "type": "paragraph",
+                "children": [
+                    {"text": "hey "},
+                    {"type": "user", "ref": str(guest_user.id)},
+                    {"text": ", you around?"},
+                ],
+            },
+        ]
+        data = {"blocks": blocks, "server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
+        assert len(mentions) == 1
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user.id)
+
+    @pytest.mark.asyncio
+    async def test_create_message_blocks_with_user_and_broadcast_mentions(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+    ):
+        guest_user = await create_new_user()
+        blocks = [
+            {
+                "type": "paragraph",
+                "children": [
+                    {"text": "hey "},
+                    {"type": "user", "ref": str(guest_user.id)},
+                    {"text": " and "},
+                    {"type": "broadcast", "ref": "channel"},
+                    {"text": ", you around?"},
+                ],
+            },
+        ]
+        data = {"blocks": blocks, "server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
+        assert len(mentions) == 2
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user.id)
+        mention_type, mention_ref = mentions[1]
+        assert mention_type == "broadcast"
+        assert mention_ref == "channel"
+
+    @pytest.mark.asyncio
+    async def test_create_message_blocks_with_user_and_broadcast_unknown_mentions(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+    ):
+        guest_user = await create_new_user()
+        blocks = [
+            {
+                "type": "paragraph",
+                "children": [
+                    {"text": "hey "},
+                    {"type": "user", "ref": str(guest_user.id)},
+                    {"text": " and "},
+                    {"type": "broadcast", "ref": "unknown"},
+                    {"text": ", you around?"},
+                ],
+            },
+        ]
+        data = {"blocks": blocks, "server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
+        assert len(mentions) == 1
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user.id)
 
     @pytest.mark.asyncio
     async def test_create_message_with_blocks(

@@ -12,11 +12,6 @@ class MessageReactionSchema(APIEmbeddedBaseSchema):
     count: int
 
 
-class MessageMentionSchema(APIEmbeddedBaseSchema):
-    type: str
-    id: PyObjectId
-
-
 class MessageSchema(APIBaseSchema):
     author: PyObjectId = Field()
     server: Optional[PyObjectId] = Field()
@@ -24,7 +19,6 @@ class MessageSchema(APIBaseSchema):
     content: Optional[str]
     blocks: Optional[List[dict]]
     reactions: List[MessageReactionSchema]
-    mentions: List[MessageMentionSchema]
     edited_at: Optional[datetime]
     embeds: List[dict]
     reply_to: Optional[PyObjectId]
