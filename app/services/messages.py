@@ -6,19 +6,21 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException
 
+from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
-from app.models.channel import Channel
+from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message, MessageReaction
 from app.models.user import User
+from app.schemas.channels import ChannelReadStateCreateSchema
 from app.schemas.messages import MessageCreateSchema, MessageUpdateSchema
 from app.services.channels import update_channel_last_message
-from app.services.crud import create_item, delete_item, get_item_by_id, get_items, update_item
+from app.services.crud import create_item, delete_item, find_and_update_item, get_item_by_id, get_items, update_item
 from app.services.integrations import get_gif_by_url
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_current_user_event, broadcast_message_event
+from app.services.websockets import broadcast_current_user_event, broadcast_message_event, broadcast_users_event
 
 logger = logging.getLogger(__name__)
 
@@ -220,13 +222,69 @@ async def post_process_message_creation(message_id: str, user_id: str):
 
 
 async def process_message_mentions(message_id: str, user_id: str):
-    user = await get_user_by_id(user_id=user_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+    current_user = await get_user_by_id(user_id=user_id)
+    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+    channel = await message.channel.fetch()
     mentions = await get_message_mentions(message)
+    if not mentions:
+        return
+
+    users_to_notify = []
+
     for mention_type, mention_ref in mentions:
-        logger.debug(f"should send notification of type {mention_type} to {mention_ref}")
-        # TODO: Broadcast WebSocket events
-        # TODO: Broadcast push notifications
+        logger.debug(f"should send notification of type '{mention_type}' to @{mention_ref}")
+
+        if mention_type == "user":
+            user_id = mention_ref
+            user = await get_user_by_id(user_id)
+            users_to_notify.append(user)
+
+        if mention_type == "broadcast":
+            if mention_ref == "here":
+                online_users = await get_channel_online_users(channel=channel)
+                users_to_notify.extend(online_users)
+            elif mention_ref == "channel" or mention_ref == "everyone":
+                channel_users = await get_channel_users(channel=channel)
+                users_to_notify.extend(channel_users)
+            else:
+                logger.warning(f"unknown mention reference: {mention_ref}")
+                continue
+
+    if len(users_to_notify) == 0:
+        logger.debug("no users to notify")
+        return
+
+    for user in users_to_notify:
+        user_in_channel = await is_user_in_channel(user=user, channel=channel)
+        if not user_in_channel:
+            continue
+
+        read_state = await find_and_update_item(
+            filters={"user": user.pk, "channel": channel.pk},
+            data={"$inc": {"mention_count": 1}},
+            result_obj=ChannelReadState,
+        )
+
+        if not read_state:
+            read_state_model = ChannelReadStateCreateSchema(
+                channel=str(channel.id),
+                last_read_at=datetime.fromtimestamp(0, tz=timezone.utc),
+                mention_count=1,
+            )
+            await create_item(read_state_model, result_obj=ChannelReadState, current_user=user)
+
+        # TODO: Create mention activity entry
+
+    await broadcast_users_event(
+        users=users_to_notify,
+        event=WebSocketServerEvent.NOTIFY_USER_MENTION,
+        custom_data={"message": message.dump()},
+    )
+
+    # TODO: Broadcast push notifications
+    offline_users = [user for user in users_to_notify if not user.status or user.status == "offline"]
+    if offline_users:
+        logger.debug(f"TBD | sending push notifications to {len(offline_users)} offline users")
 
 
 async def create_reply_message(

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -56,9 +56,16 @@ class ServerChannelCreateSchema(ChannelCreateSchema):
     name: str
 
 
+class ChannelReadStateSchema(APIBaseSchema):
+    channel: PyObjectId = Field()
+    last_read_at: datetime
+    mention_count: int = 0
+
+
 class ChannelReadStateCreateSchema(APIBaseCreateSchema):
     channel: str
     last_read_at: datetime
+    mention_count: Optional[int]
 
 
 # Need this EitherChannel class due to mypy and fastapi issue: https://github.com/tiangolo/fastapi/issues/2279

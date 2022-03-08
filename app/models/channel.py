@@ -44,6 +44,7 @@ class ChannelReadState(APIDocument):
     user = fields.ReferenceField("User")
     channel = fields.ReferenceField("Channel")
     last_read_at = fields.AwareDateTimeField()
+    mention_count = fields.IntField(default=0)
 
     class Meta:
         collection_name = "channels_read_states"
