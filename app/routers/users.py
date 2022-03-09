@@ -3,9 +3,8 @@ from typing import List, Optional, Union
 from fastapi import APIRouter, Body, Depends
 
 from app.dependencies import get_current_user
-from app.models.server import ServerMember
 from app.models.user import User
-from app.schemas.servers import ServerMemberSchema, ServerMemberUpdateSchema, ServerSchema
+from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
 from app.schemas.users import EitherUserProfile, UserUpdateSchema
 from app.services.servers import get_user_servers
 from app.services.users import get_user_profile_by_server_id, update_user_profile
