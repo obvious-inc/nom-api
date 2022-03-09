@@ -24,7 +24,7 @@ class ServerMemberSchema(APIBaseSchema):
     server: PyObjectId = Field()
     user: PyObjectId = Field()
 
-    display_name: str = Field()
+    display_name: Optional[str] = Field()
     joined_at: datetime
 
     class Config:
