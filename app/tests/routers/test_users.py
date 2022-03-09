@@ -58,3 +58,21 @@ class TestUserRoutes:
         assert "display_name" in json_response
         assert json_response["display_name"] != old_display_name
         assert json_response["display_name"] == data["display_name"]
+
+    @pytest.mark.asyncio
+    async def test_update_user_profile_display_name_empty(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
+    ):
+        response = await authorized_client.get(f"/users/me?server_id={str(server.id)}")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert "display_name" in json_response
+        old_display_name = json_response["display_name"]
+
+        data = {"display_name": ""}
+        response = await authorized_client.patch(f"/users/me?server_id={str(server.id)}", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert "display_name" in json_response
+        assert json_response["display_name"] != old_display_name
+        assert json_response["display_name"] == data["display_name"]

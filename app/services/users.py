@@ -60,6 +60,7 @@ async def update_user_profile(
 
         if not profile:
             raise HTTPException(status_code=http.HTTPStatus.NOT_FOUND)
+
         event = WebSocketServerEvent.SERVER_PROFILE_UPDATE
     else:
         profile = current_user
@@ -67,6 +68,8 @@ async def update_user_profile(
     data = update_data.dict()
     updated_item = await update_item(item=profile, data=data)
 
-    await queue_bg_task(broadcast_current_user_event, str(current_user.id), event, custom_data=data)
+    ws_data = {**data, "user": str(current_user.id)}
+
+    await queue_bg_task(broadcast_current_user_event, str(current_user.id), event, custom_data=ws_data)
 
     return updated_item

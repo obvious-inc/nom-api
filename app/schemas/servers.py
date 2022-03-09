@@ -40,4 +40,4 @@ class ServerMemberSchema(APIBaseSchema):
 
 
 class ServerMemberUpdateSchema(APIBaseUpdateSchema):
-    display_name: Optional[str] = ""
+    display_name: Optional[str]

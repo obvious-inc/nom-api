@@ -40,8 +40,8 @@ class UserCreateSchema(APIBaseCreateSchema):
 
 
 class UserUpdateSchema(APIBaseCreateSchema):
-    display_name: Optional[str] = ""
+    display_name: Optional[str]
 
 
 class EitherUserProfile(BaseModel):
-    __root__: Union[UserSchema, ServerMemberSchema]
+    __root__: Union[ServerMemberSchema, UserSchema]
