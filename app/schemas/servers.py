@@ -1,8 +1,9 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import Field
 
-from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, PyObjectId
 
 
 class ServerSchema(APIBaseSchema):
@@ -23,7 +24,7 @@ class ServerMemberSchema(APIBaseSchema):
     server: PyObjectId = Field()
     user: PyObjectId = Field()
 
-    display_name: str = Field()
+    display_name: Optional[str] = Field()
     joined_at: datetime
 
     class Config:
@@ -36,3 +37,7 @@ class ServerMemberSchema(APIBaseSchema):
                 "joined_at": "2022-01-01T00:00:00+01:00",
             }
         }
+
+
+class ServerMemberUpdateSchema(APIBaseUpdateSchema):
+    display_name: Optional[str]
