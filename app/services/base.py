@@ -12,6 +12,17 @@ async def get_connection_ready_data(current_user: User) -> dict:
         channels = await get_server_channels(server_id=str(server.id), current_user=current_user)
         members = await get_server_members(server_id=str(server.id), current_user=current_user)
 
+        member_list = []
+        for member in members:
+            user = await member.user.fetch()
+            member_dict = {
+                "id": str(member.id),
+                "user": {"id": str(user.id), "display_name": user.display_name},
+                "server": str(member.server.pk),
+                "display_name": member.display_name,
+            }
+            member_list.append(member_dict)
+
         server_data.update(
             {
                 "channels": [
@@ -22,15 +33,7 @@ async def get_connection_ready_data(current_user: User) -> dict:
                     }
                     for channel in channels
                 ],
-                "members": [
-                    {
-                        "id": str(member.id),
-                        "user": str(member.user.pk),
-                        "server": str(member.server.pk),
-                        "display_name": member.display_name,
-                    }
-                    for member in members
-                ],
+                "members": member_list,
             }
         )
 

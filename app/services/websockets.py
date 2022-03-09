@@ -8,7 +8,6 @@ from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.services.crud import get_item_by_id, get_items
-from app.services.users import get_user_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +105,7 @@ async def pusher_broadcast_messages(
 async def broadcast_message_event(
     message_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
-    current_user = await get_user_by_id(user_id=current_user_id)
+    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
     message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
 
     event_data = {"message": message.dump()}
@@ -125,7 +124,7 @@ async def broadcast_connection_ready(current_user: User, channel: str):
 async def broadcast_channel_event(
     channel_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
-    current_user = await get_user_by_id(user_id=current_user_id)
+    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
 
     event_data = {"channel": channel.dump()}
@@ -137,10 +136,27 @@ async def broadcast_channel_event(
     )
 
 
-async def broadcast_current_user_event(
-    current_user_id, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+async def broadcast_server_event(
+    server_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
-    current_user = await get_user_by_id(user_id=current_user_id)
+    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
+    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+
+    event_data = {}
+    if custom_data:
+        event_data.update(custom_data)
+
+    await pusher_broadcast_messages(
+        event=event, data=event_data, current_user=current_user, scope="server", server=server
+    )
+
+
+async def broadcast_current_user_event(
+    current_user_id,
+    event: WebSocketServerEvent,
+    custom_data: Optional[dict] = None,
+):
+    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
 
     event_data = {}
     if custom_data:
@@ -150,7 +166,7 @@ async def broadcast_current_user_event(
 
 
 async def broadcast_user_servers_event(current_user_id: str, event: WebSocketServerEvent, custom_data: dict) -> None:
-    current_user = await get_user_by_id(user_id=current_user_id)
+    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
 
     event_data = {"user": current_user.dump()}
     if custom_data:
