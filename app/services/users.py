@@ -63,15 +63,21 @@ async def update_user_profile(
             raise HTTPException(status_code=http.HTTPStatus.NOT_FOUND)
 
         updated_item = await update_item(item=profile, data=data)
-
-        event = WebSocketServerEvent.SERVER_PROFILE_UPDATE
-        ws_data = {**data, "user": str(current_user.id), "member": str(profile.id)}
-        await queue_bg_task(broadcast_server_event, server_id, str(current_user.id), event, ws_data)
+        await queue_bg_task(
+            broadcast_server_event,
+            server_id,
+            str(current_user.id),
+            WebSocketServerEvent.SERVER_PROFILE_UPDATE,
+            {**data, "user": str(current_user.id), "member": str(profile.id)},
+        )
     else:
         profile = current_user
         updated_item = await update_item(item=profile, data=data)
-        event = WebSocketServerEvent.USER_PROFILE_UPDATE
-        ws_data = {**data, "user": str(current_user.id)}
-        await queue_bg_task(broadcast_user_servers_event, str(current_user.id), event, ws_data)
+        await queue_bg_task(
+            broadcast_user_servers_event,
+            str(current_user.id),
+            WebSocketServerEvent.USER_PROFILE_UPDATE,
+            {**data, "user": str(current_user.id)},
+        )
 
     return updated_item
