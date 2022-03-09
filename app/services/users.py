@@ -13,7 +13,7 @@ from app.models.user import User
 from app.schemas.servers import ServerMemberUpdateSchema
 from app.schemas.users import UserCreateSchema, UserUpdateSchema
 from app.services.crud import get_item, get_item_by_id, update_item
-from app.services.websockets import broadcast_current_user_event
+from app.services.websockets import broadcast_server_event, broadcast_user_servers_event
 
 
 async def create_user(user_model: UserCreateSchema, fetch_ens: bool = False) -> User:
@@ -50,7 +50,8 @@ async def get_user_profile_by_server_id(server_id: str, current_user: User) -> U
 async def update_user_profile(
     server_id: Optional[str], update_data: Union[UserUpdateSchema, ServerMemberUpdateSchema], current_user: User
 ) -> Union[ServerMember, User]:
-    event = WebSocketServerEvent.USER_PROFILE_UPDATE
+    data = update_data.dict()
+
     if server_id:
         profile = await get_item(
             filters={"server": ObjectId(server_id), "user": current_user.pk},
@@ -61,15 +62,16 @@ async def update_user_profile(
         if not profile:
             raise HTTPException(status_code=http.HTTPStatus.NOT_FOUND)
 
+        updated_item = await update_item(item=profile, data=data)
+
         event = WebSocketServerEvent.SERVER_PROFILE_UPDATE
+        ws_data = {**data, "user": str(current_user.id)}
+        await queue_bg_task(broadcast_server_event, server_id, str(current_user.id), event, ws_data)
     else:
         profile = current_user
-
-    data = update_data.dict()
-    updated_item = await update_item(item=profile, data=data)
-
-    ws_data = {**data, "user": str(current_user.id)}
-
-    await queue_bg_task(broadcast_current_user_event, str(current_user.id), event, custom_data=ws_data)
+        updated_item = await update_item(item=profile, data=data)
+        event = WebSocketServerEvent.USER_PROFILE_UPDATE
+        ws_data = {**data, "user": str(current_user.id)}
+        await queue_bg_task(broadcast_user_servers_event, str(current_user.id), event, ws_data)
 
     return updated_item

@@ -133,6 +133,21 @@ async def broadcast_channel_event(
     )
 
 
+async def broadcast_server_event(
+    server_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+):
+    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
+    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+
+    event_data = {}
+    if custom_data:
+        event_data.update(custom_data)
+
+    await pusher_broadcast_messages(
+        event=event, data=event_data, current_user=current_user, scope="server", server=server
+    )
+
+
 async def broadcast_current_user_event(
     current_user_id,
     event: WebSocketServerEvent,
