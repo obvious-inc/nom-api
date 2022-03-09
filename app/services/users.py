@@ -65,7 +65,7 @@ async def update_user_profile(
         updated_item = await update_item(item=profile, data=data)
 
         event = WebSocketServerEvent.SERVER_PROFILE_UPDATE
-        ws_data = {**data, "user": str(current_user.id)}
+        ws_data = {**data, "user": str(current_user.id), "member": str(profile.id)}
         await queue_bg_task(broadcast_server_event, server_id, str(current_user.id), event, ws_data)
     else:
         profile = current_user
