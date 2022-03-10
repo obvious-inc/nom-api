@@ -1,14 +1,18 @@
+import random
+import string
 from datetime import datetime
 
 import arrow
 import pytest
 from pymongo.database import Database
 
+from app.models.channel import Channel
 from app.models.server import Server, ServerMember
 from app.models.user import User
+from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
-from app.services.crud import create_item, get_items
+from app.services.crud import create_item, create_items, get_items
 
 
 class TestCRUDService:
@@ -52,3 +56,22 @@ class TestCRUDService:
         members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
         assert members is not None
         assert len(members) == 1
+
+    @pytest.mark.asyncio
+    async def test_create_items(self, db: Database, current_user: User, server: Server):
+        channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
+        assert len(channels) == 0
+
+        to_create_channels = []
+        for _ in range(100):
+            name = "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
+            channel = ServerChannelCreateSchema(server=str(server.pk), name=name)
+            to_create_channels.append(channel)
+
+        object_ids = await create_items(
+            to_create_channels, result_obj=Channel, current_user=current_user, user_field="owner"
+        )
+        assert len(object_ids) == 100
+
+        channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
+        assert len(channels) == 100
