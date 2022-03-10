@@ -19,13 +19,13 @@ async def _get_users_online_channels(users: List[User]):
     return list(set(channels))
 
 
-async def get_server_online_channels(server: Server, current_user: User):
+async def get_server_online_channels(server: Server, current_user: Optional[User]):
     members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
     users = [await member.user.fetch() for member in members]
     return await _get_users_online_channels(users)
 
 
-async def get_channel_online_channels(channel: Channel, current_user: User):
+async def get_channel_online_channels(channel: Channel, current_user: Optional[User]):
     members = []
     if channel.kind == "dm":
         members = channel.members
@@ -37,7 +37,7 @@ async def get_channel_online_channels(channel: Channel, current_user: User):
     return await _get_users_online_channels(users)
 
 
-async def get_servers_online_channels(servers: List[Server], current_user: User):
+async def get_servers_online_channels(servers: List[Server], current_user: Optional[User]):
     members = []
     for server in servers:
         members.extend(
@@ -50,9 +50,10 @@ async def get_servers_online_channels(servers: List[Server], current_user: User)
 
 async def pusher_broadcast_messages(
     event: WebSocketServerEvent,
-    current_user: User,
+    current_user: Optional[User],
     data: dict,
     user: Optional[User] = None,
+    users: Optional[List[User]] = None,
     message: Optional[Message] = None,
     channel: Optional[Channel] = None,
     server: Server = None,
@@ -73,6 +74,8 @@ async def pusher_broadcast_messages(
         pusher_channels = await _get_users_online_channels([user])
     elif scope == "current_user" and current_user:
         pusher_channels = await _get_users_online_channels([current_user])
+    elif scope == "users" and users:
+        pusher_channels = await _get_users_online_channels(users)
     elif scope == "servers" and servers:
         pusher_channels = await get_servers_online_channels(servers, current_user=current_user)
     elif scope == "user_servers" and servers:
@@ -177,3 +180,11 @@ async def broadcast_user_servers_event(current_user_id: str, event: WebSocketSer
     await pusher_broadcast_messages(
         event=event, data=event_data, current_user=current_user, scope="user_servers", servers=servers
     )
+
+
+async def broadcast_users_event(users: List[User], event: WebSocketServerEvent, custom_data: dict) -> None:
+    event_data = {}
+    if custom_data:
+        event_data.update(custom_data)
+
+    await pusher_broadcast_messages(event=event, data=event_data, users=users, scope="users", current_user=None)

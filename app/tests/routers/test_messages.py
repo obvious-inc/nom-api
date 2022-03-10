@@ -781,3 +781,81 @@ class TestMessagesRoutes:
 
         messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
         assert len(messages) == 2
+
+    @pytest.mark.asyncio
+    async def test_create_message_mention_count_increase(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        event_loop,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+        data = {
+            "content": f"hey @<u:{str(current_user.id)}>, what up?",
+            "server": str(server.id),
+            "channel": str(server_channel.id),
+        }
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
+        assert len(mentions) == 1
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(current_user.id)
+
+        await asyncio.sleep(random.random(), loop=event_loop)
+        mentioned_user_client = await get_authorized_client(current_user)
+        response = await mentioned_user_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert "mention_count" in json_response[0]
+        assert json_response[0]["mention_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_create_message_broadcast_mention_count_increase(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        event_loop,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+        data = {
+            "content": "hey @<b:everyone>, what up?",
+            "server": str(server.id),
+            "channel": str(server_channel.id),
+        }
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
+        assert len(mentions) == 1
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "broadcast"
+        assert mention_ref == "everyone"
+
+        await asyncio.sleep(random.random(), loop=event_loop)
+        mentioned_user_client = await get_authorized_client(current_user)
+        response = await mentioned_user_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert "mention_count" in json_response[0]
+        assert json_response[0]["mention_count"] == 1

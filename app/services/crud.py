@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional, Sequence, Type, TypeVar
 
 from bson import ObjectId
+from pymongo import ReturnDocument
 from pymongo.results import InsertManyResult
 from umongo import Reference
 
@@ -69,7 +70,7 @@ async def get_item_by_id(
 async def get_items(
     filters: dict,
     result_obj: Type[APIDocumentType],
-    current_user: User,
+    current_user: Optional[User],
     size: Optional[int] = None,
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
@@ -97,6 +98,13 @@ async def update_item(item: APIDocumentType, data: dict, current_user: Optional[
     item.update(data)
     await item.commit()
     return item
+
+
+async def find_and_update_item(filters: dict, data: dict, result_obj: Type[APIDocumentType]) -> APIDocumentType:
+    updated_item = await result_obj.collection.find_one_and_update(
+        filter=filters, update=data, return_document=ReturnDocument.AFTER
+    )
+    return updated_item
 
 
 async def delete_item(item: APIDocumentType) -> APIDocumentType:

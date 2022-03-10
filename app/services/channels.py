@@ -105,7 +105,7 @@ async def update_channels_read_state(channel_ids: List[str], current_user: User,
         if not read_state:
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=current_user)
         else:
-            await update_item(item=read_state, data={"last_read_at": last_read_at})
+            await update_item(item=read_state, data={"last_read_at": last_read_at, "mention_count": 0})
 
 
 async def create_typing_indicator(channel_id: str, current_user: User) -> None:

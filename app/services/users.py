@@ -8,11 +8,12 @@ from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import get_wallet_short_name
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
+from app.models.channel import ChannelReadState
 from app.models.server import ServerMember
 from app.models.user import User
 from app.schemas.servers import ServerMemberUpdateSchema
 from app.schemas.users import UserCreateSchema, UserUpdateSchema
-from app.services.crud import get_item, get_item_by_id, update_item
+from app.services.crud import get_item, get_item_by_id, get_items, update_item
 from app.services.websockets import broadcast_server_event, broadcast_user_servers_event
 
 
@@ -81,3 +82,7 @@ async def update_user_profile(
         )
 
     return updated_item
+
+
+async def get_user_read_states(current_user: User):
+    return await get_items(filters={"user": current_user.pk}, result_obj=ChannelReadState, current_user=current_user)
