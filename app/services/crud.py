@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional, Type, TypeVar
 
 from bson import ObjectId
+from pymongo.results import InsertManyResult
 from umongo import Reference
 
 from app.models.base import APIDocument
@@ -25,6 +26,29 @@ async def create_item(
     await db_object.commit()
     logger.info("Object created. [object_type=%s, object_id=%s]", result_obj.__name__, str(db_object.id))
     return db_object
+
+
+async def create_many_items(
+    items: List[APIBaseCreateSchema],
+    result_obj: Type[APIDocumentType],
+    current_user: Optional[User] = None,
+    user_field: Optional[str] = "user",
+) -> List[ObjectId]:
+    db_objects = []
+    for item in items:
+        db_object = result_obj(**item.dict())
+        if user_field:
+            db_object[user_field] = current_user
+        await db_object.io_validate()
+        db_objects.append(db_object)
+
+    mongo_objects = [obj.to_mongo() for obj in db_objects]
+    created_result = await result_obj.collection.insert_many(mongo_objects)  # type: InsertManyResult
+    created_object_ids = created_result.inserted_ids
+
+    logger.info("%d objects created. [object_type=%s", len(created_object_ids), result_obj.__name__)
+
+    return created_object_ids
 
 
 async def get_item_by_id(
