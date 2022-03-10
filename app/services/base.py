@@ -17,7 +17,7 @@ async def get_connection_ready_data(current_user: User) -> dict:
             user = await member.user.fetch()
             member_dict = {
                 "id": str(member.id),
-                "user": {"id": str(user.id), "display_name": user.display_name},
+                "user": {"id": str(user.id), "display_name": user.display_name, "wallet_address": user.wallet_address},
                 "server": str(member.server.pk),
                 "display_name": member.display_name,
                 "joined_at": member.joined_at,
