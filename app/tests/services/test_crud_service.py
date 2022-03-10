@@ -12,7 +12,7 @@ from app.models.user import User
 from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
-from app.services.crud import create_item, create_many_items, get_items
+from app.services.crud import create_item, create_items, get_items
 
 
 class TestCRUDService:
@@ -58,7 +58,7 @@ class TestCRUDService:
         assert len(members) == 1
 
     @pytest.mark.asyncio
-    async def test_create_many_items(self, db: Database, current_user: User, server: Server):
+    async def test_create_items(self, db: Database, current_user: User, server: Server):
         channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
         assert len(channels) == 0
 
@@ -68,7 +68,7 @@ class TestCRUDService:
             channel = ServerChannelCreateSchema(server=str(server.pk), name=name)
             to_create_channels.append(channel)
 
-        object_ids = await create_many_items(
+        object_ids = await create_items(
             to_create_channels, result_obj=Channel, current_user=current_user, user_field="owner"
         )
         assert len(object_ids) == 100

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Type, TypeVar
+from typing import List, Optional, Sequence, Type, TypeVar
 
 from bson import ObjectId
 from pymongo.results import InsertManyResult
@@ -28,8 +28,8 @@ async def create_item(
     return db_object
 
 
-async def create_many_items(
-    items: List[APIBaseCreateSchema],
+async def create_items(
+    items: Sequence[APIBaseCreateSchema],
     result_obj: Type[APIDocumentType],
     current_user: Optional[User] = None,
     user_field: Optional[str] = "user",
