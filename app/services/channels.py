@@ -100,9 +100,9 @@ async def update_channels_read_state(channel_ids: List[str], current_user: User,
     for channel_id in channel_ids:
         channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
 
-        read_state_model = ChannelReadStateCreateSchema(channel=str(channel.id), last_read_at=last_read_at)
         read_state = await get_item(filters={"user": current_user.pk, "channel": channel}, result_obj=ChannelReadState)
         if not read_state:
+            read_state_model = ChannelReadStateCreateSchema(channel=str(channel.id), last_read_at=last_read_at)
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=current_user)
         else:
             await update_item(item=read_state, data={"last_read_at": last_read_at, "mention_count": 0})

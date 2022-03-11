@@ -65,7 +65,7 @@ class ChannelReadStateSchema(APIBaseSchema):
 class ChannelReadStateCreateSchema(APIBaseCreateSchema):
     channel: str
     last_read_at: datetime
-    mention_count: Optional[int]
+    mention_count: Optional[int] = 0
 
 
 # Need this EitherChannel class due to mypy and fastapi issue: https://github.com/tiangolo/fastapi/issues/2279
