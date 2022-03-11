@@ -4,6 +4,7 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
+from app.helpers.guild_xyz import get_user_guild_roles
 from app.models.base import APIDocument
 from app.models.server import Server, ServerMember
 from app.models.user import User
@@ -21,10 +22,23 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
 
 
 async def join_server(server_id: str, current_user: User) -> ServerMember:
+    # 1. check Server's role requirements and integrations (guild.xyz by default)
     server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
-    member = ServerMember(server=server, user=current_user)
-    await member.commit()
-    return member
+
+    # TODO: add proper setup for this
+    guild_id = 1985
+
+    # 2. fetch guild.xyz roles for user's wallet
+    guild_roles = await get_user_guild_roles(guild_id, user=current_user)
+
+    # 3. associate guild roles with user
+
+    # 4. join server
+    # member = ServerMember(server=server, user=current_user)
+    # await member.commit()
+    # return member
+
+    return None
 
 
 async def get_user_servers(current_user: User) -> List[Server]:
