@@ -22,6 +22,9 @@ class ServerMember(APIDocument):
     user = fields.ReferenceField(User, required=True)
 
     display_name = fields.StrField()
+    pfp = fields.StrField()
+    pfp_verified = fields.BoolField(default=False)
+
     joined_at = fields.AwareDateTimeField(default=get_mongo_utc_date)
 
     class Meta:

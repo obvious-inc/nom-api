@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     giphy_api_key: Optional[str]
     tenor_api_key: Optional[str]
 
+    alchemy_api_key: Optional[str]
+    nftport_api_key: Optional[str]
+
     class Config:
         env_file = ".env"
 

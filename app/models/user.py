@@ -7,9 +7,10 @@ from app.models.base import APIDocument
 @instance.register
 class User(APIDocument):
     display_name = fields.StrField()
-
     wallet_address = fields.StrField()
     email = fields.StrField()
+    pfp = fields.StrField()
+    pfp_verified = fields.BoolField(default=False)
 
     online_channels = fields.ListField(fields.StrField(), required=False, default=[])
 

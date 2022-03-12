@@ -21,6 +21,8 @@ async def get_connection_ready_data(current_user: User) -> dict:
                 "server": str(member.server.pk),
                 "display_name": member.display_name,
                 "joined_at": member.joined_at,
+                "pfp": member.pfp,
+                "pfp_verified": member.pfp_verified,
             }
             member_list.append(member_dict)
 

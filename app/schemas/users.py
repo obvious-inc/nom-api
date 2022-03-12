@@ -10,6 +10,8 @@ class UserSchema(APIBaseSchema):
     display_name: Optional[str]
     wallet_address: Optional[str]
     email: Optional[str]
+    pfp: Optional[str]
+    pfp_verified: Optional[bool]
 
     status: Optional[str]
 
@@ -20,6 +22,8 @@ class UserSchema(APIBaseSchema):
                 "display_name": "vitalik.eth",
                 "wallet_address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
                 "email": "test@newshades.xyz",
+                "pfp": "https://imagedelivery.net/ZRcqsHKFdYAfq-h90X3KZw/5adcdc13-0a45-45cd-0707-31eab9997c00/avatar",
+                "pfp_verified": True,
                 "status": "online",
             }
         }
@@ -31,16 +35,13 @@ class UserCreateSchema(APIBaseCreateSchema):
 
     class Config:
         schema_extra = {
-            "example": {
-                "display_name": "vitalik",
-                "wallet_address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-                "email": "test@newshades.xyz",
-            }
+            "example": {"display_name": "vitalik", "wallet_address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"}
         }
 
 
 class UserUpdateSchema(APIBaseCreateSchema):
     display_name: Optional[str]
+    pfp: Optional[str]
 
 
 class EitherUserProfile(BaseModel):

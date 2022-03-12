@@ -95,6 +95,11 @@ async def get_item(
 
 
 async def update_item(item: APIDocumentType, data: dict, current_user: Optional[User] = None) -> APIDocumentType:
+    # remove None values
+    data = {k: v for k, v in data.items() if v is not None}
+    if not data:
+        return item
+
     item.update(data)
     await item.commit()
     return item
