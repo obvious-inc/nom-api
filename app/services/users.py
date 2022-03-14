@@ -52,10 +52,10 @@ async def get_user_profile_by_server_id(server_id: str, current_user: User) -> U
     return profile
 
 
-async def set_user_profile_picture(data: dict, current_user: User) -> None:
+async def set_user_profile_picture(data: dict, current_user: User) -> dict:
     pfp_input_string = data.get("pfp", "")
     if not pfp_input_string:
-        return
+        return data
 
     contract_address, token_id = await extract_contract_and_token_from_string(pfp_input_string)
     if contract_address and token_id:
@@ -74,18 +74,18 @@ async def set_user_profile_picture(data: dict, current_user: User) -> None:
 
             data["pfp_verified"] = True
             data["pfp"] = image_url
-            return
+            return data
         else:
             logger.debug(f"{current_user.id} does not own {contract_address}/{token_id}")
             del [data["pfp"]]
-            return
+            return data
 
     if not pfp_input_string.startswith("http"):
         del [data["pfp"]]
-        return
+        return data
 
     data["pfp_verified"] = False
-    return
+    return data
 
 
 async def update_user_profile(
@@ -94,7 +94,7 @@ async def update_user_profile(
     data = update_data.dict()
 
     if "pfp" in data and data["pfp"] != "":
-        await set_user_profile_picture(data, current_user=current_user)
+        data = await set_user_profile_picture(data, current_user=current_user)
 
     if server_id:
         profile = await get_item(
