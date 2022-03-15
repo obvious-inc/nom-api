@@ -3,6 +3,9 @@ import re
 from re import Pattern
 from typing import Optional, Tuple
 
+from app.helpers.cloudflare import upload_image_url
+from app.services.crud import update_item
+
 logger = logging.getLogger(__name__)
 
 OPENSEA_LINK_REGEX_PAT = re.compile(r".+?assets/(?P<contract>.+?)/(?P<token_id>.+?)\b")
@@ -35,3 +38,14 @@ async def extract_contract_and_token_from_string(pfp_string: str) -> Tuple[Optio
         regex_patt = CONTRACT_TOKEN_REGEX_PAT
 
     return await _extract_contract_and_token_from_string(pfp_string, regex_patt)
+
+
+async def upload_pfp_url_and_update_profile(input_str, image_url, profile):
+    cf_image = await upload_image_url(image_url)
+    cf_id = cf_image.get("id")
+
+    profile_pfp = profile.pfp
+    if profile_pfp and profile_pfp.get("input", "") == input_str:
+        profile_pfp["cf_id"] = cf_id
+        await update_item(item=profile, data={"pfp": profile_pfp})
+        logger.info(f"PFP for profile {profile.pk} uploaded to cloudflare successfully with id: {cf_id}")

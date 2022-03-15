@@ -5,8 +5,7 @@ from typing import Optional, Union
 from bson import ObjectId
 from fastapi import HTTPException
 
-from app.helpers.cloudflare import upload_image_url
-from app.helpers.pfp import extract_contract_and_token_from_string
+from app.helpers.pfp import extract_contract_and_token_from_string, upload_pfp_url_and_update_profile
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import get_nft, get_nft_image_url, get_wallet_short_name, verify_token_ownership
 from app.helpers.ws_events import WebSocketServerEvent
@@ -53,10 +52,12 @@ async def get_user_profile_by_server_id(server_id: str, current_user: User) -> U
     return profile
 
 
-async def set_user_profile_picture(data: dict, current_user: User) -> dict:
+async def set_user_profile_picture(data: dict, current_user: User, profile) -> dict:
     pfp_input_string = data.get("pfp", "")
     if not pfp_input_string:
         return data
+
+    pfp_data = {"input": pfp_input_string}
 
     contract_address, token_id = await extract_contract_and_token_from_string(pfp_input_string)
     if contract_address and token_id:
@@ -70,40 +71,44 @@ async def set_user_profile_picture(data: dict, current_user: User) -> dict:
             token = await get_nft(contract_address=contract_address, token_id=token_id, provider="alchemy")
             image_url = await get_nft_image_url(token, provider="alchemy")
             logger.debug(f"{contract_address}/{token_id} image: {image_url}")
-            data["pfp_verified"] = True
+
+            pfp_data.update(
+                {
+                    "contract": contract_address,
+                    "token_id": token_id,
+                    "verified": True,
+                    "input_image_url": image_url,
+                    "token": token,
+                }
+            )
         else:
             logger.debug(f"{current_user.id} does not own {contract_address}/{token_id}")
             del [data["pfp"]]
             return data
     else:
         image_url = pfp_input_string
-        data["pfp_verified"] = False
-
         if not pfp_input_string.startswith("http"):
             del [data["pfp"]]
             return data
 
-    # TODO: upload to cloudflare
-    cf_images = await upload_image_url(image_url)
-    if len(cf_images) == 1:
-        cf_id = cf_images[0].get("id")
-        data["pfp"] = cf_id
-    else:
-        raise Exception(f"unexpected length of cloudflare images: {len(cf_images)}")
+        pfp_data["verified"] = False
+        pfp_data["input_image_url"] = image_url
 
+    await queue_bg_task(
+        upload_pfp_url_and_update_profile,
+        pfp_input_string,
+        image_url,
+        profile,
+    )
+
+    data["pfp"] = pfp_data
     return data
 
 
 async def update_user_profile(
-    server_id: Optional[str], update_data: Union[UserUpdateSchema, ServerMemberUpdateSchema], current_user: User
+    server_id: Optional[str], update_data: Union[ServerMemberUpdateSchema, UserUpdateSchema], current_user: User
 ) -> Union[ServerMember, User]:
-    data = update_data.dict()
-
-    if "pfp" in data:
-        if data["pfp"] != "":
-            data = await set_user_profile_picture(data, current_user=current_user)
-        else:
-            data["pfp_verified"] = False
+    data = update_data.dict(exclude_unset=True)
 
     if server_id:
         profile = await get_item(
@@ -114,8 +119,18 @@ async def update_user_profile(
 
         if not profile:
             raise HTTPException(status_code=http.HTTPStatus.NOT_FOUND)
+    else:
+        profile = current_user
 
-        updated_item = await update_item(item=profile, data=data)
+    if "pfp" in data:
+        if data["pfp"] != "":
+            data = await set_user_profile_picture(data, current_user=current_user, profile=profile)
+        else:
+            data["pfp"] = None
+
+    updated_item = await update_item(item=profile, data=data)
+
+    if server_id:
         await queue_bg_task(
             broadcast_server_event,
             server_id,
@@ -124,8 +139,6 @@ async def update_user_profile(
             {**data, "user": str(current_user.id), "member": str(profile.id)},
         )
     else:
-        profile = current_user
-        updated_item = await update_item(item=profile, data=data)
         await queue_bg_task(
             broadcast_user_servers_event,
             str(current_user.id),
