@@ -5,6 +5,7 @@ from typing import Optional, Union
 from bson import ObjectId
 from fastapi import HTTPException
 
+from app.helpers.cloudflare import upload_image_url
 from app.helpers.pfp import extract_contract_and_token_from_string
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import get_nft, get_nft_image_url, get_wallet_short_name, verify_token_ownership
@@ -69,22 +70,27 @@ async def set_user_profile_picture(data: dict, current_user: User) -> dict:
             token = await get_nft(contract_address=contract_address, token_id=token_id, provider="alchemy")
             image_url = await get_nft_image_url(token, provider="alchemy")
             logger.debug(f"{contract_address}/{token_id} image: {image_url}")
-
-            # TODO: upload to cloudflare
-
             data["pfp_verified"] = True
-            data["pfp"] = image_url
-            return data
         else:
             logger.debug(f"{current_user.id} does not own {contract_address}/{token_id}")
             del [data["pfp"]]
             return data
+    else:
+        image_url = pfp_input_string
+        data["pfp_verified"] = False
 
-    if not pfp_input_string.startswith("http"):
-        del [data["pfp"]]
-        return data
+        if not pfp_input_string.startswith("http"):
+            del [data["pfp"]]
+            return data
 
-    data["pfp_verified"] = False
+    # TODO: upload to cloudflare
+    cf_images = await upload_image_url(image_url)
+    if len(cf_images) == 1:
+        cf_id = cf_images[0].get("id")
+        data["pfp"] = cf_id
+    else:
+        raise Exception(f"unexpected length of cloudflare images: {len(cf_images)}")
+
     return data
 
 
@@ -93,8 +99,11 @@ async def update_user_profile(
 ) -> Union[ServerMember, User]:
     data = update_data.dict()
 
-    if "pfp" in data and data["pfp"] != "":
-        data = await set_user_profile_picture(data, current_user=current_user)
+    if "pfp" in data:
+        if data["pfp"] != "":
+            data = await set_user_profile_picture(data, current_user=current_user)
+        else:
+            data["pfp_verified"] = False
 
     if server_id:
         profile = await get_item(
