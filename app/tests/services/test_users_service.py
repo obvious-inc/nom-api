@@ -86,25 +86,24 @@ class TestUsersService:
         user = await create_user(user_model=user_model, fetch_ens=False)
 
         data = {"pfp": input_str}
-        updated_data = await set_user_profile_picture(data, user)
+        updated_data = await set_user_profile_picture(data, user, user)
         if verified:
-            assert "pfp_verified" in updated_data
-            assert updated_data["pfp_verified"] is verified
+            assert "pfp" in updated_data
+            pfp_data = updated_data["pfp"]
+            assert pfp_data["verified"] is True
         else:
-            assert "pfp_verified" not in updated_data
             assert "pfp" not in updated_data
 
     @pytest.mark.asyncio
     async def test_update_user_pfp_image(self, db, current_user: User):
         data = {"pfp": "https://raw.githubusercontent.com/Ashwinvalento/cartoon-avatar/master/lib/images/female/5.png"}
-        updated_data = await set_user_profile_picture(data, current_user)
+        updated_data = await set_user_profile_picture(data, current_user, current_user)
         assert updated_data["pfp"] == data["pfp"]
-        assert "pfp_verified" in updated_data
-        assert updated_data["pfp_verified"] is False
+        assert "verified" in updated_data["pfp"]
+        assert updated_data["pfp"]["verified"] is False
 
     @pytest.mark.asyncio
     async def test_update_user_pfp_random(self, db, current_user: User):
         data = {"pfp": "asdfasdf"}
-        updated_data = await set_user_profile_picture(data, current_user)
+        updated_data = await set_user_profile_picture(data, current_user, current_user)
         assert "pfp" not in updated_data
-        assert "pfp_verified" not in updated_data

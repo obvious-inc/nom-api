@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from web3 import Web3
 
+from app.helpers import cloudflare
 from app.helpers.connection import get_client, get_db
 from app.helpers.jwt import generate_jwt_token
 from app.main import get_application
@@ -155,3 +156,11 @@ async def get_authorized_client(client: AsyncClient):
         return client
 
     return _get_authorized_client
+
+
+@pytest.fixture(autouse=True)
+async def mock_cloudflare_upload_image_url(monkeypatch):
+    async def mock_upload_image_url(*args, **kwargs):
+        return {"id": "7d5d3a42-22b0-4dff-ab43-1426264567a7"}
+
+    monkeypatch.setattr(cloudflare, "upload_image_url", mock_upload_image_url)

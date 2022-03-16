@@ -52,7 +52,7 @@ async def get_user_profile_by_server_id(server_id: str, current_user: User) -> U
     return profile
 
 
-async def set_user_profile_picture(data: dict, current_user: User, profile) -> dict:
+async def set_user_profile_picture(data: dict, current_user: User, profile: Union[ServerMember, User]) -> dict:
     pfp_input_string = data.get("pfp", "")
     if not pfp_input_string:
         return data
@@ -94,12 +94,8 @@ async def set_user_profile_picture(data: dict, current_user: User, profile) -> d
         pfp_data["verified"] = False
         pfp_data["input_image_url"] = image_url
 
-    await queue_bg_task(
-        upload_pfp_url_and_update_profile,
-        pfp_input_string,
-        image_url,
-        profile,
-    )
+    metadata = {"user": str(current_user.pk), "profile": str(profile.pk)}
+    await queue_bg_task(upload_pfp_url_and_update_profile, pfp_input_string, image_url, profile, metadata)
 
     data["pfp"] = pfp_data
     return data
