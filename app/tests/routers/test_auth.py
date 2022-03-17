@@ -24,7 +24,7 @@ from app.services.users import get_user_by_id
 class TestAuthRoutes:
     @pytest.mark.asyncio
     async def test_create_token_wallet_ok(
-        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
+        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str, server: Server
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
@@ -63,7 +63,7 @@ class TestAuthRoutes:
 
     @pytest.mark.asyncio
     async def test_login_with_same_wallet(
-        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
+        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str, server: Server
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
@@ -117,7 +117,7 @@ class TestAuthRoutes:
 
     @pytest.mark.asyncio
     async def test_login_wallet_with_lowercase_address(
-        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
+        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str, server: Server
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()

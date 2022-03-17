@@ -14,12 +14,14 @@ def generate_jwt_token(data: dict, expires_delta: Optional[timedelta] = None, to
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        delta_expiry = (
-            settings.jwt_access_token_expire_minutes
-            if token_type == "access"
-            else settings.jwt_refresh_token_expire_minutes
-        )
-        expire = datetime.utcnow() + timedelta(minutes=delta_expiry)
+        expire = datetime.utcnow()
+        if token_type == "access":
+            expire += timedelta(minutes=settings.jwt_access_token_expire_minutes)
+        elif token_type == "refresh":
+            expire += timedelta(minutes=settings.jwt_refresh_token_expire_minutes)
+        else:
+            raise ValueError(f"unexpected token type: {token_type}")
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=ALGORITHM)
     return encoded_jwt

@@ -4,6 +4,7 @@ from eth_account.messages import encode_defunct
 from web3 import Web3
 
 from app.helpers.jwt import decode_jwt_token
+from app.models.server import Server
 from app.schemas.auth import AuthWalletSchema
 from app.services.auth import generate_wallet_token
 from app.services.users import get_user_by_id
@@ -11,7 +12,7 @@ from app.services.users import get_user_by_id
 
 class TestAuthService:
     @pytest.mark.asyncio
-    async def test_generate_wallet_token_ok(self, db, private_key: bytes, wallet: str):
+    async def test_generate_wallet_token_ok(self, db, private_key: bytes, wallet: str, server: Server):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
         message = f"""NewShades wants you to sign in with your web3 account
@@ -34,7 +35,7 @@ class TestAuthService:
         }
 
         token = await generate_wallet_token(AuthWalletSchema(**data))
-        decrypted_token = decode_jwt_token(token)
+        decrypted_token = decode_jwt_token(token.access_token)
         token_user_id = decrypted_token.get("sub")
         assert token_user_id != wallet
 

@@ -15,17 +15,19 @@ from app.helpers import cloudflare
 from app.helpers.connection import get_client, get_db
 from app.helpers.jwt import generate_jwt_token
 from app.main import get_application
+from app.models.auth import RefreshToken
 from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
-from app.schemas.auth import AuthWalletSchema
+from app.schemas.auth import AuthWalletSchema, RefreshTokenCreateSchema
 from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.auth import generate_wallet_token
 from app.services.channels import create_dm_channel, create_server_channel
+from app.services.crud import create_item
 from app.services.messages import create_message
 from app.services.servers import create_server
 from app.services.users import create_user
@@ -140,7 +142,8 @@ async def authorized_client(client: AsyncClient, private_key: bytes, current_use
         "address": current_user.wallet_address,
     }
 
-    access_token = await generate_wallet_token(AuthWalletSchema(**data))
+    token = await generate_wallet_token(AuthWalletSchema(**data))
+    access_token = token.access_token
 
     client.headers.update({"Authorization": f"Bearer {access_token}"})
 
@@ -152,6 +155,12 @@ async def authorized_client(client: AsyncClient, private_key: bytes, current_use
 async def get_authorized_client(client: AsyncClient):
     async def _get_authorized_client(user: User):
         access_token = generate_jwt_token(data={"sub": str(user.id)})
+        refresh_token = generate_jwt_token(data={"sub": str(user.id)}, token_type="refresh")
+        await create_item(
+            RefreshTokenCreateSchema(refresh_token=refresh_token, user=str(user.id)),
+            result_obj=RefreshToken,
+            current_user=user,
+        )
         client.headers.update({"Authorization": f"Bearer {access_token}"})
         return client
 
