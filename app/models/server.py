@@ -45,7 +45,7 @@ class ServerJoinRule(APIDocument):
             if not hasattr(self, "guild_xyz_id"):
                 raise ValidationError("missing 'guild_xyz_id' field")
 
-        elif self.kind == "whitelist":
+        elif self.type == "whitelist":
             if not hasattr(self, "whitelist_addresses"):
                 raise ValidationError("missing 'whitelist_addresses' field")
 

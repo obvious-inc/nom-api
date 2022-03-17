@@ -4,7 +4,7 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
-from app.helpers.guild_xyz import is_user_eligble_for_guild
+from app.helpers.guild_xyz import is_user_eligible_for_guild
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -36,19 +36,22 @@ async def join_server(server_id: str, current_user: User) -> ServerMember:
 
     user_is_allowed_in = False
 
-    joining_rules = server.join_rules
-    if not joining_rules:
+    if not server.join_rules:
         # if no rules, let anyone in
         user_is_allowed_in = True
 
+    joining_rules = [await role.fetch() for role in server.join_rules]
     for rule in joining_rules:  # type: ServerJoinRule
+        if user_is_allowed_in:
+            break
+
         if rule.type == "whitelist":
             user_is_allowed_in = any(
                 [current_user.wallet_address.lower() == wl_addr.lower() for wl_addr in rule.whitelist_addresses]
             )
         elif rule.type == "guild_xyz":
             guild_id = rule.guild_xyz_id
-            user_is_allowed_in = await is_user_eligble_for_guild(user=current_user, guild_id=guild_id)
+            user_is_allowed_in = await is_user_eligible_for_guild(user=current_user, guild_id=guild_id)
 
     if not user_is_allowed_in:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot join this server")
@@ -90,7 +93,5 @@ async def get_server_members(server_id: str, current_user: User):
 
 
 async def get_servers(current_user: User):
-    filters = {
-        # filter out private/non-exposed servers
-    }
+    filters = {"public": True}  # TODO: add 'public' flag to filter out private/non-exposed servers
     return await get_items(filters=filters, result_obj=Server, current_user=current_user)

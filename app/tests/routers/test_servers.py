@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Callable
 
 import pytest
 from bson import ObjectId
@@ -6,11 +7,11 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
-from app.models.server import Server, ServerMember
+from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
-from app.services.crud import get_item, get_items
+from app.services.crud import get_item, get_items, update_item
 from app.services.servers import create_server
 from app.services.users import create_user
 
@@ -97,3 +98,195 @@ class TestServerRoutes:
 
         response = await authorized_client.get(f"/servers/{str(new_server.id)}/members")
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_list_servers_empty(self, app: FastAPI, db: Database, authorized_client: AsyncClient):
+        response = await authorized_client.get("/servers")
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+    @pytest.mark.asyncio
+    async def test_list_public_servers_empty(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
+    ):
+        response = await authorized_client.get("/servers")
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+    @pytest.mark.skip("public field not present yet")
+    @pytest.mark.asyncio
+    async def test_list_public_servers_not_empty(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
+    ):
+        assert server.public is True
+        response = await authorized_client.get("/servers")
+        assert response.status_code == 200
+        resp_servers = response.json()
+        assert len(resp_servers) == 1
+        resp_server = resp_servers[0]
+        assert resp_server["id"] == str(server.id)
+
+    @pytest.mark.asyncio
+    async def test_join_server_no_rules(
+        self,
+        app: FastAPI,
+        db: Database,
+        server: Server,
+        guest_user: User,
+        get_authorized_client: Callable,
+    ):
+        guest_client = await get_authorized_client(guest_user)
+        server_id = str(server.id)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_server_whitelist_rules_nok(
+        self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
+    ):
+        rule = ServerJoinRule(type="whitelist", whitelist_addresses=[])
+        await rule.commit()
+        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        assert len(updated_server.join_rules) == 1
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 403
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+        assert member is None
+
+    @pytest.mark.asyncio
+    async def test_join_server_whitelist_rules_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        server: Server,
+        guest_user: User,
+        get_authorized_client: Callable,
+    ):
+        rule = ServerJoinRule(type="whitelist", whitelist_addresses=[guest_user.wallet_address])
+        await rule.commit()
+        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        assert len(updated_server.join_rules) == 1
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_server_guild_rules_ok(
+        self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
+    ):
+        rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1985")  # everyone has access to this guild
+        await rule.commit()
+        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        assert len(updated_server.join_rules) == 1
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_server_guild_rules_nok(
+        self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
+    ):
+        rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1898")
+        await rule.commit()
+        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        assert len(updated_server.join_rules) == 1
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 403
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+        assert member is None
+
+    @pytest.mark.asyncio
+    async def test_join_server_whitelist_ok_and_guild_nok(
+        self,
+        app: FastAPI,
+        db: Database,
+        server: Server,
+        guest_user: User,
+        get_authorized_client: Callable,
+    ):
+        guild_rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1898")
+        await guild_rule.commit()
+        whitelist_rule = ServerJoinRule(type="whitelist", whitelist_addresses=[guest_user.wallet_address])
+        await whitelist_rule.commit()
+        updated_server = await update_item(
+            server, data={"join_rules": [whitelist_rule, guild_rule]}, current_user=guest_user
+        )
+        assert len(updated_server.join_rules) == 2
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_server_whitelist_nok_and_guild_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        server: Server,
+        guest_user: User,
+        get_authorized_client: Callable,
+    ):
+        guild_rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1985")
+        await guild_rule.commit()
+        whitelist_rule = ServerJoinRule(type="whitelist", whitelist_addresses=[])
+        await whitelist_rule.commit()
+        updated_server = await update_item(
+            server, data={"join_rules": [whitelist_rule, guild_rule]}, current_user=guest_user
+        )
+        assert len(updated_server.join_rules) == 2
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+
+        assert member is not None
+        assert member.user == guest_user
