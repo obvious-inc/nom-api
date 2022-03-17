@@ -67,7 +67,8 @@ async def upload_content(
 
         async with session.post(url, data=data) as resp:
             if not resp.ok:
-                logger.warning(f"problem storing file {filename}: {resp.status} {resp.text}")
+                text = await resp.text()
+                logger.warning(f"problem storing file {filename}: {resp.status} {text}")
                 resp.raise_for_status()
             json_resp = await resp.json()
             result = json_resp["result"]
