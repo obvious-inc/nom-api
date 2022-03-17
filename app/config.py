@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     mongodb_test_db: str = "newshades-test"
 
     jwt_secret_key: str
-    jwt_expire_minutes: Optional[int] = 60
+    jwt_access_token_expire_minutes: Optional[int] = 60
+    jwt_refresh_token_expire_minutes: Optional[int] = 10080
 
     web3_provider_url_ws: Optional[str]
 

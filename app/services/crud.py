@@ -3,7 +3,7 @@ from typing import List, Optional, Sequence, Type, TypeVar
 
 from bson import ObjectId
 from pymongo import ReturnDocument
-from pymongo.results import InsertManyResult
+from pymongo.results import InsertManyResult, UpdateResult
 from umongo import Reference
 
 from app.models.base import APIDocument
@@ -115,3 +115,11 @@ async def find_and_update_item(filters: dict, data: dict, result_obj: Type[APIDo
 
 async def delete_item(item: APIDocumentType) -> APIDocumentType:
     return await update_item(item, {"deleted": True})
+
+
+async def delete_items(filters: dict, result_obj: Type[APIDocumentType], current_user: Optional[User] = None):
+    updated_result = await result_obj.collection.update_many(
+        filter=filters, update={"$set": {"deleted": True}}
+    )  # type: UpdateResult
+
+    logger.info("%d objects deleted. [object_type=%s", updated_result.modified_count, result_obj.__name__)
