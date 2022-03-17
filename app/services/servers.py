@@ -5,11 +5,14 @@ from fastapi import HTTPException
 from starlette import status
 
 from app.helpers.guild_xyz import is_user_eligble_for_guild
+from app.helpers.queue_utils import queue_bg_task
+from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
 from app.schemas.servers import ServerCreateSchema
 from app.services.crud import create_item, get_item, get_item_by_id, get_items
+from app.services.websockets import broadcast_server_event
 
 
 async def create_server(server_model: ServerCreateSchema, current_user: User) -> Union[Server, APIDocument]:
@@ -53,7 +56,13 @@ async def join_server(server_id: str, current_user: User) -> ServerMember:
     member = ServerMember(server=server, user=current_user)
     await member.commit()
 
-    # Websocket event: User joined server
+    await queue_bg_task(
+        broadcast_server_event,
+        str(server.id),
+        str(current_user.id),
+        WebSocketServerEvent.SERVER_USER_JOINED,
+        {"user": current_user.dump(), "member": member.dump()},
+    )
 
     return member
 
