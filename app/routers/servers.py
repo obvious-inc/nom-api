@@ -6,9 +6,14 @@ from fastapi import APIRouter, Body, Depends
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema
-from app.services.servers import create_server, get_server_members, join_server
+from app.services.servers import create_server, get_server_members, get_servers, join_server
 
 router = APIRouter()
+
+
+@router.get("", summary="List servers", response_model=List[ServerSchema])
+async def get_list_servers(current_user: User = Depends(get_current_user)):
+    return await get_servers(current_user=current_user)
 
 
 @router.post(

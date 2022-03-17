@@ -61,3 +61,10 @@ async def get_server_members(server_id: str, current_user: User):
         {"server": ObjectId(server_id)}, result_obj=ServerMember, current_user=current_user, size=None
     )
     return server_members
+
+
+async def get_servers(current_user: User):
+    filters = {
+        # filter out private/non-exposed servers
+    }
+    return await get_items(filters=filters, result_obj=Server, current_user=current_user)
