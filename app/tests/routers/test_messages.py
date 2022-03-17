@@ -233,7 +233,6 @@ class TestMessagesRoutes:
         authorized_client: AsyncClient,
         server: Server,
         server_channel: Channel,
-        event_loop,
     ):
         data = {"content": "gm", "server": str(server.id), "channel": str(server_channel.id)}
         channel = await get_item_by_id(id_=server_channel.id, result_obj=Channel)
@@ -247,7 +246,7 @@ class TestMessagesRoutes:
         assert json_response["server"] == data["server"] == str(server.id)
         assert json_response["channel"] == data["channel"] == str(server_channel.id)
 
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         channel = await get_item_by_id(id_=server_channel.id, result_obj=Channel)
         assert channel.last_message_at is not None
         created_at = arrow.get(json_response["created_at"])
@@ -793,7 +792,6 @@ class TestMessagesRoutes:
         server_channel: Channel,
         create_new_user: Callable,
         get_authorized_client: Callable,
-        event_loop,
     ):
         guest_user = await create_new_user()
         guest_client = await get_authorized_client(guest_user)
@@ -812,7 +810,7 @@ class TestMessagesRoutes:
         assert mention_type == "user"
         assert mention_ref == str(current_user.id)
 
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         mentioned_user_client = await get_authorized_client(current_user)
         response = await mentioned_user_client.get("/users/me/read_states")
         assert response.status_code == 200
@@ -832,7 +830,6 @@ class TestMessagesRoutes:
         server_channel: Channel,
         create_new_user: Callable,
         get_authorized_client: Callable,
-        event_loop,
     ):
         guest_user = await create_new_user()
         guest_client = await get_authorized_client(guest_user)
@@ -851,7 +848,7 @@ class TestMessagesRoutes:
         assert mention_type == "broadcast"
         assert mention_ref == "everyone"
 
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         mentioned_user_client = await get_authorized_client(current_user)
         response = await mentioned_user_client.get("/users/me/read_states")
         assert response.status_code == 200

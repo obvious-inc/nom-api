@@ -77,9 +77,14 @@ branch = true
 fail_under = 80
 skip_empty = true
 skip_covered = true
-
 exclude_lines = [
     "if __name__ == .__main__.:",  # ignore main runs
     "if not settings.testing", # ignore production-specific setup
-    "if settings.profiling" # ignore profiling
+    "if settings.profiling", # ignore profiling
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:The.+?(attribute of|argument to) fields is deprecated.:DeprecationWarning:marshmallow",
+    'ignore:"@coroutine" decorator is deprecated since Python 3.8, use "async def" instead:DeprecationWarning:pusher',
 ]

@@ -19,7 +19,7 @@ from app.models.user import User
 class TestWebhookRoutes:
     @pytest.mark.asyncio
     async def test_pusher_channel_occupied(
-        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, event_loop
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
         settings = get_settings()
         assert current_user.online_channels == []
@@ -33,13 +33,13 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel_id]
 
     @pytest.mark.asyncio
     async def test_pusher_channel_vacated(
-        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, event_loop
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
         settings = get_settings()
         channel_id = f"private-{str(current_user.id)}"
@@ -56,7 +56,7 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == []
 
@@ -134,7 +134,7 @@ class TestWebhookRoutes:
 
     @pytest.mark.asyncio
     async def test_pusher_status_online(
-        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, event_loop
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
         settings = get_settings()
 
@@ -150,14 +150,14 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel_id]
         assert current_user.status == "online"
 
     @pytest.mark.asyncio
     async def test_pusher_status_offline(
-        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, event_loop
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
         settings = get_settings()
 
@@ -173,7 +173,7 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel_id]
         assert current_user.status == "online"
@@ -186,14 +186,14 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == []
         assert current_user.status == "offline"
 
     @pytest.mark.asyncio
     async def test_pusher_multiple_channels_online(
-        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, event_loop
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
         settings = get_settings()
 
@@ -213,7 +213,7 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel1_id]
         assert current_user.status == "online"
@@ -227,14 +227,14 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel1_id, channel2_id]
         assert current_user.status == "online"
 
     @pytest.mark.asyncio
     async def test_pusher_multiple_channels_not_offline(
-        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, event_loop
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
         settings = get_settings()
 
@@ -254,7 +254,7 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel1_id]
         assert current_user.status == "online"
@@ -268,7 +268,7 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel1_id, channel2_id]
         assert current_user.status == "online"
@@ -281,14 +281,14 @@ class TestWebhookRoutes:
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         response = await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
         assert response.status_code == 200
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel2_id]
         assert current_user.status == "online"
 
     @pytest.mark.asyncio
     async def test_pusher_multiple_channels_offline(
-        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, event_loop
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
         settings = get_settings()
 
@@ -306,7 +306,7 @@ class TestWebhookRoutes:
         ).hexdigest()
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel1_id]
         assert current_user.status == "online"
@@ -318,7 +318,7 @@ class TestWebhookRoutes:
         ).hexdigest()
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel1_id, channel2_id]
         assert current_user.status == "online"
@@ -329,7 +329,7 @@ class TestWebhookRoutes:
         ).hexdigest()
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == [channel2_id]
         assert current_user.status == "online"
@@ -340,7 +340,7 @@ class TestWebhookRoutes:
         ).hexdigest()
         headers = {"X-Pusher-Key": settings.pusher_key, "X-Pusher-Signature": signature}
         await authorized_client.post("/webhooks/pusher", json=json_data, headers=headers)
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         await current_user.reload()
         assert current_user.online_channels == []
         assert current_user.status == "offline"

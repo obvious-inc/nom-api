@@ -151,7 +151,6 @@ class TestAuthRoutes:
         client: AsyncClient,
         current_user: User,
         server: Server,
-        event_loop,
     ):
         key = secrets.token_bytes(32)
         priv = binascii.hexlify(key).decode("ascii")
@@ -197,7 +196,7 @@ class TestAuthRoutes:
         assert user is not None
         assert user.wallet_address == wallet
 
-        await asyncio.sleep(random.random(), loop=event_loop)
+        await asyncio.sleep(random.random())
         members = await get_items({"server": server.id}, result_obj=ServerMember, current_user=current_user, size=None)
         assert len(members) == 2
 
