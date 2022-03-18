@@ -95,7 +95,13 @@ async def get_item(
 
 
 async def update_item(item: APIDocumentType, data: dict, current_user: Optional[User] = None) -> APIDocumentType:
-    item.update(data)
+    local_data = dict(data)
+    none_fields = [field for field, value in local_data.items() if value is None]
+    for field in none_fields:
+        del item[field]
+        local_data.pop(field)
+
+    item.update(local_data)
     await item.commit()
     return item
 
