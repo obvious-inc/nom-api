@@ -28,9 +28,9 @@ async def login_with_wallet(data: AuthWalletSchema = Body(...), db=Depends(get_d
     status_code=http.HTTPStatus.CREATED,
 )
 async def post_refresh_token(
-    token: RefreshTokenCreateSchema = Body(...), current_user: User = Depends(get_current_user)
+    token: RefreshTokenCreateSchema = Body(...),
 ):
-    return await create_refresh_token(token, current_user=current_user)
+    return await create_refresh_token(token)
 
 
 @router.post("/revoke", summary="Revoke all tokens", status_code=http.HTTPStatus.NO_CONTENT)

@@ -85,22 +85,14 @@ async def generate_wallet_token(data: AuthWalletSchema) -> AccessTokenSchema:
     return token
 
 
-async def create_refresh_token(token_model: RefreshTokenCreateSchema, current_user: User) -> AccessTokenSchema:
+async def create_refresh_token(token_model: RefreshTokenCreateSchema) -> AccessTokenSchema:
     refresh_token = await get_item(
-        filters={"user": current_user.pk, "refresh_token": token_model.refresh_token},
+        filters={"refresh_token": token_model.refresh_token},
         result_obj=RefreshToken,
-        current_user=current_user,
     )
 
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not find refresh token")
-
-    if refresh_token.used is True:
-        logger.warning("tried to reuse already used refresh token. revoking all!")
-        await delete_items(filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token already used")
-    else:
-        await update_item(refresh_token, data={"used": True}, current_user=current_user)
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -123,21 +115,20 @@ async def create_refresh_token(token_model: RefreshTokenCreateSchema, current_us
         logger.warning("User in refresh token not found. [user_id=%s]", user_id)
         raise credentials_exception
 
-    if user != current_user:
-        logger.warning(
-            "User in refresh token different than current user. [refresh_user_id=%s, current_user_id=%s]",
-            user_id,
-            str(current_user.id),
-        )
-        raise credentials_exception
+    if refresh_token.used is True:
+        logger.warning("tried to reuse already used refresh token. revoking all!")
+        await delete_items(filters={"user": user.pk}, result_obj=RefreshToken, current_user=user)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token already used")
+    else:
+        await update_item(refresh_token, data={"used": True}, current_user=user)
 
-    access_token = generate_jwt_token({"sub": str(current_user.id)})
-    refresh_token = generate_jwt_token({"sub": str(current_user.id)}, token_type="refresh")
+    access_token = generate_jwt_token({"sub": str(user.id)})
+    refresh_token = generate_jwt_token({"sub": str(user.id)}, token_type="refresh")
 
     await create_item(
-        RefreshTokenCreateSchema(refresh_token=refresh_token, user=str(current_user.id)),
+        RefreshTokenCreateSchema(refresh_token=refresh_token, user=str(user.id)),
         result_obj=RefreshToken,
-        current_user=current_user,
+        current_user=user,
     )
 
     token = AccessTokenSchema(access_token=access_token, refresh_token=refresh_token)

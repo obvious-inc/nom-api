@@ -143,7 +143,7 @@ class TestAuthService:
         assert refresh_tokens[0].refresh_token == token.refresh_token
 
         refresh_token_model = RefreshTokenCreateSchema(user=str(current_user.pk), refresh_token=token.refresh_token)
-        new_token = await create_refresh_token(token_model=refresh_token_model, current_user=current_user)
+        new_token = await create_refresh_token(token_model=refresh_token_model)
 
         assert getattr(new_token, "access_token") is not None
         assert getattr(new_token, "refresh_token") is not None
@@ -172,7 +172,7 @@ class TestAuthService:
 
         refresh_token_model = RefreshTokenCreateSchema(user=str(current_user.pk), refresh_token=token.refresh_token)
         with pytest.raises(HTTPException) as e_info:
-            await create_refresh_token(token_model=refresh_token_model, current_user=current_user)
+            await create_refresh_token(token_model=refresh_token_model)
 
         assert "already used" in e_info.value.detail
 
@@ -190,7 +190,7 @@ class TestAuthService:
 
         refresh_token_model = RefreshTokenCreateSchema(user=str(current_user.pk), refresh_token=token.refresh_token)
         with pytest.raises(HTTPException) as e_info:
-            await create_refresh_token(token_model=refresh_token_model, current_user=current_user)
+            await create_refresh_token(token_model=refresh_token_model)
 
         assert "not find refresh token" in e_info.value.detail
 
@@ -212,7 +212,7 @@ class TestAuthService:
 
         refresh_token_model = RefreshTokenCreateSchema(user=str(current_user.pk), refresh_token=token.refresh_token)
         with pytest.raises(HTTPException) as e_info:
-            await create_refresh_token(token_model=refresh_token_model, current_user=current_user)
+            await create_refresh_token(token_model=refresh_token_model)
 
         assert "could not validate token" in e_info.value.detail.lower()
 
@@ -250,7 +250,7 @@ class TestAuthService:
         assert refresh_tokens[0].refresh_token == token.refresh_token
 
         refresh_token_model = RefreshTokenCreateSchema(user=str(current_user.pk), refresh_token=token.refresh_token)
-        new_token = await create_refresh_token(token_model=refresh_token_model, current_user=current_user)
+        new_token = await create_refresh_token(token_model=refresh_token_model)
 
         assert getattr(new_token, "access_token") is not None
         assert getattr(new_token, "refresh_token") is not None
@@ -267,7 +267,7 @@ class TestAuthService:
 
         refresh_token_model = RefreshTokenCreateSchema(user=str(current_user.pk), refresh_token=token.refresh_token)
         with pytest.raises(HTTPException) as e_info:
-            await create_refresh_token(token_model=refresh_token_model, current_user=current_user)
+            await create_refresh_token(token_model=refresh_token_model)
 
         assert "already used" in e_info.value.detail
         refresh_tokens = await get_items(
