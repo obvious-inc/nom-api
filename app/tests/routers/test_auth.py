@@ -3,6 +3,7 @@ import binascii
 import random
 import secrets
 import time
+from typing import Callable
 
 import arrow
 import pytest
@@ -15,9 +16,10 @@ from pymongo.database import Database
 from web3 import Web3
 
 from app.helpers.jwt import decode_jwt_token
+from app.models.auth import RefreshToken
 from app.models.server import Server, ServerMember
 from app.models.user import User
-from app.services.crud import get_items
+from app.services.crud import get_item, get_items, update_item
 from app.services.users import get_user_by_id
 
 
@@ -227,3 +229,127 @@ class TestAuthRoutes:
 
         response = await client.post("/auth/login", json=data)
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_login_and_refresh_token_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        private_key: bytes,
+        wallet: str,
+        server: Server,
+        get_signed_message_data: Callable,
+    ):
+        data = await get_signed_message_data(private_key, wallet)
+        response = await client.post("/auth/login", json=data)
+        assert response.status_code == 201
+
+        json_response = response.json()
+        assert "access_token" in json_response
+        assert "refresh_token" in json_response
+        access_token = json_response["access_token"]
+        refresh_token = json_response["refresh_token"]
+
+        client.headers.update({"Authorization": f"Bearer {access_token}"})
+
+        response = await client.get("/users/me")
+        assert response.status_code == 200
+
+        await asyncio.sleep(1)
+        data = {"refresh_token": refresh_token}
+        response = await client.post("/auth/refresh", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert "access_token" in json_response
+        assert "refresh_token" in json_response
+
+        new_access_token = json_response["access_token"]
+        new_refresh_token = json_response["refresh_token"]
+
+        assert new_access_token != access_token
+        assert new_refresh_token != refresh_token
+
+        client.headers.update({"Authorization": f"Bearer {new_access_token}"})
+        response = await client.get("/users/me")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_revoke_refresh_tokens(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        private_key: bytes,
+        wallet: str,
+        server: Server,
+        get_signed_message_data: Callable,
+    ):
+        data = await get_signed_message_data(private_key, wallet)
+        response = await client.post("/auth/login", json=data)
+        assert response.status_code == 201
+
+        json_response = response.json()
+        assert "access_token" in json_response
+        assert "refresh_token" in json_response
+        access_token = json_response["access_token"]
+        refresh_token = json_response["refresh_token"]
+
+        client.headers.update({"Authorization": f"Bearer {access_token}"})
+        response = await client.get("/users/me")
+        assert response.status_code == 200
+
+        response = await client.post("/auth/revoke")
+        assert response.status_code == 204
+
+        response = await client.get("/users/me")
+        assert response.status_code == 401
+
+        data = {"refresh_token": refresh_token}
+        response = await client.post("/auth/refresh", json=data)
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_refresh_token_wrong_user(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        private_key: bytes,
+        wallet: str,
+        server: Server,
+        current_user: User,
+        get_signed_message_data: Callable,
+        guest_user: User,
+        get_authorized_client: Callable,
+        authorized_client,
+    ):
+        data = await get_signed_message_data(private_key, wallet)
+        response = await authorized_client.post("/auth/login", json=data)
+        assert response.status_code == 201
+
+        json_response = response.json()
+        assert "access_token" in json_response
+        assert "refresh_token" in json_response
+        access_token = json_response["access_token"]
+        refresh_token = json_response["refresh_token"]
+
+        client.headers.update({"Authorization": f"Bearer {access_token}"})
+        response = await authorized_client.get("/users/me")
+        assert response.status_code == 200
+
+        json_resp = response.json()
+        assert json_resp["id"] == str(current_user.pk)
+
+        guest_client = await get_authorized_client(guest_user)
+        guest_refresh_token = await get_item(
+            filters={"user": guest_user.pk}, result_obj=RefreshToken, current_user=guest_user
+        )
+        assert guest_refresh_token is not None
+
+        user_refresh_token = await get_item(filters={"refresh_token": refresh_token}, result_obj=RefreshToken)
+        await update_item(user_refresh_token, data={"user": guest_user.pk})
+
+        data = {"refresh_token": refresh_token}
+        response = await guest_client.post("/auth/refresh", json=data)
+        assert response.status_code == 401

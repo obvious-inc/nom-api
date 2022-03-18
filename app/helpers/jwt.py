@@ -27,7 +27,7 @@ def generate_jwt_token(data: dict, expires_delta: Optional[timedelta] = None, to
     return encoded_jwt
 
 
-def decode_jwt_token(token: str):
+def decode_jwt_token(token: str, options: Optional[dict] = None):
     settings = get_settings()
-    data = jwt.decode(token, settings.jwt_secret_key, algorithms=[ALGORITHM])
+    data = jwt.decode(token, settings.jwt_secret_key, algorithms=[ALGORITHM], options=options)
     return data

@@ -173,3 +173,32 @@ async def mock_cloudflare_upload_image_url(monkeypatch):
         return {"id": "7d5d3a42-22b0-4dff-ab43-1426264567a7"}
 
     monkeypatch.setattr(cloudflare, "upload_image_url", mock_upload_image_url)
+
+
+@pytest.fixture
+async def get_signed_message_data():
+    async def _get_signed_message_data(private_key, address):
+        nonce = 1234
+        signed_at = arrow.utcnow().isoformat()
+        message = f"""NewShades wants you to sign in with your web3 account
+
+                    {address}
+
+                    URI: localhost
+                    Nonce: {nonce}
+                    Issued At: {signed_at}"""
+
+        encoded_message = encode_defunct(text=message)
+        signed_message = Web3().eth.account.sign_message(encoded_message, private_key=private_key)
+
+        data = {
+            "message": message,
+            "signature": signed_message.signature.hex(),
+            "signed_at": signed_at,
+            "nonce": nonce,
+            "address": address,
+        }
+
+        return data
+
+    return _get_signed_message_data
