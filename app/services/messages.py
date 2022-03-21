@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import List, Union
 from urllib.parse import urlparse
 
+from bson import ObjectId
 from fastapi import HTTPException
 
 from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
@@ -17,7 +18,15 @@ from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
 from app.schemas.messages import MessageCreateSchema, MessageUpdateSchema
 from app.services.channels import update_channel_last_message
-from app.services.crud import create_item, delete_item, find_and_update_item, get_item_by_id, get_items, update_item
+from app.services.crud import (
+    create_item,
+    delete_item,
+    find_and_update_item,
+    get_item,
+    get_item_by_id,
+    get_items,
+    update_item,
+)
 from app.services.integrations import get_gif_by_url
 from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_current_user_event, broadcast_message_event, broadcast_users_event
@@ -121,6 +130,27 @@ async def get_messages(channel_id: str, size: int, current_user: User) -> List[M
     )
 
     return messages
+
+
+async def get_message(channel_id: str, message_id: str, current_user: User) -> Message:
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
+
+    filters = {"_id": ObjectId(message_id)}
+    if channel.kind == "server":
+        # TODO: make sure user can list channel's messages (in server + proper permissions)
+        filters.update({"channel": channel.id, "server": channel.server.pk})
+    elif channel.kind == "dm":
+        if current_user not in channel.members:
+            raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
+        filters.update({"channel": channel.id})
+
+    message = await get_item(
+        filters=filters,
+        result_obj=Message,
+        current_user=current_user,
+    )
+
+    return message
 
 
 async def add_reaction_to_message(message_id, reaction_emoji: str, current_user: User):

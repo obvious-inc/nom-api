@@ -16,7 +16,7 @@ from app.schemas.channels import (
 from app.schemas.messages import MessageSchema
 from app.services.channels import create_channel, create_typing_indicator, delete_channel
 from app.services.crud import get_items
-from app.services.messages import get_messages
+from app.services.messages import get_message, get_messages
 
 router = APIRouter()
 
@@ -46,6 +46,11 @@ async def list_channels(current_user: User = Depends(get_current_user)):
 async def get_list_messages(channel_id, size: int = 50, current_user: User = Depends(get_current_user)):
     messages = await get_messages(channel_id, size, current_user=current_user)
     return messages
+
+
+@router.get("/{channel_id}/messages/{message_id}", response_description="Get message", response_model=MessageSchema)
+async def get_specific_message(channel_id, message_id, current_user: User = Depends(get_current_user)):
+    return await get_message(channel_id, message_id, current_user=current_user)
 
 
 @router.delete("/{channel_id}", response_description="Delete channel", response_model=EitherChannel)

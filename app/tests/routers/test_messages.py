@@ -856,3 +856,23 @@ class TestMessagesRoutes:
         assert len(json_response) == 1
         assert "mention_count" in json_response[0]
         assert json_response[0]["mention_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_get_specific_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+        guest_user: User,
+    ):
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message == channel_message
+
+        response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(channel_message.id)}")
+        assert response.status_code == 200
+        json_message = response.json()
+        assert json_message["content"] == message.content
