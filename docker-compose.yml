@@ -11,7 +11,7 @@ services:
     environment:
       MONGODB_URL: mongodb://newshades:newshades@db
     depends_on:
-      - mongodb
+      - db
   db:
     image: mongo:5.0.6
     env_file:
