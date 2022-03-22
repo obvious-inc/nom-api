@@ -47,7 +47,8 @@ async def get_message_mentions(message: Message) -> List[Tuple[str, str]]:
         message.content = await stringify_blocks(message.blocks)
 
     if not message.content:
-        raise Exception("can't fetch mentions from message without content. [message=%s]", str(message.id))
+        logger.warning(f"no content to fetch mentions from. [message={str(message.id)}")
+        return []
 
     return await get_message_content_mentions(message.content)
 
