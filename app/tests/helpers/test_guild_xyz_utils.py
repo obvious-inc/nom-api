@@ -28,7 +28,7 @@ class TestGuildXYZUtils:
     async def test_user_is_eligible_for_guild_nok(self, db, wallet_address, guild_id):
         user_model = UserCreateSchema(wallet_address=wallet_address)
         user = await create_user(user_model=user_model, fetch_ens=True)
-        assert await is_user_eligible_for_guild(user, guild_id) is True
+        assert await is_user_eligible_for_guild(user, guild_id) is False
 
     @pytest.mark.asyncio
     async def test_get_roles_for_guild(self):
