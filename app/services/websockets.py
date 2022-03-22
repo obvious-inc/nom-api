@@ -168,7 +168,7 @@ async def broadcast_current_user_event(
 async def broadcast_user_servers_event(current_user_id: str, event: WebSocketServerEvent, custom_data: dict) -> None:
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
 
-    event_data = {"user": current_user.dump()}
+    event_data = {"user": await current_user.to_dict(exclude_fields=["pfp"])}
     if custom_data:
         event_data.update(custom_data)
 
