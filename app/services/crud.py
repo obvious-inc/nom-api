@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional, Sequence, Type, TypeVar
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo import ReturnDocument
 from pymongo.results import InsertManyResult, UpdateResult
 from umongo import Reference
@@ -56,7 +57,10 @@ async def get_item_by_id(
     id_: str, result_obj: Type[APIDocumentType], current_user: Optional[User] = None
 ) -> APIDocumentType:
     if type(id_) == str:
-        id_ = ObjectId(id_)
+        try:
+            id_ = ObjectId(id_)
+        except InvalidId:
+            raise TypeError("id_ must be ObjectId")
     elif isinstance(id_, ObjectId):
         pass
     elif isinstance(id_, Reference):

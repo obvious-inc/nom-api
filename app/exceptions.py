@@ -9,3 +9,7 @@ logger = logging.getLogger(__name__)
 
 async def assertion_exception_handler(request: Request, exc: AssertionError):
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "Problem with validating request"})
+
+
+async def type_error_handler(request: Request, exc: TypeError):
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "Problem with request data"})

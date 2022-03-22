@@ -876,3 +876,21 @@ class TestMessagesRoutes:
         assert response.status_code == 200
         json_message = response.json()
         assert json_message["content"] == message.content
+
+    @pytest.mark.asyncio
+    async def test_delete_message_invalid_id(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+        guest_user: User,
+    ):
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        assert message == channel_message
+
+        response = await authorized_client.delete("/messages/0")
+        assert response.status_code == 400
