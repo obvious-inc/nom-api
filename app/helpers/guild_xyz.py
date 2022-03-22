@@ -18,6 +18,7 @@ async def get_guild_member_roles(guild_id: str, member_wallet_addr: str):
                 access = role.get("access")
                 if access is True:
                     roles.append(role)
+                    logger.debug(f"{member_wallet_addr} has access to guild {guild_id} with role: {role}")
 
     return roles
 
@@ -25,4 +26,6 @@ async def get_guild_member_roles(guild_id: str, member_wallet_addr: str):
 async def is_user_eligible_for_guild(user: User, guild_id: str):
     wallet_address = user.wallet_address
     roles = await get_guild_member_roles(guild_id=guild_id, member_wallet_addr=wallet_address)
-    return len(roles) > 0
+    is_eligible = len(roles) > 0
+    logger.info(f"is user ({str(user.id)}) with wallet {wallet_address} eligible for guild {guild_id}? {is_eligible}")
+    return is_eligible
