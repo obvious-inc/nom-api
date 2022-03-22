@@ -3,6 +3,7 @@ import binascii
 import random
 import secrets
 import time
+from typing import Callable
 
 import arrow
 import pytest
@@ -24,7 +25,7 @@ from app.services.users import get_user_by_id
 class TestAuthRoutes:
     @pytest.mark.asyncio
     async def test_create_token_wallet_ok(
-        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
+        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str, server: Server
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
@@ -63,7 +64,7 @@ class TestAuthRoutes:
 
     @pytest.mark.asyncio
     async def test_login_with_same_wallet(
-        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
+        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str, server: Server
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
@@ -117,7 +118,7 @@ class TestAuthRoutes:
 
     @pytest.mark.asyncio
     async def test_login_wallet_with_lowercase_address(
-        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str
+        self, app: FastAPI, db: Database, client: AsyncClient, private_key: bytes, wallet: str, server: Server
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
@@ -227,3 +228,82 @@ class TestAuthRoutes:
 
         response = await client.post("/auth/login", json=data)
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_login_and_refresh_token_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        private_key: bytes,
+        wallet: str,
+        server: Server,
+        get_signed_message_data: Callable,
+    ):
+        data = await get_signed_message_data(private_key, wallet)
+        response = await client.post("/auth/login", json=data)
+        assert response.status_code == 201
+
+        json_response = response.json()
+        assert "access_token" in json_response
+        assert "refresh_token" in json_response
+        access_token = json_response["access_token"]
+        refresh_token = json_response["refresh_token"]
+
+        client.headers.update({"Authorization": f"Bearer {access_token}"})
+
+        response = await client.get("/users/me")
+        assert response.status_code == 200
+
+        await asyncio.sleep(1)
+        data = {"refresh_token": refresh_token}
+        response = await client.post("/auth/refresh", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert "access_token" in json_response
+        assert "refresh_token" in json_response
+
+        new_access_token = json_response["access_token"]
+        new_refresh_token = json_response["refresh_token"]
+
+        assert new_access_token != access_token
+        assert new_refresh_token != refresh_token
+
+        client.headers.update({"Authorization": f"Bearer {new_access_token}"})
+        response = await client.get("/users/me")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_revoke_refresh_tokens(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        private_key: bytes,
+        wallet: str,
+        server: Server,
+        get_signed_message_data: Callable,
+    ):
+        data = await get_signed_message_data(private_key, wallet)
+        response = await client.post("/auth/login", json=data)
+        assert response.status_code == 201
+
+        json_response = response.json()
+        assert "access_token" in json_response
+        assert "refresh_token" in json_response
+        access_token = json_response["access_token"]
+        refresh_token = json_response["refresh_token"]
+
+        client.headers.update({"Authorization": f"Bearer {access_token}"})
+        response = await client.get("/users/me")
+        assert response.status_code == 200
+
+        response = await client.post("/auth/revoke")
+        assert response.status_code == 204
+
+        response = await client.get("/users/me")
+        assert response.status_code == 401
+
+        data = {"refresh_token": refresh_token}
+        response = await client.post("/auth/refresh", json=data)
+        assert response.status_code == 401
