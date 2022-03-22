@@ -94,8 +94,11 @@ async def set_user_profile_picture(data: dict, current_user: User, profile: Unio
         pfp_data["verified"] = False
         pfp_data["input_image_url"] = image_url
 
-    metadata = {"user": str(current_user.pk), "profile": str(profile.pk)}
-    await queue_bg_task(upload_pfp_url_and_update_profile, pfp_input_string, image_url, profile, metadata)
+    if image_url.startswith("http"):
+        metadata = {"user": str(current_user.pk), "profile": str(profile.pk)}
+        await queue_bg_task(upload_pfp_url_and_update_profile, pfp_input_string, image_url, profile, metadata)
+    else:
+        logger.warning("image found is not a URL, ignoring upload to cloudflare for now")
 
     data["pfp"] = pfp_data
     return data
