@@ -43,8 +43,10 @@ async def list_channels(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/{channel_id}/messages", response_description="Get latest messages", response_model=List[MessageSchema])
-async def get_list_messages(channel_id, size: int = 50, current_user: User = Depends(get_current_user)):
-    messages = await get_messages(channel_id, size, current_user=current_user)
+async def get_list_messages(
+    channel_id, size: int = 50, expand: str = None, current_user: User = Depends(get_current_user)
+):
+    messages = await get_messages(channel_id, size=size, expand_fields=expand, current_user=current_user)
     return messages
 
 

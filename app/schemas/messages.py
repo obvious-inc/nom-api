@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import Field, root_validator, validator
 
@@ -21,7 +21,7 @@ class MessageSchema(APIBaseSchema):
     reactions: List[MessageReactionSchema]
     edited_at: Optional[datetime]
     embeds: List[dict]
-    reply_to: Optional[PyObjectId]
+    reply_to: Optional[Union["MessageSchema", PyObjectId]]
 
 
 class MessageCreateSchema(APIBaseCreateSchema):

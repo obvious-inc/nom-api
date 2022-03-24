@@ -32,7 +32,7 @@ class APIDocument(Document, DatetimeMixin):
             if expand_fields and field in expand_fields:
                 if isinstance(value, Reference):
                     value = await value.fetch()
-                    dumped_obj[field] = value.dump()
+                    dumped_obj[field] = await value.to_dict(exclude_fields=exclude_fields)
 
         return dumped_obj
 

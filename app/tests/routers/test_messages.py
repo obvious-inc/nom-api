@@ -894,3 +894,43 @@ class TestMessagesRoutes:
 
         response = await authorized_client.delete("/messages/0")
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_get_messages_expand_reply(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        channel_message: Message,
+    ):
+        original_content = channel_message.content
+        reply_content = "a reply!"
+
+        await create_item(
+            item=MessageCreateSchema(
+                server=str(server.id),
+                channel=str(server_channel.id),
+                content=reply_content,
+                reply_to=str(channel_message.id),
+            ),
+            result_obj=Message,
+            current_user=current_user,
+            user_field="author",
+        )
+
+        response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages?expand=reply_to")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 2
+        original_message = json_response[1]
+        assert original_message["content"] == original_content
+        assert original_message["reply_to"] is None
+
+        reply_message = json_response[0]
+        assert reply_message["content"] == reply_content
+        assert reply_message["reply_to"] is not None
+        assert isinstance(reply_message["reply_to"], dict)
+        assert reply_message["reply_to"]["content"] == original_content

@@ -78,6 +78,7 @@ async def get_items(
     size: Optional[int] = None,
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
+    expand_fields: str = None,
 ) -> List[APIDocumentType]:
     # TODO: add paging default size to settings
 
@@ -85,6 +86,10 @@ async def get_items(
     filters.update(deleted_filter)
 
     items = await result_obj.find(filters).sort(sort_by_field, sort_by_direction).to_list(length=size)
+
+    if expand_fields:
+        items = [await item.to_dict(expand_fields=expand_fields) for item in items]
+
     return items
 
 
