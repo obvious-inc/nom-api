@@ -37,6 +37,7 @@ class Channel(APIDocument):
 
     class Meta:
         collection_name = "channels"
+        indexes = ["server"]
 
 
 @instance.register
@@ -48,3 +49,4 @@ class ChannelReadState(APIDocument):
 
     class Meta:
         collection_name = "channels_read_states"
+        indexes = ["user"]
