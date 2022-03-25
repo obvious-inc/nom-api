@@ -13,4 +13,4 @@ class RefreshToken(APIDocument):
 
     class Meta:
         collection_name = "refresh_tokens"
-        indexes = ("user",)
+        indexes = ["user"]

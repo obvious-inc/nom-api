@@ -30,6 +30,7 @@ def get_application(testing=False):
         app_.add_event_handler("startup", connect_to_mongo)
 
     app_.add_event_handler("startup", create_all_indexes)
+
     app_.add_event_handler("shutdown", stop_background_tasks)
     app_.add_event_handler("shutdown", close_mongo_connection)
 
