@@ -38,7 +38,7 @@ async def post_create_channel(
     "", response_description="List all channels", response_model=List[Union[ServerChannelSchema, DMChannelSchema]]
 )
 async def list_channels(current_user: User = Depends(get_current_user)):
-    channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
+    channels = await get_items(filters={}, result_obj=Channel, current_user=current_user, size=None)
     return channels
 
 
