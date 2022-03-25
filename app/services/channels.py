@@ -1,6 +1,6 @@
 import http
 from datetime import datetime, timezone
-from typing import List, Union
+from typing import List, Optional, Union
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -65,8 +65,10 @@ async def get_server_channels(server_id, current_user: User) -> List[Union[Chann
     return await get_items(filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user)
 
 
-async def get_dm_channels(current_user: User) -> List[Union[Channel, APIDocument]]:
-    return await get_items(filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user)
+async def get_dm_channels(current_user: User, size: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
+    return await get_items(
+        filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user, size=size
+    )
 
 
 async def delete_channel(channel_id, current_user: User):
