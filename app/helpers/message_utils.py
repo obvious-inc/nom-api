@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from app.models.message import Message
 
@@ -42,15 +42,44 @@ async def get_message_content_mentions(content: str) -> List[Tuple[str, str]]:
     return mentions
 
 
-async def get_message_mentions(message: Message) -> List[Tuple[str, str]]:
-    if not message.content and message.blocks:
-        message.content = await stringify_blocks(message.blocks)
+async def get_node_mentions(node: dict) -> Optional[Tuple[str, str]]:
+    node_type = node.get("type")
+    if node_type == "user":
+        return "user", str(node.get("ref"))
+    elif node_type == "broadcast":
+        mention_range = str(node.get("ref"))
+        if mention_range not in MENTION_BROADCAST_RANGES:
+            logger.warning(f"ignoring unknown broadcast range: {mention_range}")
+            return None
+        return "broadcast", mention_range
+    else:
+        return None
 
-    if not message.content:
-        logger.warning(f"no content to fetch mentions from. [message={str(message.id)}")
+
+async def get_message_nodes_mentions(nodes: List[dict]) -> List[Tuple[str, str]]:
+    mentions = []
+    for node in nodes:
+        node_mention = await get_node_mentions(node)
+        if node_mention:
+            mentions.append(node_mention)
+
+        children = node.get("children")
+        if not children:
+            continue
+
+        child_mentions = await get_message_nodes_mentions(children)
+        if child_mentions:
+            mentions.extend(child_mentions)
+
+    return mentions
+
+
+async def get_message_mentions(message: Message) -> List[Tuple[str, str]]:
+    if not message.blocks:
+        logger.warning(f"no blocks to fetch mentions from. [message={str(message.id)}")
         return []
 
-    return await get_message_content_mentions(message.content)
+    return await get_message_nodes_mentions(message.blocks)
 
 
 async def blockify_content(content: str) -> List[dict]:
