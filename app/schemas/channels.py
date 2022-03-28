@@ -20,7 +20,6 @@ class DMChannelSchema(ChannelSchema):
                 "id": "61e17018c3ee162141baf5c9",
                 "kind": "dm",
                 "members": ["61e17018c3ee162141baf5c1", "61e17018c3ee162141baf5c2", "61e17018c3ee162141baf5c3"],
-                "owner": "61e17018c3ee162141baf5c1",
             }
         }
 
