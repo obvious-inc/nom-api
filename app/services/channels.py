@@ -25,7 +25,6 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
 
     # if same exact dm channel already exists, ignore
     filters = {
-        "owner": current_user.id,
         "members": {"$all": [ObjectId(member) for member in channel_model.members]},
     }
     existing_dm_channels = await get_items(filters=filters, result_obj=Channel, current_user=current_user)
