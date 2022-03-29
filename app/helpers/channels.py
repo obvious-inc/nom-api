@@ -34,7 +34,9 @@ async def get_channel_users(channel: Channel) -> List[User]:
     if channel.kind == "dm":
         members = channel.members
     elif channel.kind == "server":
-        members = await get_items(filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=None)
+        members = await get_items(
+            filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=None, size=None
+        )
 
     users = [await member.user.fetch() for member in members]
     return users

@@ -1,5 +1,5 @@
 from app.models.user import User
-from app.services.channels import get_server_channels
+from app.services.channels import get_dm_channels, get_server_channels
 from app.services.servers import get_server_members, get_user_servers
 from app.services.users import get_user_read_states
 
@@ -45,6 +45,8 @@ async def get_connection_ready_data(current_user: User) -> dict:
         )
 
         data["servers"].append(server_data)
+
+    data["dms"] = [channel.dump() for channel in await get_dm_channels(current_user, size=None)]
 
     read_states = await get_user_read_states(current_user=current_user)
     data["read_states"] = [

@@ -17,3 +17,4 @@ class User(APIDocument):
 
     class Meta:
         collection_name = "users"
+        indexes = ["wallet_address"]
