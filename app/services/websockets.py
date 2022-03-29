@@ -20,20 +20,23 @@ async def _get_users_online_channels(users: List[User]):
 
 
 async def get_server_online_channels(server: Server, current_user: Optional[User]):
-    members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
+    members = await get_items(
+        filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user, size=None
+    )
     users = [await member.user.fetch() for member in members]
     return await _get_users_online_channels(users)
 
 
 async def get_channel_online_channels(channel: Channel, current_user: Optional[User]):
-    members = []
+    users = []
     if channel.kind == "dm":
-        members = channel.members
+        users = [await member.fetch() for member in channel.members]
     elif channel.kind == "server":
         members = await get_items(
-            filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=current_user
+            filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=current_user, size=None
         )
-    users = [await member.user.fetch() for member in members]
+        users = [await member.user.fetch() for member in members]
+
     return await _get_users_online_channels(users)
 
 
@@ -41,7 +44,9 @@ async def get_servers_online_channels(servers: List[Server], current_user: Optio
     members = []
     for server in servers:
         members.extend(
-            await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
+            await get_items(
+                filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user, size=None
+            )
         )
 
     users = [await member.user.fetch() for member in members]
@@ -168,7 +173,7 @@ async def broadcast_current_user_event(
 async def broadcast_user_servers_event(current_user_id: str, event: WebSocketServerEvent, custom_data: dict) -> None:
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
 
-    event_data = {"user": current_user.dump()}
+    event_data = {"user": await current_user.to_dict(exclude_fields=["pfp"])}
     if custom_data:
         event_data.update(custom_data)
 

@@ -1,8 +1,14 @@
+import logging
+
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.collection import Collection
+from umongo.document import DocumentImplementation
 from umongo.frameworks import MotorAsyncIOInstance
 
 from app.config import get_settings
 from app.helpers.connection import conn
+
+logger = logging.getLogger(__name__)
 
 instance = MotorAsyncIOInstance()
 
@@ -23,3 +29,15 @@ async def override_connect_to_mongo():
 
 async def close_mongo_connection():
     conn.client.close()
+
+
+async def create_all_indexes():
+    index_names = []
+    for name, doc in instance._doc_lookup.items():  # type: str, DocumentImplementation
+        indexes = getattr(doc.Meta, "indexes", [])
+        for index in indexes:
+            collection = doc.collection  # type: Collection
+            result = await collection.create_index(index, background=True)
+            index_names.append(f"{name}.{result}")
+
+    logger.debug(f"current indexes: {index_names}")

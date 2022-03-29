@@ -12,7 +12,7 @@ from app.models.user import User
 from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
-from app.services.crud import create_item, create_items, get_items
+from app.services.crud import create_item, create_items, get_item_by_id, get_items
 
 
 class TestCRUDService:
@@ -75,3 +75,10 @@ class TestCRUDService:
 
         channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
         assert len(channels) == 100
+
+    @pytest.mark.asyncio
+    async def test_get_items_by_id_invalid(self, db: Database, current_user: User, server: Server):
+        with pytest.raises(TypeError) as e_info:
+            await get_item_by_id(id_="0", result_obj=Server, current_user=current_user)
+
+        assert "must be ObjectId" in e_info.value.args[0]

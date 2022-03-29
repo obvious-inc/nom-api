@@ -2,8 +2,9 @@ import logging
 from typing import List, Optional, Sequence, Type, TypeVar
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo import ReturnDocument
-from pymongo.results import InsertManyResult
+from pymongo.results import InsertManyResult, UpdateResult
 from umongo import Reference
 
 from app.models.base import APIDocument
@@ -56,7 +57,10 @@ async def get_item_by_id(
     id_: str, result_obj: Type[APIDocumentType], current_user: Optional[User] = None
 ) -> APIDocumentType:
     if type(id_) == str:
-        id_ = ObjectId(id_)
+        try:
+            id_ = ObjectId(id_)
+        except InvalidId:
+            raise TypeError("id_ must be ObjectId")
     elif isinstance(id_, ObjectId):
         pass
     elif isinstance(id_, Reference):
@@ -80,7 +84,13 @@ async def get_items(
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
     filters.update(deleted_filter)
 
-    items = await result_obj.find(filters).sort(sort_by_field, sort_by_direction).to_list(length=size)
+    item_query = result_obj.find(filters).sort(sort_by_field, sort_by_direction)
+
+    if size:
+        item_query.limit(size)
+
+    items = await item_query.to_list(length=size)
+
     return items
 
 
@@ -95,7 +105,13 @@ async def get_item(
 
 
 async def update_item(item: APIDocumentType, data: dict, current_user: Optional[User] = None) -> APIDocumentType:
-    item.update(data)
+    local_data = dict(data)
+    none_fields = [field for field, value in local_data.items() if value is None]
+    for field in none_fields:
+        del item[field]
+        local_data.pop(field)
+
+    item.update(local_data)
     await item.commit()
     return item
 
@@ -109,3 +125,11 @@ async def find_and_update_item(filters: dict, data: dict, result_obj: Type[APIDo
 
 async def delete_item(item: APIDocumentType) -> APIDocumentType:
     return await update_item(item, {"deleted": True})
+
+
+async def delete_items(filters: dict, result_obj: Type[APIDocumentType], current_user: Optional[User] = None):
+    updated_result = await result_obj.collection.update_many(
+        filter=filters, update={"$set": {"deleted": True}}
+    )  # type: UpdateResult
+
+    logger.info("%d objects deleted. [object_type=%s", updated_result.modified_count, result_obj.__name__)

@@ -64,4 +64,6 @@ jobs:
         PUSHER_SECRET: ${{ secrets.PUSHER_SECRET }}
         JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
         MONGODB_TEST_DB: ${{ env.MONGODB_DB_NAME }}
+        ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+        WEB3_PROVIDER_URL_WS: ${{ secrets.WEB3_PROVIDER_URL_WS }}
       run: poetry run python -m pytest

@@ -147,7 +147,13 @@ class TestChannelsRoutes:
 
     @pytest.mark.asyncio
     async def test_list_channels_ok(
-        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server, server_channel: Channel
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        server: Server,
+        dm_channel: Channel,
+        server_channel: Channel,
     ):
         response = await authorized_client.get("/channels")
         assert response.status_code == 200
@@ -155,9 +161,7 @@ class TestChannelsRoutes:
         assert json_response != []
         assert len(json_response) == 1
         json_channel = json_response[0]
-        assert json_channel["id"] == str(server_channel.id)
-        assert json_channel["name"] == server_channel.name
-        assert json_channel["server"] == str(server.id)
+        assert json_channel["id"] == str(dm_channel.id)
 
     @pytest.mark.asyncio
     async def test_delete_channel_ok(

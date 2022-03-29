@@ -24,10 +24,13 @@ class ServerMember(APIDocument):
     user = fields.ReferenceField(User, required=True)
 
     display_name = fields.StrField()
+    pfp = fields.DictField()
+
     joined_at = fields.AwareDateTimeField(default=get_mongo_utc_date)
 
     class Meta:
         collection_name = "server_members"
+        indexes = ["server", "user"]
 
 
 @instance.register

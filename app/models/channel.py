@@ -9,7 +9,7 @@ from app.models.server import Server
 @instance.register
 class Channel(APIDocument):
     kind: str = fields.StrField(validate=validate.OneOf(["dm", "server"]), required=True)  # TODO: make enum?
-    owner = fields.ReferenceField("User", required=True)
+    owner = fields.ReferenceField("User")
 
     last_message_at = fields.AwareDateTimeField()
 
@@ -37,6 +37,7 @@ class Channel(APIDocument):
 
     class Meta:
         collection_name = "channels"
+        indexes = ["server"]
 
 
 @instance.register
@@ -48,3 +49,4 @@ class ChannelReadState(APIDocument):
 
     class Meta:
         collection_name = "channels_read_states"
+        indexes = ["user"]

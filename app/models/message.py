@@ -1,3 +1,4 @@
+from pymongo import ASCENDING, DESCENDING
 from umongo import EmbeddedDocument, fields
 
 from app.helpers.db_utils import instance
@@ -29,3 +30,6 @@ class Message(APIDocument):
 
     class Meta:
         collection_name = "messages"
+        indexes = [
+            (("channel", ASCENDING), ("created_at", DESCENDING)),
+        ]

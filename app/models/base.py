@@ -18,18 +18,21 @@ class DatetimeMixin(MixinDocument):
 class APIDocument(Document, DatetimeMixin):
     deleted = fields.BoolField(default=False)
 
-    async def to_dict(self, expand: bool = False, expand_fields: List[str] = None):
+    async def to_dict(self, expand_fields: List[str] = None, exclude_fields: List[str] = None):
         dumped_obj = self.dump()
-        if not expand:
+
+        if not expand_fields and not exclude_fields:
             return dumped_obj
 
         for field, value in self.items():
-            if expand_fields and field not in expand_fields:
+            if exclude_fields and field in exclude_fields:
+                dumped_obj.pop(field, None)
                 continue
 
-            if isinstance(value, Reference):
-                value = await value.fetch()
-                dumped_obj[field] = value.dump()
+            if expand_fields and field in expand_fields:
+                if isinstance(value, Reference):
+                    value = await value.fetch()
+                    dumped_obj[field] = value.dump()
 
         return dumped_obj
 

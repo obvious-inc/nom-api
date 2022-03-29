@@ -1,4 +1,8 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
+
+from app.schemas.base import APIBaseCreateSchema
 
 
 class AuthWalletSchema(BaseModel):
@@ -23,13 +27,28 @@ class AuthWalletSchema(BaseModel):
 
 class AccessTokenSchema(BaseModel):
     access_token: str = Field()
+    refresh_token: str = Field()
     token_type: str = Field(default="bearer")
 
     class Config:
         allow_population_by_field_name = True
         schema_extra = {
             "example": {
-                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIweDI1MDVmYTg2MTQwMDhGNTNGQjg1YmE0RTgwREFiOUZEZTUyNjYyNTMiLCJleHAiOjE2NDIwMjg2MjR9.bDZW6RHWpkQpwqkDopjSoiNDc2sHglWQ2TjdkM_5F84",
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.....bDZW6RHWpkQpwqkDopjSoiNDc2sHglWQ2TjdkM_1234",
+                "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6Ikpasdfa.....bDZW6RHWpkQpwqkDopjSoiNDc2sHglWQ2TjdkM_1234",
                 "token_type": "bearer",
+            }
+        }
+
+
+class RefreshTokenCreateSchema(APIBaseCreateSchema):
+    user: Optional[str]
+    refresh_token: str
+
+    class Config:
+        allow_population_by_field_name = True
+        schema_extra = {
+            "example": {
+                "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6Ikpasdfa.....bDZW6RHWpkQpwqkDopjSoiNDc2sHglWQ2TjdkM_1234",
             }
         }
