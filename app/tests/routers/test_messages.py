@@ -384,7 +384,16 @@ class TestMessagesRoutes:
     ):
         guest_user = await create_new_user()
         data = {
-            "content": f"hey @<u:{str(guest_user.id)}>, what up?",
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "children": [
+                        {"text": "hey "},
+                        {"type": "user", "ref": str(guest_user.id)},
+                        {"text": " what up"},
+                    ],
+                }
+            ],
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
@@ -413,7 +422,18 @@ class TestMessagesRoutes:
         guest_user_2 = await create_new_user()
 
         data = {
-            "content": f"hey @<u:{str(guest_user_1.id)}> and @<u:{str(guest_user_2.id)}>, what up?",
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "children": [
+                        {"text": "hey"},
+                        {"type": "user", "ref": str(guest_user_1.id)},
+                        {"text": " and "},
+                        {"type": "user", "ref": str(guest_user_2.id)},
+                        {"text": " what up?"},
+                    ],
+                }
+            ],
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
@@ -443,7 +463,18 @@ class TestMessagesRoutes:
     ):
         guest_user = await create_new_user()
         data = {
-            "content": f"hey @<u:{str(guest_user.id)}> and @<x:{str(ObjectId())}>, what up?",
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "children": [
+                        {"text": "hey "},
+                        {"type": "user", "ref": str(guest_user.id)},
+                        {"text": " and "},
+                        {"type": "x", "ref": str(ObjectId())},
+                        {"text": ", what up?"},
+                    ],
+                }
+            ],
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
@@ -467,9 +498,13 @@ class TestMessagesRoutes:
         server: Server,
         server_channel: Channel,
     ):
-
         data = {
-            "content": "hey @<b:here>, what up?",
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "children": [{"text": "hey "}, {"type": "broadcast", "ref": "here"}, {"text": ", what up?"}],
+                }
+            ],
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
@@ -496,7 +531,18 @@ class TestMessagesRoutes:
     ):
         guest_user = await create_new_user()
         data = {
-            "content": f"hey @<b:here> and @<u:{str(guest_user.id)}>, what up?",
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "children": [
+                        {"text": "hey "},
+                        {"type": "broadcast", "ref": "here"},
+                        {"text": " and "},
+                        {"type": "user", "ref": str(guest_user.id)},
+                        {"text": " what up?"},
+                    ],
+                }
+            ],
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
@@ -507,11 +553,11 @@ class TestMessagesRoutes:
         mentions = await get_message_mentions(message)
         assert len(mentions) == 2
         mention_type, mention_ref = mentions[0]
-        assert mention_type == "user"
-        assert mention_ref == str(guest_user.id)
-        mention_type, mention_ref = mentions[1]
         assert mention_type == "broadcast"
         assert mention_ref == "here"
+        mention_type, mention_ref = mentions[1]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user.id)
 
     @pytest.mark.asyncio
     async def test_create_message_blocks_with_user_mentions(
@@ -618,6 +664,61 @@ class TestMessagesRoutes:
         mention_type, mention_ref = mentions[0]
         assert mention_type == "user"
         assert mention_ref == str(guest_user.id)
+
+    @pytest.mark.asyncio
+    async def test_create_message_blocks_with_mentions_complex_hierarchy(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+    ):
+        guest_user_1 = await create_new_user()
+        guest_user_2 = await create_new_user()
+        blocks = [
+            {
+                "type": "paragraph",
+                "children": [
+                    {"text": "hey "},
+                    {"type": "user", "ref": str(guest_user_1.id)},
+                    {"text": ", you around?"},
+                ],
+            },
+            {
+                "type": "list",
+                "children": [
+                    {
+                        "type": "paragraph",
+                        "children": [
+                            {"text": "inside paragraph mention to "},
+                            {"type": "broadcast", "ref": "here"},
+                        ],
+                    },
+                    {"text": "what about you "},
+                    {"type": "user", "ref": str(guest_user_2.id)},
+                    {"text": "?"},
+                ],
+            },
+        ]
+        data = {"blocks": blocks, "server": str(server.id), "channel": str(server_channel.id)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json().get("id")
+        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        mentions = await get_message_mentions(message)
+        assert len(mentions) == 3
+        mention_type, mention_ref = mentions[0]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user_1.id)
+        mention_type, mention_ref = mentions[1]
+        assert mention_type == "broadcast"
+        assert mention_ref == "here"
+        mention_type, mention_ref = mentions[2]
+        assert mention_type == "user"
+        assert mention_ref == str(guest_user_2.id)
 
     @pytest.mark.asyncio
     async def test_create_message_with_blocks(
@@ -796,7 +897,16 @@ class TestMessagesRoutes:
         guest_user = await create_new_user()
         guest_client = await get_authorized_client(guest_user)
         data = {
-            "content": f"hey @<u:{str(current_user.id)}>, what up?",
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "children": [
+                        {"text": "hey "},
+                        {"type": "user", "ref": str(current_user.id)},
+                        {"text": ", what up?"},
+                    ],
+                }
+            ],
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
@@ -834,7 +944,12 @@ class TestMessagesRoutes:
         guest_user = await create_new_user()
         guest_client = await get_authorized_client(guest_user)
         data = {
-            "content": "hey @<b:everyone>, what up?",
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "children": [{"text": "hey "}, {"type": "broadcast", "ref": "everyone"}, {"text": ", what up?"}],
+                }
+            ],
             "server": str(server.id),
             "channel": str(server_channel.id),
         }
