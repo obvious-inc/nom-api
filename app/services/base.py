@@ -46,7 +46,7 @@ async def get_connection_ready_data(current_user: User) -> dict:
 
     dm_channels = []
     for channel in await get_dm_channels(current_user=current_user, size=None):
-        [common_user_ids.add(member.pk) for member in channel.members]
+        common_user_ids.update(map(lambda m: m.pk, channel.members))
         dm_channels.append(channel.dump())
 
     data["dms"] = dm_channels
