@@ -21,7 +21,7 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
     created_server = await create_item(server_model, result_obj=Server, current_user=current_user, user_field="owner")
 
     # add owner as server member
-    await join_server(server_id=str(created_server.pk), current_user=current_user)
+    await join_server(server_id=str(created_server.pk), current_user=current_user, ignore_joining_rules=True)
 
     default_channel_model = ServerChannelCreateSchema(name="lounge", server=str(created_server.pk))
     await create_server_channel(channel_model=default_channel_model, current_user=current_user)
@@ -29,7 +29,7 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
     return created_server
 
 
-async def join_server(server_id: str, current_user: User) -> ServerMember:
+async def join_server(server_id: str, current_user: User, ignore_joining_rules: bool = False) -> ServerMember:
     server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
     server_member = await get_item(
         filters={"server": ObjectId(server_id), "user": current_user.id},
@@ -58,7 +58,7 @@ async def join_server(server_id: str, current_user: User) -> ServerMember:
             guild_id = rule.guild_xyz_id
             user_is_allowed_in = await is_user_eligible_for_guild(user=current_user, guild_id=guild_id)
 
-    if not user_is_allowed_in:
+    if not user_is_allowed_in and not ignore_joining_rules:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot join this server")
 
     member = ServerMember(server=server, user=current_user)
