@@ -1,12 +1,13 @@
 import http
 from typing import List
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
+from starlette import status
 
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema
-from app.services.servers import create_server, get_server_members, get_servers, join_server
+from app.services.servers import create_server, get_server_members, get_servers, is_eligible_to_join_server, join_server
 
 router = APIRouter()
 
@@ -38,3 +39,14 @@ async def get_list_server_members(server_id, current_user: User = Depends(get_cu
 )
 async def post_join_server(server_id, current_user: User = Depends(get_current_user)):
     return await join_server(server_id=server_id, current_user=current_user)
+
+
+@router.get(
+    "/{server_id}/eligible",
+    summary="Eligible to join server",
+    status_code=http.HTTPStatus.NO_CONTENT,
+)
+async def get_check_server_joining_eligibility(server_id, current_user: User = Depends(get_current_user)):
+    is_eligible = await is_eligible_to_join_server(server_id=server_id, current_user=current_user)
+    if not is_eligible:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not eligible to join this server")

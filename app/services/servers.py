@@ -29,21 +29,13 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
     return created_server
 
 
-async def join_server(server_id: str, current_user: User, ignore_joining_rules: bool = False) -> ServerMember:
+async def is_eligible_to_join_server(server_id: str, current_user: User):
     server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
-    server_member = await get_item(
-        filters={"server": ObjectId(server_id), "user": current_user.id},
-        result_obj=ServerMember,
-        current_user=current_user,
-    )
-    if server_member:
-        return server_member
-
-    user_is_allowed_in = False
-
     if not server.join_rules:
         # if no rules, let anyone in
-        user_is_allowed_in = True
+        return True
+
+    user_is_allowed_in = False
 
     joining_rules = [await role.fetch() for role in server.join_rules]
     for rule in joining_rules:  # type: ServerJoinRule
@@ -58,8 +50,23 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
             guild_id = rule.guild_xyz_id
             user_is_allowed_in = await is_user_eligible_for_guild(user=current_user, guild_id=guild_id)
 
-    if not user_is_allowed_in and not ignore_joining_rules:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot join this server")
+    return user_is_allowed_in
+
+
+async def join_server(server_id: str, current_user: User, ignore_joining_rules: bool = False) -> ServerMember:
+    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+    server_member = await get_item(
+        filters={"server": ObjectId(server_id), "user": current_user.id},
+        result_obj=ServerMember,
+        current_user=current_user,
+    )
+    if server_member:
+        return server_member
+
+    if not ignore_joining_rules:
+        user_is_allowed_in = await is_eligible_to_join_server(server_id=server_id, current_user=current_user)
+        if not user_is_allowed_in:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot join this server")
 
     member = ServerMember(server=server, user=current_user)
     await member.commit()
