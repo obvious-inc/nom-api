@@ -28,3 +28,4 @@ class ServerMember(APIDocument):
 
     class Meta:
         collection_name = "server_members"
+        indexes = ["server", "user"]

@@ -84,7 +84,13 @@ async def get_items(
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
     filters.update(deleted_filter)
 
-    items = await result_obj.find(filters).sort(sort_by_field, sort_by_direction).to_list(length=size)
+    item_query = result_obj.find(filters).sort(sort_by_field, sort_by_direction)
+
+    if size:
+        item_query.limit(size)
+
+    items = await item_query.to_list(length=size)
+
     return items
 
 

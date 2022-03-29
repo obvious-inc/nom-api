@@ -46,7 +46,7 @@ async def get_connection_ready_data(current_user: User) -> dict:
 
         data["servers"].append(server_data)
 
-    data["dms"] = [channel.dump() for channel in await get_dm_channels(current_user)]
+    data["dms"] = [channel.dump() for channel in await get_dm_channels(current_user, size=None)]
 
     read_states = await get_user_read_states(current_user=current_user)
     data["read_states"] = [
