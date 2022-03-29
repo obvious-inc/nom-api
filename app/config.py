@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     tenor_api_key: Optional[str]
 
     alchemy_api_key: Optional[str]
+    simplehash_api_key: Optional[str]
 
     class Config:
         env_file = ".env"

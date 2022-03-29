@@ -13,6 +13,8 @@ from app.config import get_settings
 from app.helpers.abis import erc721_abi, erc1155_abi
 from app.helpers.alchemy import get_image_url as get_alchemy_image_url
 from app.helpers.alchemy import get_nft as get_alchemy_nft
+from app.helpers.simplehash import get_image_url as get_simplehash_image_url
+from app.helpers.simplehash import get_nft as get_simplehash_nft
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +73,8 @@ async def _replace_with_cloudflare_gateway(token_image_url: str) -> str:
 async def get_nft(contract_address: str, token_id: str, provider: str = "alchemy") -> dict:
     if provider == "alchemy":
         return await get_alchemy_nft(contract_address, token_id)
+    elif provider == "simplehash":
+        return await get_simplehash_nft(contract_address, token_id)
     else:
         raise NotImplementedError("no other providers implemented")
 
@@ -78,6 +82,8 @@ async def get_nft(contract_address: str, token_id: str, provider: str = "alchemy
 async def get_nft_image_url(nft, provider: str = "alchemy"):
     if provider == "alchemy":
         image_url = await get_alchemy_image_url(nft)
+    elif provider == "simplehash":
+        image_url = await get_simplehash_image_url(nft)
     else:
         raise NotImplementedError("no other providers implemented")
 
