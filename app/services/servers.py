@@ -77,7 +77,12 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
 
 async def get_user_servers(current_user: User) -> List[Server]:
     server_members = await get_items(
-        {"user": current_user.id}, result_obj=ServerMember, current_user=current_user, size=None
+        {"user": current_user.id},
+        result_obj=ServerMember,
+        current_user=current_user,
+        size=None,
+        sort_by_field="joined_at",
+        sort_by_direction=1,
     )
     return [await member.server.fetch() for member in server_members]
 
