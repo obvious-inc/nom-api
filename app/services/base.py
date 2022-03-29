@@ -56,7 +56,13 @@ async def get_connection_ready_data(current_user: User) -> dict:
     )
 
     data["users"] = [
-        {"id": str(user.pk), "display_name": user.display_name, "pfp": user.pfp, "wallet_address": user.wallet_address}
+        {
+            "id": str(user.pk),
+            "display_name": user.display_name,
+            "pfp": user.pfp,
+            "wallet_address": user.wallet_address,
+            "status": user.status,
+        }
         for user in user_list
     ]
 
