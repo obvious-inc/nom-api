@@ -10,7 +10,9 @@ from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
+from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.servers import ServerCreateSchema
+from app.services.channels import create_server_channel
 from app.services.crud import create_item, get_item, get_item_by_id, get_items
 from app.services.websockets import broadcast_server_event
 
@@ -20,6 +22,9 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
 
     # add owner as server member
     await join_server(server_id=str(created_server.pk), current_user=current_user)
+
+    default_channel_model = ServerChannelCreateSchema(name="lounge", server=str(created_server.pk))
+    await create_server_channel(channel_model=default_channel_model, current_user=current_user)
 
     return created_server
 
