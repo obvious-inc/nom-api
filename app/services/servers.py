@@ -50,9 +50,9 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
         if user_is_allowed_in:
             break
 
-        if rule.type == "whitelist":
+        if rule.type == "allowlist":
             user_is_allowed_in = any(
-                [current_user.wallet_address.lower() == wl_addr.lower() for wl_addr in rule.whitelist_addresses]
+                [current_user.wallet_address.lower() == wl_addr.lower() for wl_addr in rule.allowlist_addresses]
             )
         elif rule.type == "guild_xyz":
             guild_id = rule.guild_xyz_id

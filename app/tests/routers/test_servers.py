@@ -148,10 +148,10 @@ class TestServerRoutes:
         assert member.user == guest_user
 
     @pytest.mark.asyncio
-    async def test_join_server_whitelist_rules_nok(
+    async def test_join_server_allowlist_rules_nok(
         self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
     ):
-        rule = ServerJoinRule(type="whitelist", whitelist_addresses=[])
+        rule = ServerJoinRule(type="allowlist", allowlist_addresses=[])
         await rule.commit()
         updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
         assert len(updated_server.join_rules) == 1
@@ -167,7 +167,7 @@ class TestServerRoutes:
         assert member is None
 
     @pytest.mark.asyncio
-    async def test_join_server_whitelist_rules_ok(
+    async def test_join_server_allowlist_rules_ok(
         self,
         app: FastAPI,
         db: Database,
@@ -175,7 +175,7 @@ class TestServerRoutes:
         guest_user: User,
         get_authorized_client: Callable,
     ):
-        rule = ServerJoinRule(type="whitelist", whitelist_addresses=[guest_user.wallet_address])
+        rule = ServerJoinRule(type="allowlist", allowlist_addresses=[guest_user.wallet_address])
         await rule.commit()
         updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
         assert len(updated_server.join_rules) == 1
@@ -232,7 +232,7 @@ class TestServerRoutes:
         assert member is None
 
     @pytest.mark.asyncio
-    async def test_join_server_whitelist_ok_and_guild_nok(
+    async def test_join_server_allowlist_ok_and_guild_nok(
         self,
         app: FastAPI,
         db: Database,
@@ -242,10 +242,10 @@ class TestServerRoutes:
     ):
         guild_rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1898")
         await guild_rule.commit()
-        whitelist_rule = ServerJoinRule(type="whitelist", whitelist_addresses=[guest_user.wallet_address])
-        await whitelist_rule.commit()
+        allowlist_rule = ServerJoinRule(type="allowlist", allowlist_addresses=[guest_user.wallet_address])
+        await allowlist_rule.commit()
         updated_server = await update_item(
-            server, data={"join_rules": [whitelist_rule, guild_rule]}, current_user=guest_user
+            server, data={"join_rules": [allowlist_rule, guild_rule]}, current_user=guest_user
         )
         assert len(updated_server.join_rules) == 2
 
@@ -262,7 +262,7 @@ class TestServerRoutes:
         assert member.user == guest_user
 
     @pytest.mark.asyncio
-    async def test_join_server_whitelist_nok_and_guild_ok(
+    async def test_join_server_allowlist_nok_and_guild_ok(
         self,
         app: FastAPI,
         db: Database,
@@ -272,10 +272,10 @@ class TestServerRoutes:
     ):
         guild_rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1985")
         await guild_rule.commit()
-        whitelist_rule = ServerJoinRule(type="whitelist", whitelist_addresses=[])
-        await whitelist_rule.commit()
+        allowlist_rule = ServerJoinRule(type="allowlist", allowlist_addresses=[])
+        await allowlist_rule.commit()
         updated_server = await update_item(
-            server, data={"join_rules": [whitelist_rule, guild_rule]}, current_user=guest_user
+            server, data={"join_rules": [allowlist_rule, guild_rule]}, current_user=guest_user
         )
         assert len(updated_server.join_rules) == 2
 

@@ -38,22 +38,22 @@ class ServerMember(APIDocument):
 
 @instance.register
 class ServerJoinRule(APIDocument):
-    type: str = fields.StrField(validate=validate.OneOf(["guild_xyz", "whitelist"]), required=True)
+    type: str = fields.StrField(validate=validate.OneOf(["guild_xyz", "allowlist"]), required=True)
 
     # Guild XYZ fields
     guild_xyz_id = fields.StrField()
 
-    # Whitelist fields
-    whitelist_addresses = fields.ListField(fields.StrField)
+    # Allowlist fields
+    allowlist_addresses = fields.ListField(fields.StrField)
 
     def pre_insert(self):
         if self.type == "guild_xyz":
             if not hasattr(self, "guild_xyz_id"):
                 raise ValidationError("missing 'guild_xyz_id' field")
 
-        elif self.type == "whitelist":
-            if not hasattr(self, "whitelist_addresses"):
-                raise ValidationError("missing 'whitelist_addresses' field")
+        elif self.type == "allowlist":
+            if not hasattr(self, "allowlist_addresses"):
+                raise ValidationError("missing 'allowlist_addresses' field")
 
     class Meta:
         collection_name = "server_join_rules"
