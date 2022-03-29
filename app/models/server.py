@@ -14,6 +14,9 @@ class Server(APIDocument):
     owner = fields.ReferenceField(User, required=True)
     join_rules = fields.ListField(fields.ReferenceField("ServerJoinRule"), default=[])
 
+    description = fields.StrField()
+    avatar = fields.StrField()
+
     class Meta:
         collection_name = "servers"
 
