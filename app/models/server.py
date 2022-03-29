@@ -12,10 +12,10 @@ class Server(APIDocument):
     name = fields.StrField(required=True)
 
     owner = fields.ReferenceField(User, required=True)
-    join_rules = fields.ListField(fields.ReferenceField("ServerJoinRule"), default=[])
+    join_rules = fields.ListField(fields.ReferenceField("ServerJoinRule"), default=[], required=False)
 
-    description = fields.StrField()
-    avatar = fields.StrField()
+    description = fields.StrField(required=False)
+    avatar = fields.StrField(required=False)
 
     class Meta:
         collection_name = "servers"

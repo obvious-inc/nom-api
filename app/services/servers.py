@@ -11,9 +11,14 @@ from app.models.base import APIDocument
 from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
 from app.schemas.channels import ServerChannelCreateSchema
-from app.schemas.servers import ServerCreateSchema
+from app.schemas.servers import (
+    AllowlistJoinRuleCreateSchema,
+    GuildXYZJoinRuleCreateSchema,
+    ServerCreateSchema,
+    ServerUpdateSchema,
+)
 from app.services.channels import create_server_channel
-from app.services.crud import create_item, get_item, get_item_by_id, get_items
+from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
 from app.services.websockets import broadcast_server_event
 
 
@@ -112,3 +117,40 @@ async def get_server_members(server_id: str, current_user: User):
 async def get_servers(current_user: User):
     filters = {"public": True}  # TODO: add 'public' flag to filter out private/non-exposed servers
     return await get_items(filters=filters, result_obj=Server, current_user=current_user)
+
+
+async def update_server(server_id: str, update_data: ServerUpdateSchema, current_user: User):
+    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+    if server.owner != current_user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot make changes to this server")
+
+    data = update_data.dict(exclude_unset=True)
+
+    join_rules = data.get("join_rules", [])
+    if join_rules:
+        db_rules = []
+        for rule in data.get("join_rules", []):
+            rule_type = rule.get("type")
+            if rule_type == "allowlist":
+                model = AllowlistJoinRuleCreateSchema(allowlist_addresses=rule.get("allowlist_addresses"))
+            elif rule_type == "guild_xyz":
+                model = GuildXYZJoinRuleCreateSchema(guild_xyz_id=rule.get("guild_xyz_id"))
+            else:
+                raise NotImplementedError(f"unknown rule type: {rule_type}")
+
+            db_rule = await create_item(model, result_obj=ServerJoinRule, current_user=current_user, user_field=None)
+            db_rules.append(db_rule)
+
+        data["join_rules"] = db_rules
+
+    updated_item = await update_item(item=server, data=data)
+
+    await queue_bg_task(
+        broadcast_server_event,
+        server_id,
+        str(current_user.id),
+        WebSocketServerEvent.SERVER_UPDATE,
+        {"server": server_id},
+    )
+
+    return updated_item

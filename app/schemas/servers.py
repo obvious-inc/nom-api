@@ -1,9 +1,19 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional, Union
 
 from pydantic import Field
 
 from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, PyObjectId
+
+
+class AllowlistJoinRuleCreateSchema(APIBaseCreateSchema):
+    type: str = "allowlist"
+    allowlist_addresses: List[str]
+
+
+class GuildXYZJoinRuleCreateSchema(APIBaseCreateSchema):
+    type: str = "guild_xyz"
+    guild_xyz_id: str
 
 
 class ServerSchema(APIBaseSchema):
@@ -26,8 +36,15 @@ class ServerSchema(APIBaseSchema):
 
 class ServerCreateSchema(APIBaseCreateSchema):
     name: str
+    description: Optional[str] = ""
+    avatar: Optional[str] = ""
+
+
+class ServerUpdateSchema(APIBaseUpdateSchema):
+    name: Optional[str]
     description: Optional[str]
     avatar: Optional[str]
+    join_rules: Optional[List[Union[AllowlistJoinRuleCreateSchema, GuildXYZJoinRuleCreateSchema]]]
 
 
 class ServerMemberSchema(APIBaseSchema):

@@ -6,8 +6,15 @@ from starlette import status
 
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema
-from app.services.servers import create_server, get_server_members, get_servers, is_eligible_to_join_server, join_server
+from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema, ServerUpdateSchema
+from app.services.servers import (
+    create_server,
+    get_server_members,
+    get_servers,
+    is_eligible_to_join_server,
+    join_server,
+    update_server,
+)
 
 router = APIRouter()
 
@@ -50,3 +57,10 @@ async def get_check_server_joining_eligibility(server_id, current_user: User = D
     is_eligible = await is_eligible_to_join_server(server_id=server_id, current_user=current_user)
     if not is_eligible:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not eligible to join this server")
+
+
+@router.patch("/{server_id}", summary="Update server", response_model=ServerSchema, status_code=http.HTTPStatus.OK)
+async def patch_update_server(
+    server_id, update_data: ServerUpdateSchema, current_user: User = Depends(get_current_user)
+):
+    return await update_server(server_id, update_data=update_data, current_user=current_user)
