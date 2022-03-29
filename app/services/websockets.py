@@ -28,14 +28,15 @@ async def get_server_online_channels(server: Server, current_user: Optional[User
 
 
 async def get_channel_online_channels(channel: Channel, current_user: Optional[User]):
-    members = []
+    users = []
     if channel.kind == "dm":
-        members = channel.members
+        users = [await member.fetch() for member in channel.members]
     elif channel.kind == "server":
         members = await get_items(
             filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=current_user, size=None
         )
-    users = [await member.user.fetch() for member in members]
+        users = [await member.user.fetch() for member in members]
+
     return await _get_users_online_channels(users)
 
 

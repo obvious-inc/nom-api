@@ -1,6 +1,6 @@
 import http
 from datetime import datetime, timezone
-from typing import List, Union
+from typing import List, Optional, Union
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -25,8 +25,10 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
 
     # if same exact dm channel already exists, ignore
     filters = {
-        "owner": current_user.id,
-        "members": {"$all": [ObjectId(member) for member in channel_model.members]},
+        "members": {
+            "$size": len(channel_model.members),
+            "$all": [ObjectId(member) for member in channel_model.members],
+        },
     }
     existing_dm_channels = await get_items(filters=filters, result_obj=Channel, current_user=current_user)
     if existing_dm_channels:
@@ -67,9 +69,9 @@ async def get_server_channels(server_id, current_user: User) -> List[Union[Chann
     )
 
 
-async def get_dm_channels(current_user: User) -> List[Union[Channel, APIDocument]]:
+async def get_dm_channels(current_user: User, size: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
     return await get_items(
-        filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user, size=None
+        filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user, size=size
     )
 
 
