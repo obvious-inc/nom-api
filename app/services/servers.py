@@ -115,8 +115,17 @@ async def get_server_members(server_id: str, current_user: User):
 
 
 async def get_servers(current_user: User):
-    filters = {"public": True}  # TODO: add 'public' flag to filter out private/non-exposed servers
-    return await get_items(filters=filters, result_obj=Server, current_user=current_user)
+    filters = {}  # TODO: add flag to filter out private/non-exposed servers
+    servers = await get_items(filters=filters, result_obj=Server, current_user=current_user)
+
+    resp_servers = []
+    for server in servers:
+        server_members = await get_items(
+            {"server": server.pk}, result_obj=ServerMember, current_user=current_user, size=None
+        )
+        resp_servers.append({**server.dump(), "member_count": len(server_members)})
+
+    return resp_servers
 
 
 async def update_server(server_id: str, update_data: ServerUpdateSchema, current_user: User):

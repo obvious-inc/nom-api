@@ -19,8 +19,9 @@ class GuildXYZJoinRuleCreateSchema(APIBaseCreateSchema):
 class ServerSchema(APIBaseSchema):
     name: str
     owner: PyObjectId = Field()
-    description: str
-    avatar: str
+    description: Optional[str]
+    avatar: Optional[str]
+    member_count: Optional[int]
 
     class Config:
         schema_extra = {
@@ -30,6 +31,7 @@ class ServerSchema(APIBaseSchema):
                 "owner": "61e17018c3ee162141baf5c7",
                 "description": "Verbs DAO is a humorous take on the original Nouns DAO",
                 "avatar": "https://pbs.twimg.com/profile_images/1467601380567359498/oKcnQo_S_400x400.jpg",
+                "member_count": 1,
             }
         }
 
