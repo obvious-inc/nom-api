@@ -10,11 +10,10 @@ SIMPLEHASH_BASE_URL = "https://api.simplehash.com/api/v0"
 
 
 async def get_image_url(token: dict) -> str:
-    image_url = token.get("external_url", None)
+    image_url = token.get("external_url")
     metadata = token.get("extra_metadata", {})
-    image_url = metadata.get("image_original_url", image_url)
-
-    image_url = token.get("image_url", image_url)
+    image_url = metadata.get("image_original_url") or image_url
+    image_url = token.get("image_url") or image_url
 
     if not image_url:
         logger.warning(f"couldn't find image url for nft: {token}")
