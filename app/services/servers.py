@@ -111,8 +111,8 @@ async def get_server_members(server_id: str, current_user: User):
 
 
 async def get_servers(current_user: User):
-    filters = {}  # TODO: add flag to filter out private/non-exposed servers
-    servers = await get_items(filters=filters, result_obj=Server, current_user=current_user)
+    # TODO: add flag to filter out private/non-exposed servers
+    servers = await get_items(filters={}, result_obj=Server, current_user=current_user)
 
     resp_servers = []
     for server in servers:

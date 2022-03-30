@@ -106,25 +106,16 @@ class TestServerRoutes:
         assert len(response.json()) == 0
 
     @pytest.mark.asyncio
-    async def test_list_public_servers_empty(
-        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
-    ):
-        response = await authorized_client.get("/servers")
-        assert response.status_code == 200
-        assert len(response.json()) == 0
-
-    @pytest.mark.skip("public field not present yet")
-    @pytest.mark.asyncio
     async def test_list_public_servers_not_empty(
         self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
     ):
-        assert server.public is True
         response = await authorized_client.get("/servers")
         assert response.status_code == 200
         resp_servers = response.json()
         assert len(resp_servers) == 1
         resp_server = resp_servers[0]
         assert resp_server["id"] == str(server.id)
+        assert resp_server["member_count"] == 1
 
     @pytest.mark.asyncio
     async def test_join_server_no_rules(
