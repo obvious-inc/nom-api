@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from starlette import status
 
 from app.helpers.guild_xyz import is_user_eligible_for_guild
+from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -100,12 +101,7 @@ async def get_user_servers(current_user: User) -> List[Server]:
 
 
 async def get_server_members(server_id: str, current_user: User):
-    user_belongs_to_server = await get_item(
-        filters={"server": ObjectId(server_id), "user": current_user.id},
-        result_obj=ServerMember,
-        current_user=current_user,
-    )
-    if not user_belongs_to_server:
+    if not await user_belongs_to_server(user=current_user, server_id=server_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
 
     server_members = await get_items(
