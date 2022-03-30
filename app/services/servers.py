@@ -132,13 +132,18 @@ async def update_server(server_id: str, update_data: ServerUpdateSchema, current
         for rule in data.get("join_rules", []):
             rule_type = rule.get("type")
             if rule_type == "allowlist":
-                model = AllowlistJoinRuleCreateSchema(allowlist_addresses=rule.get("allowlist_addresses"))
+                allowlist_model = AllowlistJoinRuleCreateSchema(**rule)
+                db_rule = await create_item(
+                    allowlist_model, result_obj=ServerJoinRule, current_user=current_user, user_field=None
+                )
             elif rule_type == "guild_xyz":
-                model = GuildXYZJoinRuleCreateSchema(guild_xyz_id=rule.get("guild_xyz_id"))
+                guild_model = GuildXYZJoinRuleCreateSchema(**rule)
+                db_rule = await create_item(
+                    guild_model, result_obj=ServerJoinRule, current_user=current_user, user_field=None
+                )
             else:
                 raise NotImplementedError(f"unknown rule type: {rule_type}")
 
-            db_rule = await create_item(model, result_obj=ServerJoinRule, current_user=current_user, user_field=None)
             db_rules.append(db_rule)
 
         data["join_rules"] = db_rules

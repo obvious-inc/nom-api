@@ -14,7 +14,6 @@ from app.services.users import get_user_by_id
 
 oauth2_scheme = HTTPBearer()
 
-
 logger = logging.getLogger(__name__)
 
 

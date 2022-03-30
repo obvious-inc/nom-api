@@ -64,6 +64,14 @@ async def create_channel(
 
 
 async def get_server_channels(server_id, current_user: User) -> List[Union[Channel, APIDocument]]:
+    user_belongs_to_server = await get_item(
+        filters={"server": ObjectId(server_id), "user": current_user.id},
+        result_obj=ServerMember,
+        current_user=current_user,
+    )
+    if not user_belongs_to_server:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
+
     return await get_items(
         filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user, size=None
     )

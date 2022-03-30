@@ -288,7 +288,6 @@ class TestMessagesRoutes:
         create_new_user: Callable,
         get_authorized_client: Callable,
     ):
-
         guest_user_1 = await create_new_user()
         guest_user_2 = await create_new_user()
 

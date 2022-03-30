@@ -6,7 +6,9 @@ from starlette import status
 
 from app.dependencies import get_current_user
 from app.models.user import User
+from app.schemas.channels import ServerChannelSchema
 from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema, ServerUpdateSchema
+from app.services.channels import get_server_channels
 from app.services.servers import (
     create_server,
     get_server_members,
@@ -64,3 +66,13 @@ async def patch_update_server(
     server_id, update_data: ServerUpdateSchema, current_user: User = Depends(get_current_user)
 ):
     return await update_server(server_id, update_data=update_data, current_user=current_user)
+
+
+@router.get(
+    "/{server_id}/channels",
+    response_description="List server channels",
+    response_model=List[ServerChannelSchema],
+    status_code=http.HTTPStatus.OK,
+)
+async def get_list_server_channels(server_id, current_user: User = Depends(get_current_user)):
+    return await get_server_channels(server_id, current_user=current_user)
