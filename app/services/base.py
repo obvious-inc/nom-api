@@ -1,5 +1,6 @@
 from app.models.user import User
 from app.services.channels import get_dm_channels, get_server_channels
+from app.services.crud import get_items
 from app.services.servers import get_server_members, get_user_servers
 from app.services.users import get_user_read_states
 
@@ -7,6 +8,8 @@ from app.services.users import get_user_read_states
 async def get_connection_ready_data(current_user: User) -> dict:
     data = {"user": current_user.dump(), "servers": []}
     servers = await get_user_servers(current_user=current_user)
+    common_user_ids = set()
+
     for server in servers:
         server_data = {"id": str(server.id), "name": server.name, "owner": str(server.owner.pk)}
         channels = await get_server_channels(server_id=str(server.id), current_user=current_user)
@@ -14,15 +17,10 @@ async def get_connection_ready_data(current_user: User) -> dict:
 
         member_list = []
         for member in members:
-            user = await member.user.fetch()
+            common_user_ids.add(member.user.pk)
             member_dict = {
                 "id": str(member.id),
-                "user": {
-                    "id": str(user.id),
-                    "display_name": user.display_name,
-                    "wallet_address": user.wallet_address,
-                    "status": user.status,
-                },
+                "user": str(member.user.pk),
                 "server": str(member.server.pk),
                 "display_name": member.display_name,
                 "joined_at": member.joined_at,
@@ -46,7 +44,27 @@ async def get_connection_ready_data(current_user: User) -> dict:
 
         data["servers"].append(server_data)
 
-    data["dms"] = [channel.dump() for channel in await get_dm_channels(current_user, size=None)]
+    dm_channels = []
+    for channel in await get_dm_channels(current_user=current_user, size=None):
+        common_user_ids.update(map(lambda m: m.pk, channel.members))
+        dm_channels.append(channel.dump())
+
+    data["dms"] = dm_channels
+
+    user_list = await get_items(
+        filters={"_id": {"$in": list(common_user_ids)}}, result_obj=User, current_user=current_user, size=None
+    )
+
+    data["users"] = [
+        {
+            "id": str(user.pk),
+            "display_name": user.display_name,
+            "pfp": user.pfp,
+            "wallet_address": user.wallet_address,
+            "status": user.status,
+        }
+        for user in user_list
+    ]
 
     read_states = await get_user_read_states(current_user=current_user)
     data["read_states"] = [
