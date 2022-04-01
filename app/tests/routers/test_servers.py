@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Callable
 
 import pytest
 from bson import ObjectId
@@ -6,11 +7,11 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
-from app.models.server import Server, ServerMember
+from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
-from app.services.crud import get_item, get_items
+from app.services.crud import get_item, get_items, update_item
 from app.services.servers import create_server
 from app.services.users import create_user
 
@@ -97,3 +98,298 @@ class TestServerRoutes:
 
         response = await authorized_client.get(f"/servers/{str(new_server.id)}/members")
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_list_servers_empty(self, app: FastAPI, db: Database, authorized_client: AsyncClient):
+        response = await authorized_client.get("/servers")
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+    @pytest.mark.asyncio
+    async def test_list_public_servers_not_empty(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
+    ):
+        response = await authorized_client.get("/servers")
+        assert response.status_code == 200
+        resp_servers = response.json()
+        assert len(resp_servers) == 1
+        resp_server = resp_servers[0]
+        assert resp_server["id"] == str(server.id)
+        assert resp_server["member_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_join_server_no_rules(
+        self,
+        app: FastAPI,
+        db: Database,
+        server: Server,
+        guest_user: User,
+        get_authorized_client: Callable,
+    ):
+        guest_client = await get_authorized_client(guest_user)
+        server_id = str(server.id)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_server_allowlist_rules_nok(
+        self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
+    ):
+        rule = ServerJoinRule(type="allowlist", allowlist_addresses=[])
+        await rule.commit()
+        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        assert len(updated_server.join_rules) == 1
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 403
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+        assert member is None
+
+    @pytest.mark.asyncio
+    async def test_join_server_allowlist_rules_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        server: Server,
+        guest_user: User,
+        get_authorized_client: Callable,
+    ):
+        rule = ServerJoinRule(type="allowlist", allowlist_addresses=[guest_user.wallet_address])
+        await rule.commit()
+        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        assert len(updated_server.join_rules) == 1
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_server_guild_rules_ok(
+        self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
+    ):
+        rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1985")  # everyone has access to this guild
+        await rule.commit()
+        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        assert len(updated_server.join_rules) == 1
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_server_guild_rules_nok(
+        self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
+    ):
+        rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1898")
+        await rule.commit()
+        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        assert len(updated_server.join_rules) == 1
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 403
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+        assert member is None
+
+    @pytest.mark.asyncio
+    async def test_join_server_allowlist_ok_and_guild_nok(
+        self,
+        app: FastAPI,
+        db: Database,
+        server: Server,
+        guest_user: User,
+        get_authorized_client: Callable,
+    ):
+        guild_rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1898")
+        await guild_rule.commit()
+        allowlist_rule = ServerJoinRule(type="allowlist", allowlist_addresses=[guest_user.wallet_address])
+        await allowlist_rule.commit()
+        updated_server = await update_item(
+            server, data={"join_rules": [allowlist_rule, guild_rule]}, current_user=guest_user
+        )
+        assert len(updated_server.join_rules) == 2
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_server_allowlist_nok_and_guild_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        server: Server,
+        guest_user: User,
+        get_authorized_client: Callable,
+    ):
+        guild_rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1985")
+        await guild_rule.commit()
+        allowlist_rule = ServerJoinRule(type="allowlist", allowlist_addresses=[])
+        await allowlist_rule.commit()
+        updated_server = await update_item(
+            server, data={"join_rules": [allowlist_rule, guild_rule]}, current_user=guest_user
+        )
+        assert len(updated_server.join_rules) == 2
+
+        server_id = str(server.id)
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{server_id}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+
+        assert member is not None
+        assert member.user == guest_user
+
+    @pytest.mark.asyncio
+    async def test_create_server_has_default_channel(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        server_name = "test"
+        response = await authorized_client.post("/servers", json={"name": server_name})
+        assert response.status_code == 201
+        json_response = response.json()
+        server_id = json_response["id"]
+
+        response = await authorized_client.get(f"/servers/{server_id}/channels")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert json_response[0]["name"] == "lounge"  # TODO: configurable
+
+    @pytest.mark.asyncio
+    async def test_create_server_with_description_avatar(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        data = {"name": "test", "description": "This is just a test server", "avatar": "https://image"}
+
+        response = await authorized_client.post("/servers", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "name" in json_response
+        assert "id" in json_response
+        assert json_response["id"] is not None
+        assert json_response["name"] == data["name"]
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+        assert json_response["description"] == data["description"]
+        assert json_response["avatar"] == data["avatar"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "initial_data, final_data",
+        [
+            ({"name": "test", "description": "test"}, {}),
+            ({"name": "test", "description": "test"}, {"name": "new name"}),
+            ({"name": "test", "description": "test"}, {"description": "this is a test server"}),
+            ({"name": "test"}, {"description": "this is a test server", "avatar": "https://image"}),
+        ],
+    )
+    async def test_update_server(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, initial_data, final_data
+    ):
+        response = await authorized_client.post("/servers", json=initial_data)
+        assert response.status_code == 201
+        original_response = response.json()
+        for field, value in initial_data.items():
+            assert original_response[field] == value
+
+        server_id = original_response["id"]
+
+        response = await authorized_client.patch(f"/servers/{server_id}", json=final_data)
+        assert response.status_code == 200
+        json_response = response.json()
+        for field, value in json_response.items():
+            if field in final_data:
+                assert json_response[field] == final_data[field]
+            else:
+                assert json_response[field] == original_response[field]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "rules, is_eligible",
+        [
+            ([], True),
+            ([{"type": "allowlist", "allowlist_addresses": []}], False),
+            ([{"type": "guild_xyz", "guild_xyz_id": "1985"}], True),
+            ([{"type": "guild_xyz", "guild_xyz_id": "1898"}], False),
+        ],
+    )
+    async def test_is_eligible_for_server(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, rules, is_eligible
+    ):
+        data = {"name": "test"}
+        response = await authorized_client.post("/servers", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        server_id = json_response["id"]
+
+        response = await authorized_client.patch(f"/servers/{server_id}", json={"join_rules": rules})
+        assert response.status_code == 200
+
+        response = await authorized_client.get(f"/servers/{server_id}/eligible")
+        if is_eligible:
+            assert response.status_code == 204
+        else:
+            assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_is_eligible_for_server_in_allowlist_addresses(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        data = {"name": "test"}
+        response = await authorized_client.post("/servers", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        server_id = json_response["id"]
+
+        response = await authorized_client.patch(
+            f"/servers/{server_id}",
+            json={"join_rules": [{"type": "allowlist", "allowlist_addresses": [str(current_user.wallet_address)]}]},
+        )
+        assert response.status_code == 200
+
+        response = await authorized_client.get(f"/servers/{server_id}/eligible")
+        assert response.status_code == 204

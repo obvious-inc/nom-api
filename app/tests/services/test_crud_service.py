@@ -60,7 +60,7 @@ class TestCRUDService:
     @pytest.mark.asyncio
     async def test_create_items(self, db: Database, current_user: User, server: Server):
         channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
-        assert len(channels) == 0
+        assert len(channels) == 1  # server has 1 channel by default
 
         to_create_channels = []
         for _ in range(100):
@@ -74,7 +74,7 @@ class TestCRUDService:
         assert len(object_ids) == 100
 
         channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
-        assert len(channels) == 100
+        assert len(channels) == 101
 
     @pytest.mark.asyncio
     async def test_get_items_by_id_invalid(self, db: Database, current_user: User, server: Server):

@@ -1,19 +1,13 @@
 import http
-from typing import List, Optional, Union
+from typing import List, Union
 
 from fastapi import APIRouter, Body, Depends
 
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.channels import (
-    DMChannelCreateSchema,
-    DMChannelSchema,
-    EitherChannel,
-    ServerChannelCreateSchema,
-    ServerChannelSchema,
-)
+from app.schemas.channels import DMChannelCreateSchema, EitherChannel, ServerChannelCreateSchema
 from app.schemas.messages import MessageSchema
-from app.services.channels import create_channel, create_typing_indicator, delete_channel, get_dm_channels
+from app.services.channels import create_channel, create_typing_indicator, delete_channel
 from app.services.messages import get_message, get_messages
 
 router = APIRouter()
@@ -30,13 +24,6 @@ async def post_create_channel(
     current_user: User = Depends(get_current_user),
 ):
     return await create_channel(channel, current_user=current_user)
-
-
-@router.get(
-    "", response_description="List all DM channels", response_model=List[Union[ServerChannelSchema, DMChannelSchema]]
-)
-async def list_dm_channels(size: Optional[int] = 50, current_user: User = Depends(get_current_user)):
-    return await get_dm_channels(current_user=current_user, size=size)
 
 
 @router.get("/{channel_id}/messages", response_description="Get latest messages", response_model=List[MessageSchema])

@@ -28,7 +28,7 @@ async def add_user_to_default_server(user_id):
     user = await get_user_by_id(user_id=user_id)
     servers = await get_items(filters={}, result_obj=Server, current_user=user, size=1, sort_by_direction=1)
     server = servers[0]
-    await join_server(server=server, current_user=user)
+    await join_server(server_id=str(server.pk), current_user=user)
 
 
 async def generate_wallet_token(data: AuthWalletSchema) -> AccessTokenSchema:

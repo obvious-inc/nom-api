@@ -1,23 +1,52 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional, Union
 
 from pydantic import Field
 
 from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, PyObjectId
 
 
+class AllowlistJoinRuleCreateSchema(APIBaseCreateSchema):
+    type: str = "allowlist"
+    allowlist_addresses: List[str]
+
+
+class GuildXYZJoinRuleCreateSchema(APIBaseCreateSchema):
+    type: str = "guild_xyz"
+    guild_xyz_id: str
+
+
 class ServerSchema(APIBaseSchema):
     name: str
     owner: PyObjectId = Field()
+    description: Optional[str]
+    avatar: Optional[str]
+    member_count: Optional[int]
 
     class Config:
         schema_extra = {
-            "example": {"id": "61e17018c3ee162141baf5c9", "name": "Verbs", "owner": "61e17018c3ee162141baf5c7"}
+            "example": {
+                "id": "61e17018c3ee162141baf5c9",
+                "name": "Verbs",
+                "owner": "61e17018c3ee162141baf5c7",
+                "description": "Verbs DAO is a humorous take on the original Nouns DAO",
+                "avatar": "https://pbs.twimg.com/profile_images/1467601380567359498/oKcnQo_S_400x400.jpg",
+                "member_count": 1,
+            }
         }
 
 
 class ServerCreateSchema(APIBaseCreateSchema):
     name: str
+    description: Optional[str] = ""
+    avatar: Optional[str] = ""
+
+
+class ServerUpdateSchema(APIBaseUpdateSchema):
+    name: Optional[str]
+    description: Optional[str]
+    avatar: Optional[str]
+    join_rules: Optional[List[Union[AllowlistJoinRuleCreateSchema, GuildXYZJoinRuleCreateSchema]]]
 
 
 class ServerMemberSchema(APIBaseSchema):

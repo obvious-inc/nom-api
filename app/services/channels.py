@@ -6,6 +6,7 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
+from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -64,6 +65,9 @@ async def create_channel(
 
 
 async def get_server_channels(server_id, current_user: User) -> List[Union[Channel, APIDocument]]:
+    if not await user_belongs_to_server(user=current_user, server_id=server_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
+
     return await get_items(
         filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user, size=None
     )
