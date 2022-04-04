@@ -6,7 +6,7 @@ env:
   MONGODB_VERSION: 5.0.6
   MONGODB_DB_NAME: ns-${{ github.sha }}-${{ github.run_id }}
   MONGODB_REPLICA_SET: newshades-gh-replica
-  PYTHON_VERSION: 3.9.10
+  PYTHON_VERSION: 3.9.12
 
 jobs:
   build:
