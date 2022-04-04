@@ -47,6 +47,7 @@ class ServerUpdateSchema(APIBaseUpdateSchema):
     description: Optional[str]
     avatar: Optional[str]
     join_rules: Optional[List[Union[AllowlistJoinRuleCreateSchema, GuildXYZJoinRuleCreateSchema]]]
+    system_channel: Optional[str]
 
 
 class ServerMemberSchema(APIBaseSchema):
