@@ -22,6 +22,7 @@ class MessageSchema(APIBaseSchema):
     edited_at: Optional[datetime]
     embeds: List[dict]
     reply_to: Optional[PyObjectId]
+    type: Optional[int] = 0
 
 
 class MessageCreateSchema(APIBaseCreateSchema):
@@ -30,12 +31,13 @@ class MessageCreateSchema(APIBaseCreateSchema):
     content: Optional[str] = ""
     blocks: Optional[List[dict]] = []
     reply_to: Optional[str]
+    type: Optional[int] = 0
 
     @root_validator(pre=True)
     def check_blocks_or_content_present(cls, values):
         content = values.get("content", "")
         blocks = values.get("blocks", [])
-        if not any([content, blocks]):
+        if not any([content, blocks]) and values.get("type", 0) == 0:
             raise ValueError("either 'blocks' or 'content' is required")
         return values
 

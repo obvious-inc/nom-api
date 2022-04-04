@@ -12,6 +12,7 @@ from app.models.base import APIDocument
 from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
 from app.schemas.channels import ServerChannelCreateSchema
+from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import (
     AllowlistJoinRuleCreateSchema,
     GuildXYZJoinRuleCreateSchema,
@@ -20,17 +21,19 @@ from app.schemas.servers import (
 )
 from app.services.channels import create_server_channel
 from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
+from app.services.messages import create_message
 from app.services.websockets import broadcast_server_event
 
 
 async def create_server(server_model: ServerCreateSchema, current_user: User) -> Union[Server, APIDocument]:
     created_server = await create_item(server_model, result_obj=Server, current_user=current_user, user_field="owner")
 
+    default_channel_model = ServerChannelCreateSchema(name="lounge", server=str(created_server.pk))
+    default_channel = await create_server_channel(channel_model=default_channel_model, current_user=current_user)
+    await update_item(item=created_server, data={"system_channel": default_channel}, current_user=current_user)
+
     # add owner as server member
     await join_server(server_id=str(created_server.pk), current_user=current_user, ignore_joining_rules=True)
-
-    default_channel_model = ServerChannelCreateSchema(name="lounge", server=str(created_server.pk))
-    await create_server_channel(channel_model=default_channel_model, current_user=current_user)
 
     return created_server
 
@@ -84,6 +87,10 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
         WebSocketServerEvent.SERVER_USER_JOINED,
         {"user": current_user.dump(), "member": member.dump()},
     )
+
+    if server.owner != current_user:
+        message = MessageCreateSchema(server=str(server.id), channel=str(server.system_channel.pk), type=1)
+        await create_message(message_model=message, current_user=current_user)
 
     return member
 

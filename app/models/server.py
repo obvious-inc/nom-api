@@ -17,6 +17,8 @@ class Server(APIDocument):
     description = fields.StrField(required=False)
     avatar = fields.StrField(required=False)
 
+    system_channel = fields.ReferenceField("Channel")
+
     class Meta:
         collection_name = "servers"
 

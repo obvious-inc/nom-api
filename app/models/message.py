@@ -17,6 +17,7 @@ class Message(APIDocument):
     channel = fields.ReferenceField("Channel", required=True)
     server = fields.ReferenceField("Server", required=False, default=None)
     author = fields.ReferenceField("User", required=True)
+    type = fields.IntField(default=0)
 
     content = fields.StrField(required=False, default="")
     blocks = fields.ListField(fields.DictField, default=[])
