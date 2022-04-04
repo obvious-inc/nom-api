@@ -180,3 +180,98 @@ class TestChannelsRoutes:
 
         response = await authorized_client.delete(f"/channels/{str(new_channel.id)}")
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_update_server_channel_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        server_channel: Channel,
+    ):
+        data = {"name": "my-channel!"}
+        response = await authorized_client.patch(f"/channels/{str(server_channel.pk)}", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response["name"] == data["name"]
+
+    @pytest.mark.asyncio
+    async def test_update_dm_channel_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        dm_channel: Channel,
+    ):
+        data = {"name": "kool & the gang"}
+        response = await authorized_client.patch(f"/channels/{str(dm_channel.pk)}", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response["name"] == data["name"]
+
+    @pytest.mark.asyncio
+    async def test_update_server_channel_as_guest_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        server_channel: Channel,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        member = await create_new_user()
+        member_auth_client = await get_authorized_client(member)
+
+        data = {"name": "my-channel!"}
+        response = await member_auth_client.patch(f"/channels/{str(server_channel.pk)}", json=data)
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_update_dm_channel_as_non_member_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        dm_channel: Channel,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        member = await create_new_user()
+        member_auth_client = await get_authorized_client(member)
+
+        data = {"name": "my-channel!"}
+        response = await member_auth_client.patch(f"/channels/{str(dm_channel.pk)}", json=data)
+        assert response.status_code == 403
+
+    @pytest.mark.skip
+    @pytest.mark.asyncio
+    async def test_update_dm_channel_remove_member_as_not_owner(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        guest = await create_new_user()
+        guest_client = await get_authorized_client(guest)
+
+        members = [current_user, guest]
+        data = {"kind": "dm", "members": [str(member.id) for member in members]}
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        channel_id = response.json().get("id")
+
+        data = {"members": [str(guest.id)]}
+        response = await guest_client.patch(f"/channels/{channel_id}", json=data)
+        assert response.status_code == 403

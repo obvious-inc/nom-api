@@ -5,9 +5,9 @@ from fastapi import APIRouter, Body, Depends
 
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.channels import DMChannelCreateSchema, EitherChannel, ServerChannelCreateSchema
+from app.schemas.channels import ChannelUpdateSchema, DMChannelCreateSchema, EitherChannel, ServerChannelCreateSchema
 from app.schemas.messages import MessageSchema
-from app.services.channels import create_channel, create_typing_indicator, delete_channel
+from app.services.channels import create_channel, create_typing_indicator, delete_channel, update_channel
 from app.services.messages import get_message, get_messages
 
 router = APIRouter()
@@ -46,3 +46,12 @@ async def delete_remove_channel(channel_id, current_user: User = Depends(get_cur
 @router.post("/{channel_id}/typing", summary="Notify typing", status_code=http.HTTPStatus.NO_CONTENT)
 async def post_user_typing_in_channel(channel_id, current_user: User = Depends(get_current_user)):
     await create_typing_indicator(channel_id, current_user)
+
+
+@router.patch("/{channel_id}", summary="Update channel", response_model=EitherChannel, status_code=http.HTTPStatus.OK)
+async def patch_update_channel(
+    channel_id,
+    update_data: ChannelUpdateSchema,
+    current_user: User = Depends(get_current_user),
+):
+    return await update_channel(channel_id, update_data=update_data, current_user=current_user)

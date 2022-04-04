@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, PyObjectId
 
 
 class ChannelSchema(APIBaseSchema):
@@ -13,6 +13,7 @@ class ChannelSchema(APIBaseSchema):
 
 class DMChannelSchema(ChannelSchema):
     members: List[PyObjectId] = []
+    name: Optional[str]
 
     class Config:
         schema_extra = {
@@ -20,6 +21,7 @@ class DMChannelSchema(ChannelSchema):
                 "id": "61e17018c3ee162141baf5c9",
                 "kind": "dm",
                 "members": ["61e17018c3ee162141baf5c1", "61e17018c3ee162141baf5c2", "61e17018c3ee162141baf5c3"],
+                "name": "The OG Group",
             }
         }
 
@@ -65,6 +67,10 @@ class ChannelReadStateCreateSchema(APIBaseCreateSchema):
     channel: str
     last_read_at: datetime
     mention_count: Optional[int] = 0
+
+
+class ChannelUpdateSchema(APIBaseUpdateSchema):
+    name: Optional[str]
 
 
 # Need this EitherChannel class due to mypy and fastapi issue: https://github.com/tiangolo/fastapi/issues/2279

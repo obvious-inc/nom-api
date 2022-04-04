@@ -19,7 +19,7 @@ async def is_user_in_channel(user: User, channel: Channel) -> bool:
         else:
             return True
     elif channel.kind == "dm":
-        return str(user.id) in channel.members
+        return user in channel.members
 
     return False
 
