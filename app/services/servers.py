@@ -9,6 +9,7 @@ from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
+from app.models.channel import Channel
 from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
 from app.schemas.channels import ServerChannelCreateSchema
@@ -159,6 +160,14 @@ async def update_server(server_id: str, update_data: ServerUpdateSchema, current
             db_rules.append(db_rule)
 
         data["join_rules"] = db_rules
+
+    system_channel_id = data.get("system_channel")
+    if system_channel_id:
+        system_channel = await get_item_by_id(id_=system_channel_id, result_obj=Channel, current_user=current_user)
+        if system_channel.kind != "server" or system_channel.server != server:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Cannot use this channel for system messages"
+            )
 
     updated_item = await update_item(item=server, data=data)
 

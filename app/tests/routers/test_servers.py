@@ -9,8 +9,10 @@ from pymongo.database import Database
 
 from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
+from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
+from app.services.channels import create_dm_channel, create_server_channel
 from app.services.crud import get_item, get_items, update_item
 from app.services.servers import create_server
 from app.services.users import create_user
@@ -393,3 +395,47 @@ class TestServerRoutes:
 
         response = await authorized_client.get(f"/servers/{server_id}/eligible")
         assert response.status_code == 204
+
+    @pytest.mark.asyncio
+    async def test_update_server_system_channel_ok(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        channel_model = ServerChannelCreateSchema(kind="server", server=str(server.id), name="entrance")
+        channel = await create_server_channel(channel_model, current_user=current_user)
+
+        patch_data = {"system_channel": str(channel.pk)}
+        response = await authorized_client.patch(f"/servers/{str(server.pk)}", json=patch_data)
+        assert response.status_code == 200
+
+        await server.reload()
+        assert server.system_channel == channel
+
+    @pytest.mark.asyncio
+    async def test_update_server_system_channel_wrong_server(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        other_server_model = ServerCreateSchema(name="Other")
+        other_server = await create_server(other_server_model, current_user=current_user)
+        channel_model = ServerChannelCreateSchema(kind="server", server=str(other_server.id), name="entrance")
+        channel = await create_server_channel(channel_model, current_user=current_user)
+
+        patch_data = {"system_channel": str(channel.pk)}
+        response = await authorized_client.patch(f"/servers/{str(server.pk)}", json=patch_data)
+        assert response.status_code == 403
+
+        await server.reload()
+        assert server.system_channel != channel
+
+    @pytest.mark.asyncio
+    async def test_update_server_system_channel_with_dm(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        channel_model = DMChannelCreateSchema(kind="dm", members=[str(current_user.pk)])
+        channel = await create_dm_channel(channel_model, current_user=current_user)
+
+        patch_data = {"system_channel": str(channel.pk)}
+        response = await authorized_client.patch(f"/servers/{str(server.pk)}", json=patch_data)
+        assert response.status_code == 403
+
+        await server.reload()
+        assert server.system_channel != channel
