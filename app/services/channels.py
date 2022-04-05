@@ -14,7 +14,12 @@ from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
-from app.schemas.channels import ChannelReadStateCreateSchema, DMChannelCreateSchema, ServerChannelCreateSchema
+from app.schemas.channels import (
+    ChannelReadStateCreateSchema,
+    ChannelUpdateSchema,
+    DMChannelCreateSchema,
+    ServerChannelCreateSchema,
+)
 from app.services.crud import create_item, delete_item, get_item, get_item_by_id, get_items, update_item
 from app.services.websockets import broadcast_channel_event
 
@@ -140,3 +145,30 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
             WebSocketServerEvent.USER_TYPING,
             {"user": current_user.dump()},
         )
+
+
+async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, current_user: User):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
+
+    data = update_data.dict(exclude_unset=True)
+
+    if channel.kind == "server":
+        if channel.owner != current_user:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot change this channel")
+    elif channel.kind == "dm":
+        if current_user not in channel.members:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot change this channel")
+    else:
+        raise Exception(f"unknown channel kind: {channel.kind}")
+
+    updated_item = await update_item(item=channel, data=data)
+
+    await queue_bg_task(
+        broadcast_channel_event,
+        channel_id,
+        str(current_user.id),
+        WebSocketServerEvent.CHANNEL_UPDATE,
+        {"channel": channel_id},
+    )
+
+    return updated_item

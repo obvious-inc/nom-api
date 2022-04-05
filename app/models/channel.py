@@ -18,6 +18,7 @@ class Channel(APIDocument):
 
     # Server fields
     server = fields.ReferenceField(Server)
+
     name = fields.StrField()
 
     def pre_insert(self):
