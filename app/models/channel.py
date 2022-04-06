@@ -1,4 +1,5 @@
 from marshmallow import ValidationError
+from pymongo import ASCENDING
 from umongo import fields, validate
 
 from app.helpers.db_utils import instance
@@ -50,4 +51,7 @@ class ChannelReadState(APIDocument):
 
     class Meta:
         collection_name = "channels_read_states"
-        indexes = ["user"]
+        indexes = [
+            "user",
+            [("user", ASCENDING), ("channel", ASCENDING), {"unique": True}],
+        ]
