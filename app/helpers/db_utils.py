@@ -37,7 +37,11 @@ async def create_all_indexes():
         indexes = getattr(doc.Meta, "indexes", [])
         for index in indexes:
             collection = doc.collection  # type: Collection
-            result = await collection.create_index(index, background=True)
+            index_opts = {}
+            if isinstance(index, list) and isinstance(index[-1], dict):
+                index_opts = index.pop(-1)
+
+            result = await collection.create_index(index, background=True, **index_opts)
             index_names.append(f"{name}.{result}")
 
     logger.debug(f"current indexes: {index_names}")
