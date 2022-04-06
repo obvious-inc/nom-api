@@ -30,13 +30,17 @@ async def get_channel_online_users(channel: Channel) -> List[User]:
 
 
 async def get_channel_users(channel: Channel) -> List[User]:
-    members = []
+    user_ids = set()
     if channel.kind == "dm":
-        members = channel.members
+        for member in channel.members:
+            user_ids.add(member.pk)
     elif channel.kind == "server":
         members = await get_items(
             filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=None, size=None
         )
+        for member in members:
+            user_ids.add(member.user.pk)
 
-    users = [await member.user.fetch() for member in members]
+    users = await get_items(filters={"_id": {"$in": list(user_ids)}}, result_obj=User, current_user=None, size=None)
+
     return users
