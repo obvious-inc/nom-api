@@ -135,7 +135,7 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
         )
         notify = True if user_member else False
     elif channel.kind == "dm":
-        notify = str(current_user.id) in channel.members
+        notify = current_user in channel.members
 
     if notify:
         await queue_bg_task(
