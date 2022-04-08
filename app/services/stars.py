@@ -1,5 +1,5 @@
 import http
-from typing import List, Union
+from typing import List, Optional, Union
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -37,8 +37,11 @@ async def create_star(star_model: StarCreateSchema, current_user: User) -> Union
     return await create_item(item=star_model, result_obj=Star, current_user=current_user)
 
 
-async def get_stars(current_user: User) -> List[Star]:
-    return await get_items(filters={"user": current_user.pk}, result_obj=Star, current_user=current_user)
+async def get_stars(current_user: User, stars_type: Optional[str] = None) -> List[Star]:
+    filters = {"user": current_user.pk}
+    if stars_type:
+        filters["type"] = stars_type
+    return await get_items(filters=filters, result_obj=Star, current_user=current_user)
 
 
 async def delete_star(star_id: str, current_user: User):

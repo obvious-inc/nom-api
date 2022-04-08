@@ -1,7 +1,7 @@
 import http
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.dependencies import get_current_user
 from app.models.user import User
@@ -22,8 +22,10 @@ async def post_create_star(star: StarCreateSchema, current_user: User = Depends(
 
 
 @router.get("", summary="List all user's stars", response_model=List[StarSchema], status_code=http.HTTPStatus.OK)
-async def get_fetch_stars(current_user: User = Depends(get_current_user)):
-    return await get_stars(current_user=current_user)
+async def get_fetch_stars(
+    star_type: Optional[str] = Query(None, alias="type"), current_user: User = Depends(get_current_user)
+):
+    return await get_stars(current_user=current_user, stars_type=star_type)
 
 
 @router.delete("/{star_id}", summary="Remove star", status_code=http.HTTPStatus.NO_CONTENT)

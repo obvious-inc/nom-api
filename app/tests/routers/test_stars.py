@@ -202,3 +202,60 @@ class TestStarsRoutes:
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.delete(f"/stars/{star_id}")
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_get_message_stars(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, channel_message: Message
+    ):
+        data = {"message": str(channel_message.id)}
+        response = await authorized_client.post("/stars", json=data)
+        assert response.status_code == 201
+
+        assert (await authorized_client.get("/stars?type=channel")).json() == []
+        assert (await authorized_client.get("/stars?type=server")).json() == []
+
+        response = await authorized_client.get("/stars?type=message")
+        assert response.status_code == 200
+
+        stars = response.json()
+        assert len(stars) == 1
+        assert stars[0]["type"] == "message"
+        assert stars[0]["message"] == data["message"]
+
+    @pytest.mark.asyncio
+    async def test_get_channel_stars(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server_channel: Channel
+    ):
+        data = {"channel": str(server_channel.id)}
+        response = await authorized_client.post("/stars", json=data)
+        assert response.status_code == 201
+
+        assert (await authorized_client.get("/stars?type=message")).json() == []
+        assert (await authorized_client.get("/stars?type=server")).json() == []
+
+        response = await authorized_client.get("/stars?type=channel")
+        assert response.status_code == 200
+
+        stars = response.json()
+        assert len(stars) == 1
+        assert stars[0]["type"] == "channel"
+        assert stars[0]["channel"] == data["channel"]
+
+    @pytest.mark.asyncio
+    async def test_get_server_stars(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        data = {"server": str(server.id)}
+        response = await authorized_client.post("/stars", json=data)
+        assert response.status_code == 201
+
+        assert (await authorized_client.get("/stars?type=channel")).json() == []
+        assert (await authorized_client.get("/stars?type=message")).json() == []
+
+        response = await authorized_client.get("/stars?type=server")
+        assert response.status_code == 200
+
+        stars = response.json()
+        assert len(stars) == 1
+        assert stars[0]["type"] == "server"
+        assert stars[0]["server"] == data["server"]
