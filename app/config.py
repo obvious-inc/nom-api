@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     profiling: bool = False
     cdn_url: str = "https://cdn.newshades.xyz"
     cdn_media_folder: str = "media"
+    environment: str = "development"
 
     mongodb_url: str = "localhost:27017"
     mongodb_db: str = "newshades"

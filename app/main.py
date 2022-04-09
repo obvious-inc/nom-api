@@ -49,7 +49,7 @@ def get_application(testing=False):
     if not settings.testing:
         app_.add_middleware(HTTPSRedirectMiddleware)
 
-        sentry_sdk.init(dsn=settings.sentry_dsn)
+        sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
         app_.add_middleware(SentryAsgiMiddleware)
 
     app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
