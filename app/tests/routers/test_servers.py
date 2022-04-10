@@ -439,3 +439,129 @@ class TestServerRoutes:
 
         await server.reload()
         assert server.system_channel != channel
+
+    @pytest.mark.asyncio
+    async def test_get_server_sections(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        response = await authorized_client.get(f"/servers/{str(server.pk)}/sections")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    @pytest.mark.asyncio
+    async def test_create_section_empty(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        response = await authorized_client.get(f"/servers/{str(server.pk)}/sections")
+        assert response.status_code == 200
+        assert response.json() == []
+
+        new_section_data = {"name": "community"}
+        response = await authorized_client.post(f"/servers/{str(server.pk)}/sections", json=new_section_data)
+        assert response.status_code == 201
+
+        response = await authorized_client.get(f"/servers/{str(server.pk)}/sections")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+
+    @pytest.mark.asyncio
+    async def test_update_section_name(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        new_section_data = {"name": "community"}
+        response = await authorized_client.post(f"/servers/{str(server.pk)}/sections", json=new_section_data)
+        assert response.status_code == 201
+        json_resp = response.json()
+        section_id = json_resp["id"]
+        assert json_resp["name"] == new_section_data["name"]
+
+        data = {"name": "new-community"}
+        response = await authorized_client.patch(f"/servers/{str(server.pk)}/sections/{section_id}", json=data)
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert json_resp["name"] == data["name"]
+
+    @pytest.mark.asyncio
+    async def test_update_section_channels(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        new_section_data = {"name": "community"}
+        response = await authorized_client.post(f"/servers/{str(server.pk)}/sections", json=new_section_data)
+        assert response.status_code == 201
+        json_resp = response.json()
+        section_id = json_resp["id"]
+        assert json_resp["name"] == new_section_data["name"]
+        assert json_resp["channels"] == []
+
+        ch_names = ["gm", "offtopic"]
+        channels = []
+        for channel_name in ch_names:
+            channel = await create_server_channel(
+                ServerChannelCreateSchema(kind="server", server=str(server.id), name=channel_name),
+                current_user=current_user,
+            )
+            channels.append(channel)
+
+        data = {"channels": [str(channel.pk) for channel in channels]}
+        response = await authorized_client.patch(f"/servers/{str(server.pk)}/sections/{section_id}", json=data)
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert json_resp["channels"] != []
+        assert len(json_resp["channels"]) == len(ch_names)
+        assert json_resp["channels"] == data["channels"]
+
+    @pytest.mark.asyncio
+    async def test_update_section_channels_order_matters(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        new_section_data = {"name": "community"}
+        response = await authorized_client.post(f"/servers/{str(server.pk)}/sections", json=new_section_data)
+        assert response.status_code == 201
+        json_resp = response.json()
+        section_id = json_resp["id"]
+
+        ch_names = ["gm", "offtopic"]
+        channels = []
+        for channel_name in ch_names:
+            channel = await create_server_channel(
+                ServerChannelCreateSchema(kind="server", server=str(server.id), name=channel_name),
+                current_user=current_user,
+            )
+            channels.append(channel)
+
+        data = {"channels": [str(channel.pk) for channel in reversed(channels)]}
+        response = await authorized_client.patch(f"/servers/{str(server.pk)}/sections/{section_id}", json=data)
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert json_resp["channels"] != []
+        assert len(json_resp["channels"]) == len(ch_names)
+        assert json_resp["channels"] == data["channels"]
+
+    @pytest.mark.asyncio
+    async def test_update_all_sections(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        channels = []
+        for i in range(10):
+            channel = await create_server_channel(
+                ServerChannelCreateSchema(kind="server", server=str(server.id), name=f"channel-{i}"),
+                current_user=current_user,
+            )
+            channels.append(channel)
+
+        sections = [
+            {"name": "community", "position": 1, "channels": [str(channel.pk) for channel in channels[:3]]},
+            {"name": "dao", "position": 2, "channels": [str(channel.pk) for channel in channels[3:7]]},
+            {"name": "offtopic", "position": 3, "channels": [str(channel.pk) for channel in channels[7:]]},
+        ]
+
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=sections)
+        assert response.status_code == 200
+
+        response = await authorized_client.get(f"/servers/{str(server.pk)}/sections")
+        assert response.status_code == 200
+        resp_sections = response.json()
+        assert len(resp_sections) == 3
+        for i in range(3):
+            assert resp_sections[i]["name"] == sections[i]["name"]
+            assert resp_sections[i]["channels"] == sections[i]["channels"]
