@@ -38,7 +38,7 @@ async def create_section(server_id: str, section_model: SectionCreateSchema, cur
         server_id,
         str(current_user.id),
         WebSocketServerEvent.SERVER_SECTION_CREATE,
-        {"server": server_id, "section": section.to_dict()},
+        {"server": server_id, "section": await section.to_dict()},
     )
 
     return section
