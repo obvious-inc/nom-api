@@ -63,7 +63,7 @@ class TestServerRoutes:
         assert json_response["owner"] == str(current_user.id)
 
         members = await get_items(
-            {"server": ObjectId(json_response["id"])}, result_obj=ServerMember, current_user=current_user, size=None
+            {"server": ObjectId(json_response["id"])}, result_obj=ServerMember, current_user=current_user, limit=None
         )
         assert len(members) == 1
         assert members[0].user == current_user

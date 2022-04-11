@@ -45,14 +45,14 @@ async def get_connection_ready_data(current_user: User) -> dict:
         data["servers"].append(server_data)
 
     dm_channels = []
-    for channel in await get_dm_channels(current_user=current_user, size=None):
+    for channel in await get_dm_channels(current_user=current_user, limit=None):
         common_user_ids.update(map(lambda m: m.pk, channel.members))
         dm_channels.append(channel.dump())
 
     data["dms"] = dm_channels
 
     user_list = await get_items(
-        filters={"_id": {"$in": list(common_user_ids)}}, result_obj=User, current_user=current_user, size=None
+        filters={"_id": {"$in": list(common_user_ids)}}, result_obj=User, current_user=current_user, limit=None
     )
 
     data["users"] = [

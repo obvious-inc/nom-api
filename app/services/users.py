@@ -151,5 +151,5 @@ async def update_user_profile(
 
 async def get_user_read_states(current_user: User):
     return await get_items(
-        filters={"user": current_user.pk}, result_obj=ChannelReadState, current_user=current_user, size=None
+        filters={"user": current_user.pk}, result_obj=ChannelReadState, current_user=current_user, limit=None
     )

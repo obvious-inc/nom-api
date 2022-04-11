@@ -82,13 +82,13 @@ async def get_server_channels(server_id, current_user: User) -> List[Union[Chann
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
 
     return await get_items(
-        filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user, size=None
+        filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user, limit=None
     )
 
 
-async def get_dm_channels(current_user: User, size: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
+async def get_dm_channels(current_user: User, limit: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
     return await get_items(
-        filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user, size=size
+        filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user, limit=limit
     )
 
 
