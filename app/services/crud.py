@@ -75,21 +75,26 @@ async def get_items(
     filters: dict,
     result_obj: Type[APIDocumentType],
     current_user: Optional[User],
-    size: Optional[int] = None,
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
+    before: str = None,
+    limit: int = None,
 ) -> List[APIDocumentType]:
-    # TODO: add paging default size to settings
-
+    sort_filters = [(sort_by_field, sort_by_direction)]
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
     filters.update(deleted_filter)
 
-    item_query = result_obj.find(filters).sort(sort_by_field, sort_by_direction)
+    if before:
+        before_filter = {"_id": {"$lt": ObjectId(before)}}
+        filters.update(before_filter)
+        sort_filters.append(("_id", sort_by_direction))
 
-    if size:
-        item_query.limit(size)
+    item_query = result_obj.find(filters).sort(sort_filters)
 
-    items = await item_query.to_list(length=size)
+    if limit:
+        item_query.limit(limit)
+
+    items = await item_query.to_list(length=limit)
 
     return items
 

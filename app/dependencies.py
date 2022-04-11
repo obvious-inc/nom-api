@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -53,3 +54,12 @@ async def get_current_user(
     set_user({"id": user_id})
 
     return user
+
+
+async def common_parameters(
+    before: Optional[str] = None,
+    limit: int = 50,
+    sort_by_field: str = "created_at",
+    sort_by_direction: int = -1,
+):
+    return {"before": before, "limit": limit, "sort_by_field": sort_by_field, "sort_by_direction": sort_by_direction}

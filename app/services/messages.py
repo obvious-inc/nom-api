@@ -110,7 +110,7 @@ async def delete_message(message_id: str, current_user: User):
     await delete_item(item=message)
 
 
-async def get_messages(channel_id: str, size: int, current_user: User) -> List[Message]:
+async def get_messages(channel_id: str, current_user: User, **common_params) -> List[Message]:
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
 
     filters = {}
@@ -122,12 +122,7 @@ async def get_messages(channel_id: str, size: int, current_user: User) -> List[M
             raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
         filters = {"channel": channel.id}
 
-    messages = await get_items(
-        filters=filters,
-        result_obj=Message,
-        current_user=current_user,
-        size=size,
-    )
+    messages = await get_items(filters=filters, result_obj=Message, current_user=current_user, **common_params)
 
     return messages
 
