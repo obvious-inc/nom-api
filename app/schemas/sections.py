@@ -16,7 +16,7 @@ class SectionSchema(APIBaseSchema):
                 "name": "community",
                 "server": "61e17018c3ee162141baf5c7",
                 "channels": ["61e17018c3ee162141baf5c1", "61e17018c3ee162141baf5c2", "61e17018c3ee162141baf5c3"],
-                "position": 1,
+                "position": 0,
             }
         }
 
@@ -25,7 +25,7 @@ class SectionCreateSchema(APIBaseCreateSchema):
     name: str
     channels: Optional[List[str]] = []
     server: Optional[str]
-    position: Optional[int] = 1
+    position: Optional[int] = 0
 
 
 class SectionUpdateSchema(APIBaseUpdateSchema):

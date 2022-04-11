@@ -10,7 +10,7 @@ class Section(APIDocument):
     server = fields.ReferenceField("Server")
     channels = fields.ListField(fields.ReferenceField("Channel"), default=[])
 
-    position = fields.IntField(default=1)
+    position = fields.IntField()
 
     class Meta:
         collection_name = "sections"

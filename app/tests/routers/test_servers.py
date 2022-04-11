@@ -550,9 +550,9 @@ class TestServerRoutes:
             channels.append(channel)
 
         sections = [
-            {"name": "community", "position": 1, "channels": [str(channel.pk) for channel in channels[:3]]},
-            {"name": "dao", "position": 2, "channels": [str(channel.pk) for channel in channels[3:7]]},
-            {"name": "offtopic", "position": 3, "channels": [str(channel.pk) for channel in channels[7:]]},
+            {"name": "community", "position": 0, "channels": [str(channel.pk) for channel in channels[:3]]},
+            {"name": "dao", "position": 1, "channels": [str(channel.pk) for channel in channels[3:7]]},
+            {"name": "offtopic", "position": 2, "channels": [str(channel.pk) for channel in channels[7:]]},
         ]
 
         response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=sections)
@@ -565,3 +565,52 @@ class TestServerRoutes:
         for i in range(3):
             assert resp_sections[i]["name"] == sections[i]["name"]
             assert resp_sections[i]["channels"] == sections[i]["channels"]
+
+    @pytest.mark.asyncio
+    async def test_update_all_sections_order(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        channels = []
+        for i in range(10):
+            channel = await create_server_channel(
+                ServerChannelCreateSchema(kind="server", server=str(server.id), name=f"channel-{i}"),
+                current_user=current_user,
+            )
+            channels.append(channel)
+
+        sections = [
+            {"name": "community", "position": 0, "channels": [str(channel.pk) for channel in channels[:3]]},
+            {"name": "dao", "position": 1, "channels": [str(channel.pk) for channel in channels[3:7]]},
+            {"name": "offtopic", "position": 2, "channels": [str(channel.pk) for channel in channels[7:]]},
+        ]
+
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=sections)
+        assert response.status_code == 200
+
+        response = await authorized_client.get(f"/servers/{str(server.pk)}/sections")
+        assert response.status_code == 200
+        resp_sections = response.json()
+        assert len(resp_sections) == 3
+        for i in range(3):
+            assert resp_sections[i]["name"] == sections[i]["name"]
+            assert resp_sections[i]["channels"] == sections[i]["channels"]
+
+        update_sections = [
+            {"name": "offtopic", "position": 1, "channels": [str(channel.pk) for channel in channels[7:]]},
+            {"name": "dao", "position": 0, "channels": [str(channel.pk) for channel in channels[3:7]]},
+            {"name": "community", "position": 2, "channels": [str(channel.pk) for channel in channels[:3]]},
+        ]
+
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=update_sections)
+        assert response.status_code == 200
+
+        response = await authorized_client.get(f"/servers/{str(server.pk)}/sections")
+        assert response.status_code == 200
+        resp_sections = response.json()
+        assert len(resp_sections) == 3
+        for section in resp_sections:
+            section_position = section["position"]
+            for update in update_sections:
+                if section_position == update["position"]:
+                    assert section["name"] == update["name"]
+                    assert section["channels"] == update["channels"]
