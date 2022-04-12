@@ -58,8 +58,23 @@ async def get_current_user(
 
 async def common_parameters(
     before: Optional[str] = None,
+    after: Optional[str] = None,
+    around: Optional[str] = None,
     limit: int = 50,
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
 ):
-    return {"before": before, "limit": limit, "sort_by_field": sort_by_field, "sort_by_direction": sort_by_direction}
+    present = [v for v in [before, after, around] if v is not None]
+    if len(present) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only one of 'before', 'after' and 'around can be present."
+        )
+
+    return {
+        "before": before,
+        "after": after,
+        "around": around,
+        "limit": limit,
+        "sort_by_field": sort_by_field,
+        "sort_by_direction": sort_by_direction,
+    }

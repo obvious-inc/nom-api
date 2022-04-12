@@ -78,6 +78,7 @@ async def get_items(
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
     before: str = None,
+    after: str = None,
     limit: int = None,
 ) -> List[APIDocumentType]:
     sort_filters = [(sort_by_field, sort_by_direction)]
@@ -88,9 +89,15 @@ async def get_items(
         before_filter = {"_id": {"$lt": ObjectId(before)}}
         filters.update(before_filter)
         sort_filters.append(("_id", sort_by_direction))
+    elif after:
+        after_filter = {"_id": {"$gt": ObjectId(after)}}
+        filters.update(after_filter)
+        # "after" should be used only by messages and only sorted by id or created_at
+        sort_filters = [("_id", 1)]
+    else:
+        pass
 
     item_query = result_obj.find(filters).sort(sort_filters)
-
     if limit:
         item_query.limit(limit)
 
