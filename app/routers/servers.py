@@ -7,10 +7,10 @@ from starlette import status
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.channels import ServerChannelSchema
-from app.schemas.sections import SectionCreateSchema, SectionSchema, SectionUpdateSchema
+from app.schemas.sections import SectionCreateSchema, SectionSchema
 from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema, ServerUpdateSchema
 from app.services.channels import get_server_channels
-from app.services.sections import create_section, get_sections, update_section, update_server_sections
+from app.services.sections import create_section, get_sections, update_server_sections
 from app.services.servers import (
     create_server,
     get_server_members,
@@ -107,17 +107,3 @@ async def put_update_sections(
     server_id, section_data: List[SectionCreateSchema], current_user: User = Depends(get_current_user)
 ):
     return await update_server_sections(server_id=server_id, sections=section_data, current_user=current_user)
-
-
-@router.patch(
-    "/{server_id}/sections/{section_id}",
-    summary="Update section",
-    response_model=SectionSchema,
-    status_code=http.HTTPStatus.OK,
-)
-async def patch_update_section(
-    server_id: str, section_id: str, update_data: SectionUpdateSchema, current_user: User = Depends(get_current_user)
-):
-    return await update_section(
-        server_id=server_id, section_id=section_id, update_data=update_data, current_user=current_user
-    )
