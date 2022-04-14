@@ -298,5 +298,5 @@ class TestAuthService:
             "address": wallet,
         }
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(HTTPException):
             await generate_wallet_token(AuthWalletSchema(**data))
