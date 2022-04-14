@@ -1,6 +1,8 @@
 import logging
 from typing import List, Optional
 
+from sentry_sdk import capture_exception
+
 from app.helpers.websockets import pusher_client
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.channel import Channel
@@ -20,36 +22,54 @@ async def _get_users_online_channels(users: List[User]):
 
 
 async def get_server_online_channels(server: Server, current_user: Optional[User]):
+    user_ids = set()
     members = await get_items(
         filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user, size=None
     )
-    users = [await member.user.fetch() for member in members]
+    for member in members:
+        user_ids.add(member.user.pk)
+
+    users = await get_items(
+        filters={"_id": {"$in": list(user_ids)}}, result_obj=User, current_user=current_user, size=None
+    )
+
     return await _get_users_online_channels(users)
 
 
 async def get_channel_online_channels(channel: Channel, current_user: Optional[User]):
-    users = []
+    user_ids = set()
     if channel.kind == "dm":
-        users = [await member.fetch() for member in channel.members]
+        for member in channel.members:
+            user_ids.add(member.pk)
     elif channel.kind == "server":
         members = await get_items(
             filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=current_user, size=None
         )
-        users = [await member.user.fetch() for member in members]
+        for member in members:
+            user_ids.add(member.user.pk)
+
+    users = await get_items(
+        filters={"_id": {"$in": list(user_ids)}}, result_obj=User, current_user=current_user, size=None
+    )
 
     return await _get_users_online_channels(users)
 
 
 async def get_servers_online_channels(servers: List[Server], current_user: Optional[User]):
+    user_ids = set()
     members = []
     for server in servers:
-        members.extend(
-            await get_items(
-                filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user, size=None
-            )
+        server_members = await get_items(
+            filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user, size=None
         )
+        members.extend(server_members)
+        for member in server_members:
+            user_ids.add(member.user.pk)
 
-    users = [await member.user.fetch() for member in members]
+    users = await get_items(
+        filters={"_id": {"$in": list(user_ids)}}, result_obj=User, current_user=current_user, size=None
+    )
+
     return await _get_users_online_channels(users)
 
 
@@ -98,8 +118,9 @@ async def pusher_broadcast_messages(
         push_channels = pusher_channels[:90]
         try:
             await pusher_client.trigger(push_channels, event_name, data)
-        except Exception:
+        except Exception as e:
             logger.exception("Problem broadcasting event to Pusher channel. [event_name=%s]", event_name)
+            capture_exception(e)
             has_errors = True
         pusher_channels = pusher_channels[90:]
 

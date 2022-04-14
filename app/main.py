@@ -16,7 +16,20 @@ from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, creat
 from app.helpers.logconf import log_configuration
 from app.helpers.queue_utils import stop_background_tasks
 from app.middlewares import add_canonical_log_line, profile_request
-from app.routers import auth, base, channels, integrations, media, messages, servers, stars, users, webhooks, websockets
+from app.routers import (
+    auth,
+    base,
+    channels,
+    integrations,
+    media,
+    messages,
+    sections,
+    servers,
+    stars,
+    users,
+    webhooks,
+    websockets,
+)
 
 logging.config.dictConfig(log_configuration)
 logger = logging.getLogger(__name__)
@@ -50,7 +63,7 @@ def get_application(testing=False):
     if not settings.testing:
         app_.add_middleware(HTTPSRedirectMiddleware)
 
-        sentry_sdk.init(dsn=settings.sentry_dsn)
+        sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
         app_.add_middleware(SentryAsgiMiddleware)
 
     app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
@@ -72,6 +85,7 @@ def get_application(testing=False):
     app_.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
     app_.include_router(media.router, prefix="/media", tags=["media"])
     app_.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
+    app_.include_router(sections.router, prefix="/sections", tags=["sections"])
     app_.include_router(stars.router, prefix="/stars", tags=["stars"])
 
     return app_

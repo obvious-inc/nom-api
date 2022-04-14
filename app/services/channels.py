@@ -155,7 +155,7 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
             channel_id,
             str(current_user.id),
             WebSocketServerEvent.USER_TYPING,
-            {"user": current_user.dump()},
+            {"user": await current_user.to_dict(exclude_fields=["pfp"])},
         )
 
 
