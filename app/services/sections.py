@@ -64,7 +64,7 @@ async def update_section(section_id: str, update_data: SectionUpdateSchema, curr
         str(server.pk),
         str(current_user.id),
         WebSocketServerEvent.SERVER_SECTION_UPDATE,
-        {"server": str(server.pk), "section": updated_section.to_dict()},
+        {"server": str(server.pk), "section": await updated_section.to_dict()},
     )
 
     return updated_section
@@ -90,7 +90,7 @@ async def update_server_sections(server_id: str, sections: List[SectionCreateSch
         server_id,
         str(current_user.id),
         WebSocketServerEvent.SERVER_SECTIONS_UPDATE,
-        {"server": server_id, "sections": [section.to_dict() for section in final_sections]},
+        {"server": server_id, "sections": [await section.to_dict() for section in final_sections]},
     )
 
     return final_sections
@@ -107,7 +107,7 @@ async def delete_section(section_id: str, current_user: User):
         str(server.pk),
         str(current_user.id),
         WebSocketServerEvent.SERVER_SECTION_DELETE,
-        {"server": str(server.pk), "section": section.to_dict()},
+        {"server": str(server.pk), "section": await section.to_dict()},
     )
 
     return await delete_item(item=section)
