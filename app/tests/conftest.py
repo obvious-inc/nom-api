@@ -120,6 +120,12 @@ async def channel_message(current_user: User, server: Server, server_channel: Ch
 
 
 @pytest.fixture
+async def direct_message(current_user: User, server: Server, dm_channel: Channel):
+    message = MessageCreateSchema(channel=str(dm_channel.id), content="hey")
+    return await create_message(message, current_user=current_user)
+
+
+@pytest.fixture
 async def authorized_client(client: AsyncClient, private_key: bytes, current_user: User):
     nonce = 1234
     signed_at = arrow.utcnow().isoformat()

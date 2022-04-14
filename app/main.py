@@ -4,13 +4,14 @@ import sentry_sdk
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
+from marshmallow import ValidationError
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
-from app.exceptions import assertion_exception_handler, type_error_handler
+from app.exceptions import assertion_exception_handler, marshmallow_validation_error_handler, type_error_handler
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, create_all_indexes, override_connect_to_mongo
 from app.helpers.logconf import log_configuration
 from app.helpers.queue_utils import stop_background_tasks
@@ -24,6 +25,7 @@ from app.routers import (
     messages,
     sections,
     servers,
+    stars,
     users,
     webhooks,
     websockets,
@@ -71,6 +73,7 @@ def get_application(testing=False):
 
     app_.add_exception_handler(AssertionError, assertion_exception_handler)
     app_.add_exception_handler(TypeError, type_error_handler)
+    app_.add_exception_handler(ValidationError, marshmallow_validation_error_handler)
 
     app_.include_router(base.router)
     app_.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -83,6 +86,7 @@ def get_application(testing=False):
     app_.include_router(media.router, prefix="/media", tags=["media"])
     app_.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
     app_.include_router(sections.router, prefix="/sections", tags=["sections"])
+    app_.include_router(stars.router, prefix="/stars", tags=["stars"])
 
     return app_
 
