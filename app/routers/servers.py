@@ -7,8 +7,10 @@ from starlette import status
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.channels import ServerChannelSchema
+from app.schemas.sections import SectionCreateSchema, SectionSchema
 from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema, ServerUpdateSchema
 from app.services.channels import get_server_channels
+from app.services.sections import create_section, get_sections, update_server_sections
 from app.services.servers import (
     create_server,
     get_server_members,
@@ -76,3 +78,32 @@ async def patch_update_server(
 )
 async def get_list_server_channels(server_id, current_user: User = Depends(get_current_user)):
     return await get_server_channels(server_id, current_user=current_user)
+
+
+@router.get("/{server_id}/sections", summary="List sections", response_model=List[SectionSchema])
+async def get_list_sections(server_id, current_user: User = Depends(get_current_user)):
+    return await get_sections(server_id, current_user=current_user)
+
+
+@router.post(
+    "/{server_id}/sections",
+    summary="Create a section",
+    response_model=SectionSchema,
+    status_code=http.HTTPStatus.CREATED,
+)
+async def post_create_section(
+    server_id, section_data: SectionCreateSchema, current_user: User = Depends(get_current_user)
+):
+    return await create_section(server_id=server_id, section_model=section_data, current_user=current_user)
+
+
+@router.put(
+    "/{server_id}/sections",
+    summary="Update server's sections",
+    response_model=List[SectionSchema],
+    status_code=http.HTTPStatus.OK,
+)
+async def put_update_sections(
+    server_id, section_data: List[SectionCreateSchema], current_user: User = Depends(get_current_user)
+):
+    return await update_server_sections(server_id=server_id, sections=section_data, current_user=current_user)
