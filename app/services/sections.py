@@ -90,7 +90,7 @@ async def update_server_sections(server_id: str, sections: List[SectionCreateSch
         server_id,
         str(current_user.id),
         WebSocketServerEvent.SERVER_SECTIONS_UPDATE,
-        {"server": server_id, "sections": final_sections},
+        {"server": server_id, "sections": [section.to_dict() for section in final_sections]},
     )
 
     return final_sections
