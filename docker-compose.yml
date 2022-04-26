@@ -12,11 +12,11 @@ services:
       MONGODB_URL: mongodb://newshades:newshades@db
     depends_on:
       - db
+      - cache
   db:
     image: mongo:5.0.6
     env_file:
       - .env
-    container_name: mongodb
     restart: unless-stopped
     ports:
       - "27018:27017"
@@ -25,3 +25,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: newshades
       MONGO_INITDB_DATABASE: newshades
       MONGODB_DATA_DIR: /data/db
+  cache:
+    image: redis:6.2.6
+    restart: always
+    ports:
+      - "6379:6379"
