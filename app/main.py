@@ -15,6 +15,7 @@ from app.exceptions import assertion_exception_handler, marshmallow_validation_e
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, create_all_indexes, override_connect_to_mongo
 from app.helpers.logconf import log_configuration
 from app.helpers.queue_utils import stop_background_tasks
+from app.helpers.redis_conn import connect_redis
 from app.middlewares import add_canonical_log_line, profile_request
 from app.routers import (
     auth,
@@ -43,6 +44,8 @@ def get_application(testing=False):
     else:
         app_.add_event_handler("startup", connect_to_mongo)
         app_.add_event_handler("startup", create_all_indexes)
+
+    app_.add_event_handler("startup", connect_redis)
 
     app_.add_event_handler("shutdown", stop_background_tasks)
     app_.add_event_handler("shutdown", close_mongo_connection)
