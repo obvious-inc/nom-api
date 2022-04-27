@@ -39,11 +39,7 @@ async def add_canonical_log_line(request: Request, call_next):
     request_id = _request_id_ctx_var.set(str(request_id))
     request.state.request_id = request_id
 
-    logger.info(
-        "%s %s",
-        request.method,
-        request.url.path,
-    )
+    logger.info("%s %s", request.method, request.url.path)
 
     response = await call_next(request)
     process_time = (time.time() - start_time) * 1000
@@ -69,7 +65,7 @@ async def add_canonical_log_line(request: Request, call_next):
     sorted_dict = dict(sorted(log_line_data.items(), key=lambda x: x[0].lower()))
 
     log_line = " ".join([f"{key}={value}" for key, value in sorted_dict.items()])
-    logger.info(f"canonical-log {log_line}")
+    logger.info("canonical-log %s", log_line)
 
     _request_id_ctx_var.reset(request_id)
     return response
