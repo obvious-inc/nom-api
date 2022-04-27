@@ -10,6 +10,7 @@ services:
     command: uvicorn app.main:app --reload --host 0.0.0.0 --port 5001
     environment:
       MONGODB_URL: mongodb://newshades:newshades@db
+      REDIS_HOST: redis
     depends_on:
       - db
       - redis

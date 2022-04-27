@@ -10,7 +10,6 @@ from fastapi import HTTPException
 from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
-from app.helpers.redis_conn import is_cached, cache_set, cache_get
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
@@ -90,8 +89,6 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
         broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_UPDATE
     )
 
-    await cache_set(prefix=f"messages:{str(message.channel.pk)}:{message_id}", dict_value=updated_item.dump())
-
     return updated_item
 
 
@@ -147,19 +144,11 @@ async def get_message(channel_id: str, message_id: str, current_user: User) -> M
             raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
         filters.update({"channel": channel.id})
 
-    prefix = f"messages:{channel_id}:{message_id}"
-    if await is_cached(prefix):
-        cached_result = await cache_get(prefix)
-        if cached_result:
-            return cached_result
-
     message = await get_item(
         filters=filters,
         result_obj=Message,
         current_user=current_user,
     )
-
-    await cache_set(prefix=prefix, dict_value=message.dump())
 
     return message
 

@@ -9,11 +9,13 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 from fastapi import FastAPI
 from httpx import AsyncClient
+from redis.asyncio.client import Redis
 from web3 import Web3
 
 from app.helpers import cloudflare
 from app.helpers.connection import get_client, get_db
 from app.helpers.jwt import generate_jwt_token
+from app.helpers.redis_conn import get_redis
 from app.main import get_application
 from app.models.auth import RefreshToken
 from app.models.base import APIDocument
@@ -34,7 +36,7 @@ from app.services.users import create_user
 
 
 @pytest.fixture
-def app() -> FastAPI:
+async def app() -> FastAPI:
     app = get_application(testing=True)
     return app
 
@@ -46,8 +48,16 @@ async def client(app: FastAPI):
             yield client
 
 
+@pytest.fixture(autouse=True)
+async def redis(client):
+    redis = await get_redis()
+    await redis.flushall()
+    yield redis
+    await redis.flushall()
+
+
 @pytest.fixture
-async def db(app, client):
+async def db(client):
     db_client = await get_client()
     db = await get_db()
     await db_client.drop_database(db.name)
@@ -158,7 +168,7 @@ async def authorized_client(client: AsyncClient, private_key: bytes, current_use
 
 
 @pytest.fixture
-async def get_authorized_client(client: AsyncClient):
+async def get_authorized_client(client: AsyncClient, redis: Redis):
     async def _get_authorized_client(user: User):
         access_token = generate_jwt_token(data={"sub": str(user.id)})
         refresh_token = generate_jwt_token(data={"sub": str(user.id)}, token_type="refresh")
@@ -167,6 +177,7 @@ async def get_authorized_client(client: AsyncClient):
             result_obj=RefreshToken,
             current_user=user,
         )
+        await redis.sadd(f"refresh_tokens:{str(user.pk)}", refresh_token)
         client.headers.update({"Authorization": f"Bearer {access_token}"})
         return client
 
