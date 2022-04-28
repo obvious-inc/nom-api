@@ -1,26 +1,26 @@
 import http
 from datetime import datetime
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, Body, Depends
 
 from app.dependencies import common_parameters, get_current_user
 from app.models.user import User
 from app.schemas.channels import (
+    ChannelBulkReadStateCreateSchema,
     ChannelUpdateSchema,
     DMChannelCreateSchema,
     EitherChannel,
     ServerChannelCreateSchema,
-    ChannelBulkReadStateCreateSchema,
 )
 from app.schemas.messages import MessageSchema
 from app.services.channels import (
+    bulk_mark_channels_as_read,
     create_channel,
     create_typing_indicator,
     delete_channel,
-    update_channel,
     mark_channel_as_read,
-    bulk_mark_channels_as_read,
+    update_channel,
 )
 from app.services.messages import get_message, get_messages
 

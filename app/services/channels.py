@@ -15,11 +15,11 @@ from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.channels import (
+    ChannelBulkReadStateCreateSchema,
     ChannelReadStateCreateSchema,
     ChannelUpdateSchema,
     DMChannelCreateSchema,
     ServerChannelCreateSchema,
-    ChannelBulkReadStateCreateSchema,
 )
 from app.services.crud import (
     create_item,

@@ -350,7 +350,7 @@ class TestChannelsRoutes:
         assert len(json_response) == 0
 
         data = {"channels": [str(server_channel.pk)]}
-        response = await authorized_client.post(f"/channels/ack", json=data)
+        response = await authorized_client.post("/channels/ack", json=data)
         assert response.status_code == 204
 
         response = await authorized_client.get("/users/me/read_states")
@@ -378,7 +378,7 @@ class TestChannelsRoutes:
 
         mark_read_at = datetime.datetime.utcnow() - datetime.timedelta(seconds=10)
         data = {"channels": [str(server_channel.pk)], "last_read_at": mark_read_at.isoformat()}
-        response = await authorized_client.post(f"/channels/ack", json=data)
+        response = await authorized_client.post("/channels/ack", json=data)
         assert response.status_code == 204
 
         response = await authorized_client.get("/users/me/read_states")
@@ -412,7 +412,7 @@ class TestChannelsRoutes:
         assert len(json_response) == 0
 
         data = {"channels": [str(channel.pk) for channel in channels]}
-        response = await authorized_client.post(f"/channels/ack", json=data)
+        response = await authorized_client.post("/channels/ack", json=data)
         assert response.status_code == 204
 
         response = await authorized_client.get("/users/me/read_states")
