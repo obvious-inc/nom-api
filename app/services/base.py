@@ -1,3 +1,4 @@
+from app.models.section import Section
 from app.models.user import User
 from app.services.channels import get_dm_channels, get_server_channels
 from app.services.crud import get_items
@@ -14,6 +15,13 @@ async def get_connection_ready_data(current_user: User) -> dict:
         server_data = {"id": str(server.id), "name": server.name, "owner": str(server.owner.pk)}
         channels = await get_server_channels(server_id=str(server.id), current_user=current_user)
         members = await get_server_members(server_id=str(server.id), current_user=current_user)
+        sections = await get_items(
+            filters={"server": server.pk},
+            result_obj=Section,
+            current_user=current_user,
+            sort_by_field="position",
+            sort_by_direction=1,
+        )
 
         member_list = []
         for member in members:
@@ -39,6 +47,7 @@ async def get_connection_ready_data(current_user: User) -> dict:
                     for channel in channels
                 ],
                 "members": member_list,
+                "sections": [section.dump() for section in sections],
             }
         )
 

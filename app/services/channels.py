@@ -155,7 +155,7 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
             channel_id,
             str(current_user.id),
             WebSocketServerEvent.USER_TYPING,
-            {"user": current_user.dump()},
+            {"user": await current_user.to_dict(exclude_fields=["pfp"])},
         )
 
 
@@ -165,7 +165,8 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
     data = update_data.dict(exclude_unset=True)
 
     if channel.kind == "server":
-        if channel.owner != current_user:
+        server = await channel.server.fetch()
+        if channel.owner != current_user and server.owner != current_user:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot change this channel")
     elif channel.kind == "dm":
         if current_user not in channel.members:

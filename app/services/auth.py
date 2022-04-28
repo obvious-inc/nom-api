@@ -19,7 +19,7 @@ from app.services.users import create_user, get_user_by_id, get_user_by_wallet_a
 
 logger = logging.getLogger(__name__)
 
-SIGNATURE_VALID_SECONDS = 30
+SIGNATURE_VALID_SECONDS = 60
 NONCE_SIGNATURE_REGEX = re.compile(r"nonce:\s?(.+?)\b", flags=re.IGNORECASE)
 SIGNED_AT_SIGNATURE_REGEX = re.compile(r"issued at:\s?(.+?)$", flags=re.IGNORECASE)
 
@@ -27,6 +27,10 @@ SIGNED_AT_SIGNATURE_REGEX = re.compile(r"issued at:\s?(.+?)$", flags=re.IGNORECA
 async def add_user_to_default_server(user_id):
     user = await get_user_by_id(user_id=user_id)
     servers = await get_items(filters={}, result_obj=Server, current_user=user, limit=1, sort_by_direction=1)
+    if not len(servers):
+        logger.warning("no servers exist, ignoring default join!")
+        return
+
     server = servers[0]
     await join_server(server_id=str(server.pk), current_user=user)
 
@@ -56,7 +60,9 @@ async def generate_wallet_token(data: AuthWalletSchema) -> AccessTokenSchema:
     message_signed_at_str = signed_at_groups.group(1)
     message_signed_at = arrow.get(message_signed_at_str)
     assert signed_at == message_signed_at
-    assert signed_at > arrow.utcnow().shift(seconds=-SIGNATURE_VALID_SECONDS)
+
+    if signed_at <= arrow.utcnow().shift(seconds=-SIGNATURE_VALID_SECONDS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="signature_expired")
 
     # check nonce
     nonce_groups = re.search(NONCE_SIGNATURE_REGEX, message)

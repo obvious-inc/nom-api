@@ -1,6 +1,8 @@
 import logging
 from typing import List, Optional
 
+from sentry_sdk import capture_exception
+
 from app.helpers.websockets import pusher_client
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.channel import Channel
@@ -116,8 +118,9 @@ async def pusher_broadcast_messages(
         push_channels = pusher_channels[:90]
         try:
             await pusher_client.trigger(push_channels, event_name, data)
-        except Exception:
+        except Exception as e:
             logger.exception("Problem broadcasting event to Pusher channel. [event_name=%s]", event_name)
+            capture_exception(e)
             has_errors = True
         pusher_channels = pusher_channels[90:]
 
