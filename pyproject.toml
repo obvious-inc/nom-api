@@ -42,6 +42,7 @@ uvicorn = "^0.16"
 uvloop = "^0.16"
 watchgod = "^0.7"
 web3 = "^5.26"
+types-redis = "^4.2.0"
 
 [tool.poetry.dev-dependencies]
 black = { version = "*", allow-prereleases = true }

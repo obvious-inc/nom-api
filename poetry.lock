@@ -1335,6 +1335,14 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "types-redis"
+version = "4.2.0"
+description = "Typing stubs for redis"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "types-requests"
 version = "2.27.9"
 description = "Typing stubs for requests"
@@ -1497,7 +1505,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "b7d46dc4b2d50e53a7d2f82e03c4580fe2b1f74276703112cbba7126a135bbb1"
+content-hash = "43138ee0998eca7b5870fdae7cba151649845963cea663efd31e89f527751e78"
 
 [metadata.files]
 aiohttp = [
@@ -2617,6 +2625,10 @@ tomli = [
 toolz = [
     {file = "toolz-0.11.2-py3-none-any.whl", hash = "sha256:a5700ce83414c64514d82d60bcda8aabfde092d1c1a8663f9200c07fdcc6da8f"},
     {file = "toolz-0.11.2.tar.gz", hash = "sha256:6b312d5e15138552f1bda8a4e66c30e236c831b612b2bf0005f8a1df10a4bc33"},
+]
+types-redis = [
+    {file = "types-redis-4.2.0.tar.gz", hash = "sha256:c9b61894c7621b801db44efd63f843ead93cbbcf034186d7343f7f5771e1106a"},
+    {file = "types_redis-4.2.0-py3-none-any.whl", hash = "sha256:24c0effe59b2eef030733fd352fdcee6647a66611001aa25762475c3f26fb5f1"},
 ]
 types-requests = [
     {file = "types-requests-2.27.9.tar.gz", hash = "sha256:7368974534d297939492efdfdab232930440b11e2203f6df1f0c40e3242a87ea"},
