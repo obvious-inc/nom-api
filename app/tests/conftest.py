@@ -13,9 +13,9 @@ from redis.asyncio.client import Redis
 from web3 import Web3
 
 from app.helpers import cloudflare
+from app.helpers.cache_utils import cache
 from app.helpers.connection import get_client, get_db
 from app.helpers.jwt import generate_jwt_token
-from app.helpers.redis_conn import get_redis
 from app.main import get_application
 from app.models.auth import RefreshToken
 from app.models.base import APIDocument
@@ -50,10 +50,9 @@ async def client(app: FastAPI):
 
 @pytest.fixture(autouse=True)
 async def redis(client):
-    redis = await get_redis()
-    await redis.flushall()
-    yield redis
-    await redis.flushall()
+    await cache.client.flushall()
+    yield cache.client
+    await cache.client.flushall()
 
 
 @pytest.fixture

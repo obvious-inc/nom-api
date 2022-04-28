@@ -6,9 +6,9 @@ from jose import JWTError
 from sentry_sdk import set_user
 from starlette.requests import Request
 
+from app.helpers.cache_utils import cache
 from app.helpers.connection import get_db
 from app.helpers.jwt import decode_jwt_token
-from app.helpers.redis_conn import get_redis
 from app.services.users import get_user_by_id
 
 oauth2_scheme = HTTPBearer()
@@ -40,8 +40,7 @@ async def get_current_user(
         logger.warning("User in JWT token not found. [user_id=%s]", user_id)
         raise credentials_exception
 
-    redis = await get_redis()
-    if not await redis.smembers(f"refresh_tokens:{str(user.pk)}"):
+    if not await cache.client.smembers(f"refresh_tokens:{str(user.pk)}"):
         logger.warning("Refresh tokens have all been revoked. [user_id=%s]", user_id)
         raise credentials_exception
 

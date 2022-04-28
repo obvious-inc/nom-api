@@ -1,7 +1,13 @@
 from redis.asyncio.client import Redis
 
 from app.config import get_settings
-from app.helpers.redis_conn import redis_connection
+
+
+class Cache:
+    client: Redis = None
+
+
+cache = Cache()
 
 
 async def connect_to_redis(db=None):
@@ -13,7 +19,7 @@ async def connect_to_redis(db=None):
         auto_close_connection_pool=True,
         decode_responses=True,
     )
-    redis_connection.client = redis
+    cache.client = redis
 
 
 async def connect_to_redis_testing():
@@ -21,4 +27,4 @@ async def connect_to_redis_testing():
 
 
 async def close_redis_connection():
-    await redis_connection.client.close()
+    await cache.client.close()
