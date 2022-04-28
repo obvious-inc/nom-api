@@ -16,9 +16,12 @@ async def connect_to_redis(db=None):
         host=settings.redis_host,
         port=settings.redis_port,
         db=db or settings.redis_db,
+        username=settings.redis_username,
+        password=settings.redis_password,
         auto_close_connection_pool=True,
         decode_responses=True,
     )
+    await redis.ping()
     cache.client = redis
 
 
