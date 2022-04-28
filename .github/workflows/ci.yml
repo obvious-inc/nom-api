@@ -6,21 +6,13 @@ env:
   MONGODB_VERSION: 5.0.6
   MONGODB_DB_NAME: ns-${{ github.sha }}-${{ github.run_id }}
   MONGODB_REPLICA_SET: newshades-gh-replica
+  REDIS_VERSION: 6.2.6
   PYTHON_VERSION: 3.9.12
 
 jobs:
   build:
     name: ci
     runs-on: ubuntu-latest
-
-    services:
-      redis:
-        image: redis:6.2.6
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
     - name: Checkout
@@ -66,6 +58,11 @@ jobs:
         mongodb-version: ${{ env.MONGODB_VERSION }}
         mongodb-replica-set: ${{ env.MONGODB_REPLICA_SET }}
 
+    - name: Start Redis
+      uses: supercharge/redis-github-action@1.4.0
+      with:
+        redis-version: ${{ env.REDIS_VERSION }}
+
     - name: Run tests >> pytest
       env:
         PUSHER_APP_ID: ${{ secrets.PUSHER_APP_ID }}
@@ -75,5 +72,4 @@ jobs:
         MONGODB_TEST_DB: ${{ env.MONGODB_DB_NAME }}
         ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
         WEB3_PROVIDER_URL_WS: ${{ secrets.WEB3_PROVIDER_URL_WS }}
-        REDIS_HOST: redis
       run: poetry run python -m pytest
