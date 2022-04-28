@@ -51,7 +51,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=100)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=100)
         assert len(messages) == 1
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
@@ -264,13 +264,13 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 1
 
         response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 204
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 0
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
@@ -298,14 +298,14 @@ class TestMessagesRoutes:
             user_field="author",
         )
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 1
 
         guest_2_client = await get_authorized_client(guest_user_2)
         response = await guest_2_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 403
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 1
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
@@ -330,13 +330,13 @@ class TestMessagesRoutes:
             user_field="author",
         )
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 1
 
         response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 204
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 0
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
@@ -865,7 +865,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 1
 
         data = {"content": "reply!", "server": str(server.id), "channel": str(server_channel.id)}
@@ -878,7 +878,7 @@ class TestMessagesRoutes:
         assert json_response["channel"] == data["channel"] == str(server_channel.id)
         assert json_response["reply_to"] == str(channel_message.id)
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, size=10)
+        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 2
 
     @pytest.mark.asyncio
@@ -1008,3 +1008,236 @@ class TestMessagesRoutes:
 
         response = await authorized_client.delete("/messages/0")
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_get_messages_before_id(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        messages = []
+        for i in range(10):
+            content = f"message {i}"
+            msg = await create_item(
+                item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content=content),
+                result_obj=Message,
+                current_user=current_user,
+                user_field="author",
+            )
+            messages.append(msg)
+
+        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+
+        item_pos = 4
+        before_id = messages[item_pos].pk
+        response = await authorized_client.get(
+            f"channels/{str(server_channel.pk)}/messages?before={str(before_id)}&limit=3"
+        )
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 3
+
+        for i, msg in enumerate(json_resp):
+            item_pos -= 1
+            prev_message = messages[item_pos]
+            assert str(prev_message.pk) == msg["id"]
+
+    @pytest.mark.asyncio
+    async def test_get_messages_after_id(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        messages = []
+        for i in range(10):
+            content = f"message {i}"
+            msg = await create_item(
+                item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content=content),
+                result_obj=Message,
+                current_user=current_user,
+                user_field="author",
+            )
+            messages.append(msg)
+
+        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+
+        item_pos = 4
+        before_id = messages[item_pos].pk
+        response = await authorized_client.get(
+            f"channels/{str(server_channel.pk)}/messages?after={str(before_id)}&limit=3"
+        )
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 3
+
+        for i, msg in enumerate(json_resp):
+            item_pos += 1
+            prev_message = messages[item_pos]
+            assert str(prev_message.pk) == msg["id"]
+
+    @pytest.mark.asyncio
+    async def test_get_messages_after_id_none(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        messages = []
+        for i in range(3):
+            content = f"message {i}"
+            msg = await create_item(
+                item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content=content),
+                result_obj=Message,
+                current_user=current_user,
+                user_field="author",
+            )
+            messages.append(msg)
+
+        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 3
+
+        item_pos = 2
+        before_id = messages[item_pos].pk
+        response = await authorized_client.get(
+            f"channels/{str(server_channel.pk)}/messages?after={str(before_id)}&limit=10"
+        )
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_messages_before_id_none(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        messages = []
+        for i in range(3):
+            content = f"message {i}"
+            msg = await create_item(
+                item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content=content),
+                result_obj=Message,
+                current_user=current_user,
+                user_field="author",
+            )
+            messages.append(msg)
+
+        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 3
+
+        item_pos = 0
+        before_id = messages[item_pos].pk
+        response = await authorized_client.get(
+            f"channels/{str(server_channel.pk)}/messages?before={str(before_id)}&limit=3"
+        )
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_messages_around_id_limit_pair(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        messages = []
+        for i in range(10):
+            content = f"message {i}"
+            msg = await create_item(
+                item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content=content),
+                result_obj=Message,
+                current_user=current_user,
+                user_field="author",
+            )
+            messages.append(msg)
+
+        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+
+        item_pos = 4
+        limit = 5
+        around_id = messages[item_pos].pk
+        response = await authorized_client.get(
+            f"channels/{str(server_channel.pk)}/messages?around={str(around_id)}&limit={limit}"
+        )
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 5
+
+        before_count = limit // 2
+        after_count = limit // 2
+
+        expected_messages = [
+            messages[item_pos - before_count],
+            messages[item_pos - before_count + 1],
+            messages[item_pos],
+            messages[item_pos + after_count - 1],
+            messages[item_pos + after_count],
+        ]
+
+        expected_message_ids = [str(message.pk) for message in expected_messages]
+        result_message_ids = [message["id"] for message in json_resp]
+        assert expected_message_ids[::-1] == result_message_ids
+
+    @pytest.mark.asyncio
+    async def test_get_messages_around_id_limit_even(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        messages = []
+        for i in range(10):
+            content = f"message {i}"
+            msg = await create_item(
+                item=MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content=content),
+                result_obj=Message,
+                current_user=current_user,
+                user_field="author",
+            )
+            messages.append(msg)
+
+        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+
+        item_pos = 4
+        limit = 4
+        around_id = messages[item_pos].pk
+        response = await authorized_client.get(
+            f"channels/{str(server_channel.pk)}/messages?around={str(around_id)}&limit={limit}"
+        )
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 4
+
+        before_count = limit // 2
+        after_count = (limit // 2) - 1
+
+        expected_messages = [
+            messages[item_pos - before_count],
+            messages[item_pos - before_count + 1],
+            messages[item_pos],
+            messages[item_pos + after_count],
+        ]
+
+        expected_message_ids = [str(message.pk) for message in expected_messages]
+        result_message_ids = [message["id"] for message in json_resp]
+        assert expected_message_ids[::-1] == result_message_ids

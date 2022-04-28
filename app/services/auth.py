@@ -26,7 +26,7 @@ SIGNED_AT_SIGNATURE_REGEX = re.compile(r"issued at:\s?(.+?)$", flags=re.IGNORECA
 
 async def add_user_to_default_server(user_id):
     user = await get_user_by_id(user_id=user_id)
-    servers = await get_items(filters={}, result_obj=Server, current_user=user, size=1, sort_by_direction=1)
+    servers = await get_items(filters={}, result_obj=Server, current_user=user, limit=1, sort_by_direction=1)
     if not len(servers):
         logger.warning("no servers exist, ignoring default join!")
         return
