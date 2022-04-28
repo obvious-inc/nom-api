@@ -13,6 +13,15 @@ jobs:
     name: ci
     runs-on: ubuntu-latest
 
+    services:
+      redis:
+        image: redis:6.2.6
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -66,4 +75,5 @@ jobs:
         MONGODB_TEST_DB: ${{ env.MONGODB_DB_NAME }}
         ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
         WEB3_PROVIDER_URL_WS: ${{ secrets.WEB3_PROVIDER_URL_WS }}
+        REDIS_HOST: redis
       run: poetry run python -m pytest
