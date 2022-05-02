@@ -73,6 +73,11 @@ class ChannelUpdateSchema(APIBaseUpdateSchema):
     name: Optional[str]
 
 
+class ChannelBulkReadStateCreateSchema(APIBaseCreateSchema):
+    channels: List[str]
+    last_read_at: Optional[datetime]
+
+
 # Need this EitherChannel class due to mypy and fastapi issue: https://github.com/tiangolo/fastapi/issues/2279
 class EitherChannel(BaseModel):
     __root__: Union[ServerChannelSchema, DMChannelSchema]

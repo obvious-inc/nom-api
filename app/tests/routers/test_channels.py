@@ -1,5 +1,7 @@
+import datetime
 from typing import Callable
 
+import arrow
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
@@ -8,7 +10,9 @@ from pymongo.database import Database
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
+from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.servers import ServerCreateSchema
+from app.services.crud import create_item
 from app.services.servers import create_server
 
 
@@ -275,3 +279,153 @@ class TestChannelsRoutes:
         data = {"members": [str(guest.id)]}
         response = await guest_client.patch(f"/channels/{channel_id}", json=data)
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_mark_channel_as_read(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        server_channel: Channel,
+    ):
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 0
+
+        response = await authorized_client.post(f"/channels/{str(server_channel.pk)}/ack")
+        assert response.status_code == 204
+
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        last_read_at = json_response[0]["last_read_at"]
+        diff = arrow.utcnow() - arrow.get(last_read_at)
+        assert diff.total_seconds() <= 1
+
+    @pytest.mark.asyncio
+    async def test_mark_channel_as_read_specific_ts(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        server_channel: Channel,
+    ):
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 0
+
+        mark_read_at = datetime.datetime.utcnow() - datetime.timedelta(seconds=10)
+        response = await authorized_client.post(
+            f"/channels/{str(server_channel.pk)}/ack?last_read_at={mark_read_at.isoformat()}"
+        )
+        assert response.status_code == 204
+
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        last_read_at = json_response[0]["last_read_at"]
+        assert arrow.get(last_read_at).timestamp() == pytest.approx(mark_read_at.timestamp(), 0.001)
+
+    @pytest.mark.asyncio
+    async def test_bulk_mark_channels_as_read(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        server_channel: Channel,
+    ):
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 0
+
+        data = {"channels": [str(server_channel.pk)]}
+        response = await authorized_client.post("/channels/ack", json=data)
+        assert response.status_code == 204
+
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        last_read_at = json_response[0]["last_read_at"]
+        diff = arrow.utcnow() - arrow.get(last_read_at)
+        assert diff.total_seconds() <= 1
+
+    @pytest.mark.asyncio
+    async def test_bulk_mark_channels_as_read_specific_ts(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+        server_channel: Channel,
+    ):
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 0
+
+        mark_read_at = datetime.datetime.utcnow() - datetime.timedelta(seconds=10)
+        data = {"channels": [str(server_channel.pk)], "last_read_at": mark_read_at.isoformat()}
+        response = await authorized_client.post("/channels/ack", json=data)
+        assert response.status_code == 204
+
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        last_read_at = json_response[0]["last_read_at"]
+        assert arrow.get(last_read_at).timestamp() == pytest.approx(mark_read_at.timestamp(), 0.001)
+
+    @pytest.mark.asyncio
+    async def test_bulk_mark_multiple_channels_as_read(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        server: Server,
+    ):
+        no_channels = 5
+        channels = []
+        for index, _ in enumerate(range(no_channels)):
+            channel_schema = ServerChannelCreateSchema(server=str(server.pk), name=f"random-{index}")
+            channel = await create_item(
+                item=channel_schema, result_obj=Channel, current_user=current_user, user_field="owner"
+            )
+            channels.append(channel)
+
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 0
+
+        data = {"channels": [str(channel.pk) for channel in channels]}
+        response = await authorized_client.post("/channels/ack", json=data)
+        assert response.status_code == 204
+
+        response = await authorized_client.get("/users/me/read_states")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == no_channels
+        now = arrow.utcnow()
+        default_ts = None
+        for read_state in json_response:
+            last_read_at = read_state["last_read_at"]
+            diff = now - arrow.get(last_read_at)
+            assert diff.total_seconds() <= 1
+            if default_ts:
+                assert last_read_at == default_ts
+            else:
+                default_ts = last_read_at
