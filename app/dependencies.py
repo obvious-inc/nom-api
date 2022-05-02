@@ -1,6 +1,7 @@
 import logging
+from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sentry_sdk import set_user
@@ -50,3 +51,36 @@ async def get_current_user(
     set_user({"id": user_id})
 
     return user
+
+
+async def common_parameters(
+    before: Optional[str] = None,
+    after: Optional[str] = None,
+    around: Optional[str] = None,
+    limit: int = Query(50, gt=0, le=100),
+    sort_by_field: str = "created_at",
+    sort_by_direction: int = -1,
+    sort: str = None,
+):
+    present = [v for v in [before, after, around] if v is not None]
+    if len(present) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only one of 'before', 'after' and 'around can be present."
+        )
+
+    if sort:
+        if sort.startswith("-"):
+            sort_by_field = sort[1:]
+            sort_by_direction = -1
+        else:
+            sort_by_field = sort
+            sort_by_direction = 1
+
+    return {
+        "before": before,
+        "after": after,
+        "around": around,
+        "limit": limit,
+        "sort_by_field": sort_by_field,
+        "sort_by_direction": sort_by_direction,
+    }

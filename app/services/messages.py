@@ -110,7 +110,7 @@ async def delete_message(message_id: str, current_user: User):
     await delete_item(item=message)
 
 
-async def get_messages(channel_id: str, size: int, current_user: User) -> List[Message]:
+async def get_messages(channel_id: str, current_user: User, **common_params) -> List[Message]:
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
 
     filters = {}
@@ -122,13 +122,34 @@ async def get_messages(channel_id: str, size: int, current_user: User) -> List[M
             raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
         filters = {"channel": channel.id}
 
-    messages = await get_items(
-        filters=filters,
-        result_obj=Message,
-        current_user=current_user,
-        size=size,
-    )
+    around_id = common_params.pop("around", None)
+    if around_id:
+        return await _get_around_messages(
+            around_message_id=around_id, filters=filters, current_user=current_user, **common_params
+        )
 
+    messages = await get_items(filters=filters, result_obj=Message, current_user=current_user, **common_params)
+    return messages
+
+
+async def _get_around_messages(
+    around_message_id: str, filters: dict, current_user: User, **common_params
+) -> List[Message]:
+    around_message = await get_item_by_id(id_=around_message_id, result_obj=Message, current_user=current_user)
+
+    limit = common_params.get("limit", 50)
+    before_count = limit // 2
+    after_count = limit // 2
+    if limit % 2 == 0:
+        after_count -= 1
+
+    before_params = {**common_params, "limit": before_count, "before": around_message_id}
+    before_messages = await get_items(filters=filters, result_obj=Message, current_user=current_user, **before_params)
+
+    after_params = {**common_params, "limit": after_count, "after": around_message_id}
+    after_messages = await get_items(filters=filters, result_obj=Message, current_user=current_user, **after_params)
+
+    messages = after_messages[::-1] + [around_message] + before_messages
     return messages
 
 

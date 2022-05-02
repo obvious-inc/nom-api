@@ -15,6 +15,7 @@ from app.models.message import Message
 from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.channels import (
+    ChannelBulkReadStateCreateSchema,
     ChannelReadStateCreateSchema,
     ChannelUpdateSchema,
     DMChannelCreateSchema,
@@ -82,13 +83,13 @@ async def get_server_channels(server_id, current_user: User) -> List[Union[Chann
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
 
     return await get_items(
-        filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user, size=None
+        filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user, limit=None
     )
 
 
-async def get_dm_channels(current_user: User, size: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
+async def get_dm_channels(current_user: User, limit: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
     return await get_items(
-        filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user, size=size
+        filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user, limit=limit
     )
 
 
@@ -116,22 +117,31 @@ async def update_channel_last_message(channel_id, message: Union[Message, APIDoc
         await update_item(item=channel, data={"last_message_at": message.created_at}, current_user=current_user)
 
 
-async def update_channels_read_state(channel_ids: List[str], current_user: User, last_read_at: datetime):
+async def bulk_mark_channels_as_read(ack_data: ChannelBulkReadStateCreateSchema, current_user: User):
+    await update_channels_read_state(
+        channel_ids=ack_data.channels, current_user=current_user, last_read_at=ack_data.last_read_at
+    )
+
+
+async def mark_channel_as_read(channel_id: str, last_read_at: Optional[datetime], current_user: User):
+    await update_channels_read_state(channel_ids=[channel_id], current_user=current_user, last_read_at=last_read_at)
+
+
+async def update_channels_read_state(channel_ids: List[str], current_user: User, last_read_at: Optional[datetime]):
     if not last_read_at:
         last_read_at = datetime.now(timezone.utc)
 
     for channel_id in channel_ids:
-        channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-
+        # TODO: check if any mentions present after last_read_at. if so, change mention_count below
         update_data = {"$set": {"last_read_at": last_read_at, "mention_count": 0}}
         updated_item = await find_and_update_item(
-            filters={"user": current_user.pk, "channel": channel.pk},
+            filters={"user": current_user.pk, "channel": ObjectId(channel_id)},
             data=update_data,
             result_obj=ChannelReadState,
         )
 
         if not updated_item:
-            read_state_model = ChannelReadStateCreateSchema(channel=str(channel.id), last_read_at=last_read_at)
+            read_state_model = ChannelReadStateCreateSchema(channel=channel_id, last_read_at=last_read_at)
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=current_user)
 
 

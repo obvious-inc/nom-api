@@ -32,5 +32,5 @@ class Message(APIDocument):
     class Meta:
         collection_name = "messages"
         indexes = [
-            (("channel", ASCENDING), ("created_at", DESCENDING)),
+            (("channel", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)),
         ]

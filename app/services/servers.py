@@ -101,7 +101,7 @@ async def get_user_servers(current_user: User) -> List[Server]:
         {"user": current_user.id},
         result_obj=ServerMember,
         current_user=current_user,
-        size=None,
+        limit=None,
         sort_by_field="joined_at",
         sort_by_direction=1,
     )
@@ -113,7 +113,7 @@ async def get_server_members(server_id: str, current_user: User):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
 
     server_members = await get_items(
-        {"server": ObjectId(server_id)}, result_obj=ServerMember, current_user=current_user, size=None
+        {"server": ObjectId(server_id)}, result_obj=ServerMember, current_user=current_user, limit=None
     )
     return server_members
 
@@ -125,7 +125,7 @@ async def get_servers(current_user: User):
     resp_servers = []
     for server in servers:
         server_members = await get_items(
-            {"server": server.pk}, result_obj=ServerMember, current_user=current_user, size=None
+            {"server": server.pk}, result_obj=ServerMember, current_user=current_user, limit=None
         )
         resp_servers.append({**server.dump(), "member_count": len(server_members)})
 
