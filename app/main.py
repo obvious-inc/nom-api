@@ -12,6 +12,7 @@ from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
 from app.exceptions import assertion_exception_handler, marshmallow_validation_error_handler, type_error_handler
+from app.helpers.cache_utils import close_redis_connection, connect_to_redis, connect_to_redis_testing
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, create_all_indexes, override_connect_to_mongo
 from app.helpers.logconf import log_configuration
 from app.helpers.queue_utils import stop_background_tasks
@@ -40,12 +41,15 @@ def get_application(testing=False):
 
     if testing:
         app_.add_event_handler("startup", override_connect_to_mongo)
+        app_.add_event_handler("startup", connect_to_redis_testing)
     else:
         app_.add_event_handler("startup", connect_to_mongo)
         app_.add_event_handler("startup", create_all_indexes)
+        app_.add_event_handler("startup", connect_to_redis)
 
     app_.add_event_handler("shutdown", stop_background_tasks)
     app_.add_event_handler("shutdown", close_mongo_connection)
+    app_.add_event_handler("shutdown", close_redis_connection)
 
     origins = ["*"]  # TODO: change this later
 

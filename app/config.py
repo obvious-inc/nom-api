@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     mongodb_db: str = "newshades"
     mongodb_test_db: str = "newshades-test"
 
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_username: Optional[str]
+    redis_password: Optional[str]
+
     jwt_secret_key: str
     jwt_access_token_expire_minutes: Optional[int] = 60
     jwt_refresh_token_expire_minutes: Optional[int] = 10080

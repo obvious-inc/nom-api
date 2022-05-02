@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from jose import JWTError
 from starlette import status
 
+from app.helpers.cache_utils import cache
 from app.helpers.jwt import decode_jwt_token, generate_jwt_token
 from app.helpers.w3 import checksum_address, get_wallet_address_from_signed_message
 from app.models.auth import RefreshToken
@@ -80,6 +81,7 @@ async def generate_wallet_token(data: AuthWalletSchema) -> AccessTokenSchema:
 
     access_token = generate_jwt_token({"sub": str(user.id)})
     refresh_token = generate_jwt_token({"sub": str(user.id)}, token_type="refresh")
+    await cache.client.sadd(f"refresh_tokens:{str(user.pk)}", refresh_token)
 
     await create_item(
         RefreshTokenCreateSchema(refresh_token=refresh_token, user=str(user.id)),
@@ -124,12 +126,14 @@ async def create_refresh_token(token_model: RefreshTokenCreateSchema) -> AccessT
     if refresh_token.used is True:
         logger.warning("tried to reuse already used refresh token. revoking all!")
         await delete_items(filters={"user": user.pk}, result_obj=RefreshToken, current_user=user)
+        await cache.client.delete(f"refresh_tokens:{str(user.pk)}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token already used")
     else:
         await update_item(refresh_token, data={"used": True}, current_user=user)
 
     access_token = generate_jwt_token({"sub": str(user.id)})
     refresh_token = generate_jwt_token({"sub": str(user.id)}, token_type="refresh")
+    await cache.client.sadd(f"refresh_tokens:{str(user.pk)}", refresh_token)
 
     await create_item(
         RefreshTokenCreateSchema(refresh_token=refresh_token, user=str(user.id)),
@@ -142,4 +146,5 @@ async def create_refresh_token(token_model: RefreshTokenCreateSchema) -> AccessT
 
 
 async def revoke_tokens(current_user: User):
+    await cache.client.delete(f"refresh_tokens:{str(current_user.pk)}")
     await delete_items(filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user)

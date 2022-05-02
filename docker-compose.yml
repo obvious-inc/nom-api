@@ -10,13 +10,14 @@ services:
     command: uvicorn app.main:app --reload --host 0.0.0.0 --port 5001
     environment:
       MONGODB_URL: mongodb://newshades:newshades@db
+      REDIS_HOST: redis
     depends_on:
       - db
+      - redis
   db:
     image: mongo:5.0.6
     env_file:
       - .env
-    container_name: mongodb
     restart: unless-stopped
     ports:
       - "27018:27017"
@@ -25,3 +26,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: newshades
       MONGO_INITDB_DATABASE: newshades
       MONGODB_DATA_DIR: /data/db
+  redis:
+    image: redis:6.2.6
+    restart: always
+    ports:
+      - "6379:6379"
