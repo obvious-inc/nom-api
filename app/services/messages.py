@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
+from app.helpers.permissions import Permission, needs
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
@@ -110,6 +111,7 @@ async def delete_message(message_id: str, current_user: User):
     await delete_item(item=message)
 
 
+@needs(permissions=[Permission.MESSAGES_LIST])
 async def get_messages(channel_id: str, current_user: User, **common_params) -> List[Message]:
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
 
