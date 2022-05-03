@@ -46,7 +46,7 @@ async def get_list_messages(
     common_params: dict = Depends(common_parameters),
     current_user: User = Depends(get_current_user),
 ):
-    messages = await get_messages(channel_id, current_user=current_user, **common_params)
+    messages = await get_messages(channel_id=channel_id, current_user=current_user, **common_params)
     return messages
 
 

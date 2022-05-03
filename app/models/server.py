@@ -33,6 +33,8 @@ class ServerMember(APIDocument):
 
     joined_at = fields.AwareDateTimeField(default=get_mongo_utc_date)
 
+    roles = fields.ListField(fields.ReferenceField("Role"), default=[])
+
     class Meta:
         collection_name = "server_members"
         indexes = ["server", "user"]
