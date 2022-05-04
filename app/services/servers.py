@@ -38,7 +38,9 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
     await join_server(server_id=str(created_server.pk), current_user=current_user, ignore_joining_rules=True)
 
     # create default role
-    role_schema = RoleCreateSchema(name="default", server=str(created_server.pk), permissions=DEFAULT_ROLE_PERMISSIONS)
+    role_schema = RoleCreateSchema(
+        name="@everyone", server=str(created_server.pk), permissions=DEFAULT_ROLE_PERMISSIONS
+    )
     await create_item(item=role_schema, result_obj=Role, current_user=current_user, user_field=None)
 
     return created_server
@@ -84,7 +86,7 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot join this server")
 
     default_roles = await get_items(
-        filters={"server": server.pk, "name": "default"},
+        filters={"server": server.pk, "name": "@everyone"},
         result_obj=Role,
         current_user=current_user,
         sort_by_direction=1,

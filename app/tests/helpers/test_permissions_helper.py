@@ -25,18 +25,18 @@ class TestPermissionsHelper:
     @pytest.mark.parametrize(
         "action_permissions, user_default_permissions, permission_overwrites, expected_result",
         [
-            (["messages.list"], {"default": ["messages.list", "messages.create"]}, {}, True),
-            (["messages.create"], {"default": ["messages.list"]}, {}, False),
+            (["messages.list"], {"@everyone": ["messages.list", "messages.create"]}, {}, True),
+            (["messages.create"], {"@everyone": ["messages.list"]}, {}, False),
             (
                 ["messages.create"],
-                {"default": ["messages.list", "messages.create"]},
-                {"default": ["messages.list"]},
+                {"@everyone": ["messages.list", "messages.create"]},
+                {"@everyone": ["messages.list"]},
                 False,
             ),
             (
                 ["messages.create"],
                 {
-                    "default": ["messages.list"],
+                    "@everyone": ["messages.list"],
                     "mod": ["messages.create", "messages.list", "members.kick"],
                 },
                 {},
@@ -45,7 +45,7 @@ class TestPermissionsHelper:
             (
                 ["messages.create"],
                 {
-                    "default": ["messages.list"],
+                    "@everyone": ["messages.list"],
                     "mod": ["messages.create", "messages.list", "members.kick"],
                 },
                 {"mod": ["messages.list", "members.kick"]},
