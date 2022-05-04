@@ -27,7 +27,7 @@ async def post_create_message(
     message: MessageCreateSchema = Body(...),
     current_user: User = Depends(get_current_user),
 ):
-    return await create_message(message, current_user=current_user)
+    return await create_message(message_model=message, current_user=current_user)
 
 
 @router.patch(

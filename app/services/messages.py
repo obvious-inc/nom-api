@@ -35,6 +35,7 @@ from app.services.websockets import broadcast_current_user_event, broadcast_mess
 logger = logging.getLogger(__name__)
 
 
+@needs(permissions=[Permission.MESSAGES_CREATE])
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
     if message_model.blocks and not message_model.content:
         message_model.content = await stringify_blocks(message_model.blocks)

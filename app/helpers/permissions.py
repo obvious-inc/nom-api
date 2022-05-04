@@ -23,7 +23,16 @@ class Permission(Enum):
 
 
 ALL_PERMISSIONS = [p.value for p in Permission]
+
 DEFAULT_ROLE_PERMISSIONS = [
+    p.value
+    for p in [
+        Permission.MESSAGES_LIST,
+        Permission.MESSAGES_CREATE,
+    ]
+]
+
+DEFAULT_DM_PERMISSIONS = [
     p.value
     for p in [
         Permission.MESSAGES_LIST,
@@ -85,7 +94,7 @@ async def fetch_user_permissions(user: User, channel_id: str = None, server_id: 
         channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=user)
         if not channel.server:
             logger.warning("ignoring complex permission checks for DMs")
-            return []
+            return DEFAULT_DM_PERMISSIONS
         server = await channel.server.fetch()
     elif server_id:
         server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=user)
@@ -119,13 +128,17 @@ def needs(permissions):
             if channel_model:
                 server_id = str(channel_model.server)
 
+            message_model = kwargs.get("message_model")
+            if message_model:
+                channel_id = str(message_model.channel)
+
             if not channel_id and not server_id:
                 raise Exception("no channel and server found")
 
             user_permissions = await fetch_user_permissions(
                 user=current_user, channel_id=channel_id, server_id=server_id
             )
-            print("user permissions", user_permissions)
+            logger.debug("user permissions: %s", user_permissions)
 
             if not all([req_permission in user_permissions for req_permission in str_permissions]):
                 raise APIPermissionError(needed_permissions=str_permissions, user_permissions=user_permissions)

@@ -895,6 +895,10 @@ class TestMessagesRoutes:
     ):
         guest_user = await create_new_user()
         guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.post(f"/servers/{str(server.pk)}/join")
+        assert response.status_code == 201
+
         data = {
             "blocks": [
                 {
@@ -942,6 +946,10 @@ class TestMessagesRoutes:
     ):
         guest_user = await create_new_user()
         guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.post(f"/servers/{str(server.pk)}/join")
+        assert response.status_code == 201
+
         data = {
             "blocks": [
                 {

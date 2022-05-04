@@ -125,13 +125,13 @@ async def dm_channel(current_user: User, server: Server) -> Union[Channel, APIDo
 @pytest.fixture
 async def channel_message(current_user: User, server: Server, server_channel: Channel):
     message = MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content="hey")
-    return await create_message(message, current_user=current_user)
+    return await create_message(message_model=message, current_user=current_user)
 
 
 @pytest.fixture
 async def direct_message(current_user: User, server: Server, dm_channel: Channel):
     message = MessageCreateSchema(channel=str(dm_channel.id), content="hey")
-    return await create_message(message, current_user=current_user)
+    return await create_message(message_model=message, current_user=current_user)
 
 
 @pytest.fixture
