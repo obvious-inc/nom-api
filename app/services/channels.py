@@ -6,13 +6,13 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
-from app.helpers.permissions import user_belongs_to_server
+from app.helpers.permissions import Permission, needs, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
-from app.models.server import Server, ServerMember
+from app.models.server import ServerMember
 from app.models.user import User
 from app.schemas.channels import (
     ChannelBulkReadStateCreateSchema,
@@ -53,16 +53,10 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
+@needs(permissions=[Permission.CHANNELS_CREATE])
 async def create_server_channel(
     channel_model: ServerChannelCreateSchema, current_user: User
 ) -> Union[Channel, APIDocument]:
-    server = await get_item_by_id(id_=str(channel_model.server), result_obj=Server, current_user=current_user)
-    if server.owner != current_user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only owner can create channels",
-        )
-
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
@@ -73,7 +67,7 @@ async def create_channel(
     if isinstance(channel_model, DMChannelCreateSchema):
         return await create_dm_channel(channel_model, current_user)
     elif isinstance(channel_model, ServerChannelCreateSchema):
-        return await create_server_channel(channel_model, current_user)
+        return await create_server_channel(channel_model=channel_model, current_user=current_user)
     else:
         raise Exception(f"unexpected channel kind: {kind}")
 

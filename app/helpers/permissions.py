@@ -17,6 +17,8 @@ class Permission(Enum):
     MESSAGES_CREATE = "messages.create"
     MESSAGES_LIST = "messages.list"
 
+    CHANNELS_CREATE = "channels.create"
+
     MEMBERS_KICK = "members.kick"
 
 
@@ -39,6 +41,20 @@ class APIPermissionError(Exception):
         super().__init__(self.message)
 
 
+async def has_permissions(nperms: List[str], uperms: dict, overwrites: dict = None):
+    if overwrites:
+        ow_roles = list(uperms.keys() & overwrites.keys())
+        for r in ow_roles:
+            uperms[r] = list(set(uperms[r]) & set(overwrites[r]))
+
+    all_uperms = []
+    for role, permissions in uperms.items():
+        all_uperms.extend(permissions)
+    all_uperms = list(set(all_uperms))
+
+    return all([req_permission in all_uperms for req_permission in nperms])
+
+
 async def fetch_base_permissions(user: User, server: Server) -> List[str]:
     permissions = []
 
@@ -46,8 +62,9 @@ async def fetch_base_permissions(user: User, server: Server) -> List[str]:
         logger.debug("server owner has all permissions")
         return ALL_PERMISSIONS
 
-    member = await get_item(filters={"server": server.pk, "user": user.pk}, result_obj=ServerMember, current_user=user)
+    # TODO: add admin flag with specific permission overwrite
 
+    member = await get_item(filters={"server": server.pk, "user": user.pk}, result_obj=ServerMember, current_user=user)
     if not member:
         logger.warning("user (%s) doesn't belong to server (%s)", str(user.pk), str(server.pk))
         return []
@@ -63,14 +80,17 @@ async def fetch_base_permissions(user: User, server: Server) -> List[str]:
     return permissions
 
 
-async def fetch_user_permissions(user: User, channel_id: str) -> List[str]:
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=user)
-
-    if not channel.server:
-        logger.warning("ignoring complex permission checks for DMs")
-        return []
-
-    server = await channel.server.fetch()
+async def fetch_user_permissions(user: User, channel_id: str = None, server_id: str = None) -> List[str]:
+    if channel_id:
+        channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=user)
+        if not channel.server:
+            logger.warning("ignoring complex permission checks for DMs")
+            return []
+        server = await channel.server.fetch()
+    elif server_id:
+        server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=user)
+    else:
+        raise Exception("missing channel_id or server_id from data")
 
     user_permissions = await fetch_base_permissions(user, server=server)
 
@@ -83,17 +103,28 @@ def needs(permissions):
     def decorator_needs(func):
         @functools.wraps(func)
         async def wrapper_needs(*args, **kwargs):
+            str_permissions = [p.value for p in permissions]
+
             current_user = kwargs.get("current_user", None)  # type: User
             if not current_user:
                 raise Exception(f"missing current_user from method. args: {args} | kwargs: {kwargs}")
 
-            str_permissions = [p.value for p in permissions]
-
             # TODO: cache and reuse values
 
+            # Extract channel and server from args & kwargs
             channel_id = kwargs.get("channel_id")
+            server_id = None
 
-            user_permissions = await fetch_user_permissions(user=current_user, channel_id=channel_id)
+            channel_model = kwargs.get("channel_model")
+            if channel_model:
+                server_id = str(channel_model.server)
+
+            if not channel_id and not server_id:
+                raise Exception("no channel and server found")
+
+            user_permissions = await fetch_user_permissions(
+                user=current_user, channel_id=channel_id, server_id=server_id
+            )
             print("user permissions", user_permissions)
 
             if not all([req_permission in user_permissions for req_permission in str_permissions]):

@@ -43,7 +43,7 @@ class TestSectionRoutes:
         channels = []
         for channel_name in ch_names:
             channel = await create_server_channel(
-                ServerChannelCreateSchema(kind="server", server=str(server.id), name=channel_name),
+                channel_model=ServerChannelCreateSchema(kind="server", server=str(server.id), name=channel_name),
                 current_user=current_user,
             )
             channels.append(channel)
@@ -70,7 +70,7 @@ class TestSectionRoutes:
         channels = []
         for channel_name in ch_names:
             channel = await create_server_channel(
-                ServerChannelCreateSchema(kind="server", server=str(server.id), name=channel_name),
+                channel_model=ServerChannelCreateSchema(kind="server", server=str(server.id), name=channel_name),
                 current_user=current_user,
             )
             channels.append(channel)

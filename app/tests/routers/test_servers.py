@@ -401,7 +401,7 @@ class TestServerRoutes:
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
     ):
         channel_model = ServerChannelCreateSchema(kind="server", server=str(server.id), name="entrance")
-        channel = await create_server_channel(channel_model, current_user=current_user)
+        channel = await create_server_channel(channel_model=channel_model, current_user=current_user)
 
         patch_data = {"system_channel": str(channel.pk)}
         response = await authorized_client.patch(f"/servers/{str(server.pk)}", json=patch_data)
@@ -417,7 +417,7 @@ class TestServerRoutes:
         other_server_model = ServerCreateSchema(name="Other")
         other_server = await create_server(other_server_model, current_user=current_user)
         channel_model = ServerChannelCreateSchema(kind="server", server=str(other_server.id), name="entrance")
-        channel = await create_server_channel(channel_model, current_user=current_user)
+        channel = await create_server_channel(channel_model=channel_model, current_user=current_user)
 
         patch_data = {"system_channel": str(channel.pk)}
         response = await authorized_client.patch(f"/servers/{str(server.pk)}", json=patch_data)
@@ -471,7 +471,7 @@ class TestServerRoutes:
         channels = []
         for i in range(10):
             channel = await create_server_channel(
-                ServerChannelCreateSchema(kind="server", server=str(server.id), name=f"channel-{i}"),
+                channel_model=ServerChannelCreateSchema(kind="server", server=str(server.id), name=f"channel-{i}"),
                 current_user=current_user,
             )
             channels.append(channel)
@@ -500,7 +500,7 @@ class TestServerRoutes:
         channels = []
         for i in range(10):
             channel = await create_server_channel(
-                ServerChannelCreateSchema(kind="server", server=str(server.id), name=f"channel-{i}"),
+                channel_model=ServerChannelCreateSchema(kind="server", server=str(server.id), name=f"channel-{i}"),
                 current_user=current_user,
             )
             channels.append(channel)

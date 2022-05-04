@@ -1,6 +1,6 @@
 import pytest
 
-from app.helpers.permissions import user_belongs_to_server
+from app.helpers.permissions import has_permissions, user_belongs_to_server
 from app.models.server import Server
 from app.models.user import User
 from app.services.servers import join_server
@@ -20,3 +20,46 @@ class TestPermissionsHelper:
         assert await user_belongs_to_server(user=guest_user, server_id=str(server.pk)) is False
         await join_server(str(server.pk), current_user=guest_user, ignore_joining_rules=True)
         assert await user_belongs_to_server(user=guest_user, server_id=str(server.pk)) is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "action_permissions, user_default_permissions, permission_overwrites, expected_result",
+        [
+            (["messages.list"], {"default": ["messages.list", "messages.create"]}, {}, True),
+            (["messages.create"], {"default": ["messages.list"]}, {}, False),
+            (
+                ["messages.create"],
+                {"default": ["messages.list", "messages.create"]},
+                {"default": ["messages.list"]},
+                False,
+            ),
+            (
+                ["messages.create"],
+                {
+                    "default": ["messages.list"],
+                    "mod": ["messages.create", "messages.list", "members.kick"],
+                },
+                {},
+                True,
+            ),
+            (
+                ["messages.create"],
+                {
+                    "default": ["messages.list"],
+                    "mod": ["messages.create", "messages.list", "members.kick"],
+                },
+                {"mod": ["messages.list", "members.kick"]},
+                False,
+            ),
+        ],
+    )
+    async def test_permissions_what(
+        self, action_permissions, user_default_permissions, permission_overwrites, expected_result
+    ):
+        has_permissions_result = await has_permissions(
+            action_permissions,
+            user_default_permissions,
+            overwrites=permission_overwrites,
+        )
+
+        assert has_permissions_result is expected_result
