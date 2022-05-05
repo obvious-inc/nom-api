@@ -5,6 +5,7 @@ from typing import List
 
 from bson import ObjectId
 
+from app.exceptions import APIPermissionError
 from app.models.channel import Channel
 from app.models.server import Server, ServerMember
 from app.models.user import User
@@ -22,6 +23,7 @@ class Permission(Enum):
     MEMBERS_KICK = "members.kick"
 
 
+# TODO: Move all of this to a constants file?
 ALL_PERMISSIONS = [p.value for p in Permission]
 
 DEFAULT_ROLE_PERMISSIONS = [
@@ -39,15 +41,6 @@ DEFAULT_DM_PERMISSIONS = [
         Permission.MESSAGES_CREATE,
     ]
 ]
-
-
-class APIPermissionError(Exception):
-    def __init__(self, needed_permissions: List[str], user_permissions: List[str]):
-        self.needed_permissions = needed_permissions
-        self.user_permissions = user_permissions
-        self.message = f"needed: {needed_permissions} | user: {user_permissions}"
-
-        super().__init__(self.message)
 
 
 async def has_permissions(nperms: List[str], uperms: dict, overwrites: dict = None):

@@ -12,6 +12,7 @@ from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
 from app.exceptions import (
+    APIPermissionError,
     api_permissions_error_handler,
     assertion_exception_handler,
     marshmallow_validation_error_handler,
@@ -20,7 +21,6 @@ from app.exceptions import (
 from app.helpers.cache_utils import close_redis_connection, connect_to_redis, connect_to_redis_testing
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, create_all_indexes, override_connect_to_mongo
 from app.helpers.logconf import log_configuration
-from app.helpers.permissions import APIPermissionError
 from app.helpers.queue_utils import stop_background_tasks
 from app.middlewares import add_canonical_log_line, profile_request
 from app.routers import (

@@ -1,13 +1,21 @@
 import logging
+from typing import List
 
 import marshmallow
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from app.helpers.permissions import APIPermissionError
-
 logger = logging.getLogger(__name__)
+
+
+class APIPermissionError(Exception):
+    def __init__(self, needed_permissions: List[str], user_permissions: List[str]):
+        self.needed_permissions = needed_permissions
+        self.user_permissions = user_permissions
+        self.message = f"needed: {needed_permissions} | user: {user_permissions}"
+
+        super().__init__(self.message)
 
 
 async def assertion_exception_handler(request: Request, exc: AssertionError):
