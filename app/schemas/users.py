@@ -50,6 +50,7 @@ class UserCreateSchema(APIBaseCreateSchema):
 class UserUpdateSchema(APIBaseCreateSchema):
     display_name: Optional[str]
     pfp: Optional[str]
+    description: str = ""
 
 
 class EitherUserProfile(BaseModel):
