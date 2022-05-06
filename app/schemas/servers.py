@@ -66,7 +66,7 @@ class ServerMemberSchema(APIBaseSchema):
                 "id": "61e17018c3ee162141baf5c9",
                 "server": "c3ee162141baf5c1",
                 "user": "c3ee162141baf5c1",
-                "ownsToken": False,
+                "owns_token": False,
                 "display_name": "fun.eth",
                 "pfp": {
                     "cf_id": "5adcdc13-0a45-45cd-0707-31eab9997c00",
@@ -85,4 +85,4 @@ class ServerMemberSchema(APIBaseSchema):
 class ServerMemberUpdateSchema(APIBaseUpdateSchema):
     display_name: Optional[str]
     pfp: Optional[str]
-    ownsToken: Optional[bool]
+    owns_token: Optional[bool]
