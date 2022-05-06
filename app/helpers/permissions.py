@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from bson import ObjectId
+from sentry_sdk import capture_exception
 
 from app.exceptions import APIPermissionError
 from app.models.channel import Channel
@@ -44,20 +45,6 @@ DEFAULT_DM_PERMISSIONS = [
 ]
 
 
-async def has_permissions(needed_permissions: List[str], user_permissions: dict, overwrites: dict = None):
-    if overwrites:
-        ow_roles = list(user_permissions.keys() & overwrites.keys())
-        for r in ow_roles:
-            user_permissions[r] = list(set(user_permissions[r]) & set(overwrites[r]))
-
-    overwritten_user_permissions = []
-    for role, permissions in user_permissions.items():
-        overwritten_user_permissions.extend(permissions)
-    overwritten_user_permissions = list(set(overwritten_user_permissions))
-
-    return all([req_permission in overwritten_user_permissions for req_permission in needed_permissions])
-
-
 async def _fetch_channel_from_kwargs(kwargs: dict) -> Optional[str]:
     channel_id = kwargs.get("channel_id")
 
@@ -78,7 +65,7 @@ async def _fetch_server_from_kwargs(kwargs: dict) -> Optional[str]:
     return server_id
 
 
-async def fetch_overwrites(channel: Optional[Channel]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+async def fetch_overwrites(channel: Optional[Channel]) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
     # TODO: fetch from cache
     channel_overwrites: Dict[str, Any] = {}
     section_overwrites: Dict[str, Any] = {}
@@ -86,43 +73,54 @@ async def fetch_overwrites(channel: Optional[Channel]) -> Tuple[Dict[str, Any], 
     if not channel:
         return channel_overwrites, section_overwrites
 
-    channel_overwrites = {overwrite.role.pk: set(overwrite.permissions) for overwrite in channel.permission_overwrites}
+    channel_overwrites = {
+        str(overwrite.role.pk): set(overwrite.permissions) for overwrite in channel.permission_overwrites
+    }
 
     section = await get_item(filters={"server": channel.server.pk, "channels": channel.pk}, result_obj=Section)
     if section:
         section_overwrites = {
-            overwrite.role.pk: set(overwrite.permissions) for overwrite in section.permission_overwrites
+            str(overwrite.role.pk): set(overwrite.permissions) for overwrite in section.permission_overwrites
         }
 
     return channel_overwrites, section_overwrites
 
 
+async def _calc_final_permissions(
+    roles: Dict[str, Set[str]], section_overwrites: Dict[str, Set[str]], channel_overwrites: Dict[str, Set[str]]
+) -> Set[str]:
+    permissions = set()
+    for role_id, role_permissions in roles.items():
+        c_permissions = channel_overwrites.get(role_id)
+        if c_permissions is not None:
+            permissions |= c_permissions
+            continue
+
+        s_permissions = section_overwrites.get(role_id)
+        if s_permissions is not None:
+            permissions |= s_permissions
+            continue
+
+        permissions |= role_permissions
+
+    return permissions
+
+
 async def calc_permissions(member: ServerMember, channel: Optional[Channel]) -> Set[str]:
-    roles = [await role.fetch() for role in member.roles]
-    logger.debug("user has roles: %s", [(str(r.pk), r.name) for r in roles])
+    roles_list = [await role.fetch() for role in member.roles]
+    logger.debug("user has roles: %s", [(str(r.pk), r.name) for r in roles_list])
+
+    roles = {str(role.pk): set(role.permissions) for role in roles_list}
 
     channel_overwrites, section_overwrites = await fetch_overwrites(channel)
     logger.debug("section overwrites: %s", section_overwrites)
     logger.debug("channel overwrites: %s", channel_overwrites)
 
-    user_permissions: Set[str] = set()
-
-    for role in roles:
-        logger.debug("fetching role permissions for: %s (%s)", role.name, str(role.pk))
-        role_permissions = set(role.permissions)
-
-        c_permissions = channel_overwrites.get(role.pk)
-        if c_permissions is not None:
-            user_permissions |= c_permissions
-            continue
-
-        s_permissions = section_overwrites.get(role.pk)
-        if s_permissions is not None:
-            user_permissions |= s_permissions
-            continue
-
-        user_permissions |= role_permissions
-
+    user_permissions = await _calc_final_permissions(
+        roles=roles,
+        channel_overwrites=channel_overwrites,
+        section_overwrites=section_overwrites,
+    )
     return user_permissions
 
 
@@ -156,7 +154,13 @@ def needs(permissions):
     def decorator_needs(func):
         @functools.wraps(func)
         async def wrapper_needs(*args, **kwargs):
-            str_permissions = [p.value for p in permissions]
+            try:
+                str_permissions = [p.value for p in permissions]
+            except AttributeError as e:
+                logger.error("unrecognized permission in list: %s", permissions)
+                capture_exception(e)
+                raise e
+
             logger.debug(f"required permissions: {str_permissions}")
 
             current_user: User = kwargs.get("current_user", None)
