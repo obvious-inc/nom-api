@@ -10,9 +10,8 @@ class User(APIDocument):
     wallet_address = fields.StrField()
     email = fields.StrField()
     pfp = fields.DictField()
-
+    description = fields.StrField()
     online_channels = fields.ListField(fields.StrField(), required=False, default=[])
-
     status = fields.StrField(default="offline")
 
     class Meta:

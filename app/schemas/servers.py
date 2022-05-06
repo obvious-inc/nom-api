@@ -22,6 +22,7 @@ class ServerSchema(APIBaseSchema):
     description: Optional[str]
     avatar: Optional[str]
     member_count: Optional[int]
+    server_token: Optional[str]
 
     class Config:
         schema_extra = {
@@ -32,6 +33,7 @@ class ServerSchema(APIBaseSchema):
                 "description": "Verbs DAO is a humorous take on the original Nouns DAO",
                 "avatar": "https://pbs.twimg.com/profile_images/1467601380567359498/oKcnQo_S_400x400.jpg",
                 "member_count": 1,
+                "server_token": "100",
             }
         }
 
@@ -53,7 +55,7 @@ class ServerUpdateSchema(APIBaseUpdateSchema):
 class ServerMemberSchema(APIBaseSchema):
     server: PyObjectId = Field()
     user: PyObjectId = Field()
-
+    owns_token: Optional[bool]
     display_name: Optional[str] = Field()
     pfp: Optional[dict]
     joined_at: datetime
@@ -64,6 +66,7 @@ class ServerMemberSchema(APIBaseSchema):
                 "id": "61e17018c3ee162141baf5c9",
                 "server": "c3ee162141baf5c1",
                 "user": "c3ee162141baf5c1",
+                "ownsToken": False,
                 "display_name": "fun.eth",
                 "pfp": {
                     "cf_id": "5adcdc13-0a45-45cd-0707-31eab9997c00",
@@ -82,3 +85,4 @@ class ServerMemberSchema(APIBaseSchema):
 class ServerMemberUpdateSchema(APIBaseUpdateSchema):
     display_name: Optional[str]
     pfp: Optional[str]
+    ownsToken: Optional[bool]
