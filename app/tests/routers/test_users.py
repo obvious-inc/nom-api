@@ -1,3 +1,4 @@
+import json
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
@@ -40,6 +41,7 @@ class TestUserRoutes:
         assert response.status_code == 200
         json_response = response.json()
         assert "display_name" in json_response
+        assert "description" in json_response
 
     @pytest.mark.asyncio
     async def test_update_user_profile_display_name(
@@ -58,14 +60,14 @@ class TestUserRoutes:
         assert "display_name" in json_response
         assert json_response["display_name"] != old_display_name
         assert json_response["display_name"] == data["display_name"]
-
-     @pytest.mark.asyncio
+    @pytest.mark.asyncio
     async def test_update_user_profile_description(
         self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
     ):
         response = await authorized_client.get(f"/users/me?server_id={str(server.id)}")
         assert response.status_code == 200
         json_response = response.json()
+        print(json_response)
         assert "description" in json_response
         old_description = json_response["description"]
 

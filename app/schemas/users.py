@@ -19,7 +19,7 @@ class UserSchema(APIBaseSchema):
             "example": {
                 "id": "61e17018c3ee162141baf5c8",
                 "display_name": "vitalik.eth",
-                "description": "",
+                "description": "hello!",
                 "wallet_address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
                 "email": "test@newshades.xyz",
                 "pfp": {
@@ -39,7 +39,7 @@ class UserSchema(APIBaseSchema):
 class UserCreateSchema(APIBaseCreateSchema):
     display_name: Optional[str] = ""
     wallet_address: str = ""
-    description: str = ""
+    description: Optional[str] = ""
 
     class Config:
         schema_extra = {
@@ -50,7 +50,7 @@ class UserCreateSchema(APIBaseCreateSchema):
 class UserUpdateSchema(APIBaseCreateSchema):
     display_name: Optional[str]
     pfp: Optional[str]
-    description: str = ""
+    description: Optional[str]
 
 
 class EitherUserProfile(BaseModel):
