@@ -43,7 +43,11 @@ class UserCreateSchema(APIBaseCreateSchema):
 
     class Config:
         schema_extra = {
-            "example": {"display_name": "vitalik", "wallet_address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "description": "I am the creator of ETH!"}
+            "example": {
+                "display_name": "vitalik",
+                "wallet_address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+                "description": "I am the creator of ETH!",
+            }
         }
 
 
