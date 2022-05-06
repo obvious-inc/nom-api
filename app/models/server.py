@@ -13,9 +13,10 @@ class Server(APIDocument):
 
     owner = fields.ReferenceField(User, required=True)
     join_rules = fields.ListField(fields.ReferenceField("ServerJoinRule"), default=[], required=False)
-    server_token = fields.StrField(required=False)
+
     description = fields.StrField(required=False)
     avatar = fields.StrField(required=False)
+
     system_channel = fields.ReferenceField("Channel")
 
     class Meta:
@@ -26,9 +27,10 @@ class Server(APIDocument):
 class ServerMember(APIDocument):
     server = fields.ReferenceField(Server, required=True)
     user = fields.ReferenceField(User, required=True)
-    owns_token = fields.BoolField(required=False)
+
     display_name = fields.StrField()
     pfp = fields.DictField()
+
     joined_at = fields.AwareDateTimeField(default=get_mongo_utc_date)
 
     class Meta:
