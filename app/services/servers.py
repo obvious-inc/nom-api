@@ -30,12 +30,12 @@ from app.services.websockets import broadcast_server_event
 async def create_server(server_model: ServerCreateSchema, current_user: User) -> Union[Server, APIDocument]:
     created_server = await create_item(server_model, result_obj=Server, current_user=current_user, user_field="owner")
 
+    # add owner as server member
+    await join_server(server_id=str(created_server.pk), current_user=current_user, ignore_joining_rules=True)
+
     default_channel_model = ServerChannelCreateSchema(name="lounge", server=str(created_server.pk))
     default_channel = await create_server_channel(channel_model=default_channel_model, current_user=current_user)
     await update_item(item=created_server, data={"system_channel": default_channel}, current_user=current_user)
-
-    # add owner as server member
-    await join_server(server_id=str(created_server.pk), current_user=current_user, ignore_joining_rules=True)
 
     # create default role
     role_schema = RoleCreateSchema(

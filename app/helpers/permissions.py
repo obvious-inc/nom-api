@@ -1,7 +1,7 @@
 import functools
 import logging
 from enum import Enum
-from typing import List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from bson import ObjectId
 
@@ -58,10 +58,6 @@ async def has_permissions(needed_permissions: List[str], user_permissions: dict,
     return all([req_permission in overwritten_user_permissions for req_permission in needed_permissions])
 
 
-async def fetch_permission_overwrites(channel_id: str = None, user: User = None):
-    return []
-
-
 async def _fetch_channel_from_kwargs(kwargs: dict) -> Optional[str]:
     channel_id = kwargs.get("channel_id")
 
@@ -82,44 +78,34 @@ async def _fetch_server_from_kwargs(kwargs: dict) -> Optional[str]:
     return server_id
 
 
-async def calc_permissions(current_user: User, channel_id: Optional[str], server: Server) -> Set[str]:
-    user_permissions: Set[str] = set()
+async def fetch_overwrites(channel: Optional[Channel]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    # TODO: fetch from cache
+    channel_overwrites: Dict[str, Any] = {}
+    section_overwrites: Dict[str, Any] = {}
 
-    member = await get_item(
-        filters={"server": server.pk, "user": current_user.pk},
-        result_obj=ServerMember,
-        current_user=current_user,
-    )
-    if not member:
-        logger.warning("user (%s) doesn't belong to server (%s)", str(current_user.pk), str(server.pk))
-        return user_permissions
+    if not channel:
+        return channel_overwrites, section_overwrites
 
+    channel_overwrites = {overwrite.role.pk: set(overwrite.permissions) for overwrite in channel.permission_overwrites}
+
+    section = await get_item(filters={"server": channel.server.pk, "channels": channel.pk}, result_obj=Section)
+    if section:
+        section_overwrites = {
+            overwrite.role.pk: set(overwrite.permissions) for overwrite in section.permission_overwrites
+        }
+
+    return channel_overwrites, section_overwrites
+
+
+async def calc_permissions(member: ServerMember, channel: Optional[Channel]) -> Set[str]:
     roles = [await role.fetch() for role in member.roles]
     logger.debug("user has roles: %s", [(str(r.pk), r.name) for r in roles])
 
-    # fetch from cache
-    channel_overwrites = {}
-    section_overwrites = {}
-
-    if channel_id:
-        channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
-        channel_overwrites = {
-            overwrite.role.pk: set(overwrite.permissions) for overwrite in channel.permission_overwrites
-        }
-
-        section = await get_item(
-            filters={"server": server.pk, "channels": ObjectId(channel_id)},
-            result_obj=Section,
-            current_user=current_user,
-        )
-
-        if section:
-            section_overwrites = {
-                overwrite.role.pk: set(overwrite.permissions) for overwrite in section.permission_overwrites
-            }
-
+    channel_overwrites, section_overwrites = await fetch_overwrites(channel)
     logger.debug("section overwrites: %s", section_overwrites)
     logger.debug("channel overwrites: %s", channel_overwrites)
+
+    user_permissions: Set[str] = set()
 
     for role in roles:
         logger.debug("fetching role permissions for: %s (%s)", role.name, str(role.pk))
@@ -140,34 +126,29 @@ async def calc_permissions(current_user: User, channel_id: Optional[str], server
     return user_permissions
 
 
-async def fetch_user_permissions(func_kwargs: dict, current_user: User) -> List[str]:
-    channel_id = await _fetch_channel_from_kwargs(func_kwargs)
-    server_id = await _fetch_server_from_kwargs(func_kwargs)
+async def fetch_user_permissions(channel: Optional[Channel], server_id: Optional[str], user: User) -> List[str]:
+    if channel and channel.kind == "dm":
+        return DEFAULT_DM_PERMISSIONS
 
-    if not channel_id and not server_id:
-        logger.error("no channel and server found. kwargs: %s", func_kwargs)
-        raise Exception(f"no channel and server found in kwargs: {func_kwargs}")
+    if channel and not server_id:
+        server_id = str(channel.server.pk)
 
-    # 3. fetch relevant data from DB (or cache?)
-    if server_id:
-        server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
-    elif channel_id:
-        channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
-        if not channel.server:
-            return DEFAULT_DM_PERMISSIONS
-        server = await channel.server.fetch()
-    else:
-        raise Exception("missing channel_id or server_id from data")
+    if not server_id:
+        raise Exception("need a server_id at this stage!")
 
-    if server.owner == current_user:
+    member = await get_item(filters={"server": ObjectId(server_id), "user": user.pk}, result_obj=ServerMember)
+
+    if not member:
+        logger.warning("user (%s) doesn't belong to server (%s)", str(user.pk), server_id)
+        return []
+
+    if await is_server_owner(user=user, server_id=server_id):
         logger.debug("server owner has all permissions")
         return ALL_PERMISSIONS
 
     # TODO: add admin flag with specific permission overwrite
 
-    # 4. start calculating permissions
-    user_permissions = await calc_permissions(current_user=current_user, channel_id=channel_id, server=server)
-
+    user_permissions = await calc_permissions(member=member, channel=channel)
     return list(user_permissions)
 
 
@@ -180,9 +161,21 @@ def needs(permissions):
 
             current_user: User = kwargs.get("current_user", None)
             if not current_user:
+                logger.error("no current user found. args: %s | kwargs: %s", args, kwargs)
                 raise Exception(f"missing current_user from method. args: {args} | kwargs: {kwargs}")
 
-            user_permissions = await fetch_user_permissions(func_kwargs=kwargs, current_user=current_user)
+            channel_id = await _fetch_channel_from_kwargs(kwargs)
+            server_id = await _fetch_server_from_kwargs(kwargs)
+
+            if not channel_id and not server_id:
+                logger.error("no channel and server found. kwargs: %s", kwargs)
+                raise Exception(f"no channel and server found in kwargs: {kwargs}")
+
+            channel = None
+            if channel_id:
+                channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+
+            user_permissions = await fetch_user_permissions(user=current_user, channel=channel, server_id=server_id)
             logger.debug("user permissions: %s", user_permissions)
 
             if not all([req_permission in user_permissions for req_permission in str_permissions]):
@@ -197,10 +190,10 @@ def needs(permissions):
 
 
 async def user_belongs_to_server(user: User, server_id: str):
-    server_member = await get_item(
-        filters={"server": ObjectId(server_id), "user": user.id},
-        result_obj=ServerMember,
-        current_user=user,
-    )
-
+    server_member = await get_item(filters={"server": ObjectId(server_id), "user": user.id}, result_obj=ServerMember)
     return server_member is not None
+
+
+async def is_server_owner(user: User, server_id: str):
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
+    return server.owner == user
