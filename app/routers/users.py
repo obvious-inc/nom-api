@@ -33,7 +33,7 @@ async def list_user_servers(current_user: User = Depends(get_current_user)):
 @router.patch("/me", response_model=EitherUserProfile, summary="Update user profile")
 async def patch_update_user_profile(
     server_id: Optional[str] = None,
-    update_data: Union[ServerMemberUpdateSchema, UserUpdateSchema] = Body(...),
+    update_data: Union[UserUpdateSchema, ServerMemberUpdateSchema] = Body(...),
     current_user: User = Depends(get_current_user),
 ):
     return await update_user_profile(server_id, update_data=update_data, current_user=current_user)
