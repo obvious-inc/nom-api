@@ -63,12 +63,14 @@ class TestUserRoutes:
     async def test_update_user_profile_description(
         self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
     ):
-        response = await authorized_client.get(f"/users/me?server_id={str(server.id)}")
+        response = await authorized_client.get("/users/me")
         assert response.status_code == 200
         json_response = response.json()
-        assert "description" not in json_response
+        assert "description" in json_response
+        assert json_response["description"] == ""
+
         data = {"description": "New description!"}
-        response = await authorized_client.patch(f"/users/me?server_id={str(server.id)}", json=data)
+        response = await authorized_client.patch("/users/me", json=data)
         assert response.status_code == 200
         json_response = response.json()
         assert "description" in json_response
