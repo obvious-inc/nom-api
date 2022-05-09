@@ -105,7 +105,7 @@ async def set_user_profile_picture(data: dict, current_user: User, profile: Unio
 
 
 async def update_user_profile(
-    server_id: Optional[str], update_data: Union[ServerMemberUpdateSchema, UserUpdateSchema], current_user: User
+    server_id: Optional[str], update_data: Union[UserUpdateSchema, ServerMemberUpdateSchema], current_user: User
 ) -> Union[ServerMember, User]:
     data = update_data.dict(exclude_unset=True)
 
