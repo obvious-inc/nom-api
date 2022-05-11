@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 class APIPermissionError(Exception):
-    def __init__(self, needed_permissions: List[str], user_permissions: List[str]):
+    def __init__(self, message: str = None, needed_permissions: List[str] = None, user_permissions: List[str] = None):
         self.needed_permissions = needed_permissions
         self.user_permissions = user_permissions
-        self.message = f"needed: {needed_permissions} | user: {user_permissions}"
+        self.message = message or f"needed: {needed_permissions} | user: {user_permissions}"
 
         super().__init__(self.message)
 
