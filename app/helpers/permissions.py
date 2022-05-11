@@ -9,6 +9,7 @@ from sentry_sdk import capture_exception
 
 from app.exceptions import APIPermissionError
 from app.helpers.cache_utils import cache
+from app.helpers.channels import fetch_channel_data
 from app.models.channel import Channel
 from app.models.section import Section
 from app.models.server import Server, ServerMember
@@ -174,33 +175,9 @@ async def calc_permissions(user: User, channel_id: Optional[str], server_id: str
     return user_permissions
 
 
-async def _fetch_channel_info(channel_id: Optional[str]):
-    if not channel_id:
-        return None
-
-    cached_channel = await cache.client.hgetall(f"channel:{channel_id}")
-    if not cached_channel:
-        channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-        if not channel:
-            return None
-
-        channel_mapping = {
-            "kind": channel.kind,
-        }
-        if channel.kind == "dm":
-            channel_mapping["members"] = ",".join([str(member.pk) for member in channel.members])
-
-        if channel.kind == "server":
-            channel_mapping["server"] = str(channel.server.pk)
-
-        await cache.client.hset(f"channel:{channel_id}", mapping=channel_mapping)
-        return channel_mapping
-
-    return cached_channel
-
-
 async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[str], user: User) -> List[str]:
-    channel_info = await _fetch_channel_info(channel_id=channel_id)
+    channel_info = await fetch_channel_data(channel_id=channel_id)
+
     if channel_info and channel_info.get("kind") == "dm":
         members = channel_info.get("members", []).split(",")
         if str(user.pk) not in members:
