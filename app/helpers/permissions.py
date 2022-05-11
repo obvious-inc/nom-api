@@ -251,7 +251,5 @@ async def is_server_owner(user: User, server_id: str):
         return cached_owner == str(user.pk)
 
     server = await get_item_by_id(id_=server_id, result_obj=Server)
-    is_owner = server.owner == user
-    if is_owner:
-        await cache.client.hset(f"server:{server_id}", "owner", str(user.pk))
-    return is_owner
+    await cache.client.hset(f"server:{server_id}", "owner", str(server.owner.pk))
+    return server.owner == user
