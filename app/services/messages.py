@@ -118,11 +118,8 @@ async def get_messages(channel_id: str, current_user: User, **common_params) -> 
 
     filters = {}
     if channel.kind == "server":
-        # TODO: make sure user can list channel's messages (in server + proper permissions)
         filters = {"channel": channel.id, "server": channel.server.pk}
     elif channel.kind == "dm":
-        if current_user not in channel.members:
-            raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
         filters = {"channel": channel.id}
 
     around_id = common_params.pop("around", None)

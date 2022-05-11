@@ -4,6 +4,7 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
+from app.helpers.cache_utils import cache
 from app.helpers.guild_xyz import is_user_eligible_for_guild
 from app.helpers.permissions import DEFAULT_ROLE_PERMISSIONS, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
@@ -24,6 +25,7 @@ from app.schemas.users import RoleCreateSchema
 from app.services.channels import create_server_channel
 from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
 from app.services.messages import create_message
+from app.services.roles import create_role
 from app.services.websockets import broadcast_server_event
 
 
@@ -41,7 +43,9 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
     role_schema = RoleCreateSchema(
         name="@everyone", server=str(created_server.pk), permissions=DEFAULT_ROLE_PERMISSIONS
     )
-    await create_item(item=role_schema, result_obj=Role, current_user=current_user, user_field=None)
+    await create_role(server_id=str(created_server.pk), role_model=role_schema, current_user=current_user)
+
+    await cache.client.hset(f"server:{str(created_server.pk)}", "owner", str(current_user.pk))
 
     return created_server
 
@@ -106,7 +110,7 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
 
     if server.owner != current_user:
         message = MessageCreateSchema(server=str(server.id), channel=str(server.system_channel.pk), type=1)
-        await create_message(message_model=message, current_user=current_user)
+        await create_message(message_model=message, current_user=current_user, ignore_permissions=True)
 
     return member
 

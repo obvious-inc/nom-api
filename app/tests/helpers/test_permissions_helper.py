@@ -35,49 +35,49 @@ class TestPermissionsHelper:
     @pytest.mark.parametrize(
         "required, user_roles, section_overwrites, channel_overwrites, expected_result",
         [
-            (["messages.create"], {"@everyone": {"messages.create"}}, {}, {}, True),
-            (["messages.list"], {"@everyone": {"messages.list", "messages.create"}}, {}, {}, True),
-            (["messages.create"], {"@everyone": {"messages.list"}}, {}, {}, False),
+            (["messages.create"], {"@everyone": ["messages.create"]}, {}, {}, True),
+            (["messages.list"], {"@everyone": ["messages.list", "messages.create"]}, {}, {}, True),
+            (["messages.create"], {"@everyone": ["messages.list"]}, {}, {}, False),
             (
                 ["messages.create"],
-                {"@everyone": {"messages.list", "messages.create"}},
+                {"@everyone": ["messages.list", "messages.create"]},
                 {},
-                {"@everyone": {"messages.list"}},
+                {"@everyone": ["messages.list"]},
                 False,
             ),
             (
                 ["messages.create"],
-                {"@everyone": {"messages.list"}, "mod": {"messages.create", "messages.list", "members.kick"}},
+                {"@everyone": ["messages.list"], "mod": ["messages.create", "messages.list", "members.kick"]},
                 {},
                 {},
                 True,
             ),
             (
                 ["messages.create"],
-                {"@everyone": {"messages.list"}, "mod": {"messages.create", "messages.list", "members.kick"}},
+                {"@everyone": ["messages.list"], "mod": ["messages.create", "messages.list", "members.kick"]},
                 {},
-                {"mod": {"messages.list", "members.kick"}},
+                {"mod": ["messages.list", "members.kick"]},
                 False,
             ),
             (
                 ["messages.create"],
-                {"@everyone": set()},
-                {"@everyone": {"messages.list"}},
+                {"@everyone": []},
+                {"@everyone": ["messages.list"]},
                 {},
                 False,
             ),
             (
                 ["messages.create"],
-                {"@everyone": set()},
-                {"@everyone": {"messages.create"}},
+                {"@everyone": []},
+                {"@everyone": ["messages.create"]},
                 {},
                 True,
             ),
             (
                 ["messages.create"],
                 {"@everyone": {""}},
-                {"@everyone": {"messages.create"}},
-                {"@everyone": set()},
+                {"@everyone": ["messages.create"]},
+                {"@everyone": []},
                 False,
             ),
         ],
@@ -86,7 +86,7 @@ class TestPermissionsHelper:
         self, required, user_roles, channel_overwrites, section_overwrites, expected_result
     ):
         user_permissions = await _calc_final_permissions(
-            roles=user_roles, section_overwrites=section_overwrites, channel_overwrites=channel_overwrites
+            user_roles=user_roles, section_overwrites=section_overwrites, channel_overwrites=channel_overwrites
         )
         u_perms = list(user_permissions)
         calc_result = all([r_perm in u_perms for r_perm in required])
