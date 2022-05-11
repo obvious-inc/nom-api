@@ -164,8 +164,8 @@ async def calc_permissions(user: User, channel_id: Optional[str], server_id: str
         channel_overwrites = await _fetch_channel_overwrites(channel_id=channel_id)
         section_overwrites = await _fetch_section_overwrites(channel_id=channel_id)
 
-    logger.debug("section overwrites: %s", section_overwrites)
-    logger.debug("channel overwrites: %s", channel_overwrites)
+    if channel_overwrites or section_overwrites:
+        logger.debug("overwrites. section: %s | channel: %s", section_overwrites, channel_overwrites)
 
     user_permissions = await _calc_final_permissions(
         user_roles=roles,
@@ -191,7 +191,6 @@ async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[
         raise Exception("need a server_id at this stage!")
 
     if await is_server_owner(user=user, server_id=server_id):
-        logger.debug("server owner has all permissions")
         return ALL_PERMISSIONS
 
     # TODO: add admin flag with specific permission overwrite
@@ -214,8 +213,6 @@ def needs(permissions):
                 capture_exception(e)
                 raise e
 
-            logger.debug(f"required permissions: {str_permissions}")
-
             current_user: User = kwargs.get("current_user", None)
             if not current_user:
                 logger.error("no current user found. args: %s | kwargs: %s", args, kwargs)
@@ -231,7 +228,6 @@ def needs(permissions):
             user_permissions = await fetch_user_permissions(
                 user=current_user, channel_id=channel_id, server_id=server_id
             )
-            logger.debug("user permissions: %s", user_permissions)
 
             if not all([req_permission in user_permissions for req_permission in str_permissions]):
                 raise APIPermissionError(needed_permissions=str_permissions, user_permissions=user_permissions)
