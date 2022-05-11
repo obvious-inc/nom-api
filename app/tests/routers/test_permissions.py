@@ -12,6 +12,7 @@ from app.models.user import Role, User
 from app.schemas.sections import SectionCreateSchema
 from app.schemas.users import RoleCreateSchema
 from app.services.crud import create_item, get_item, update_item
+from app.services.roles import create_role
 
 
 class TestPermissionsRoutes:
@@ -37,7 +38,9 @@ class TestPermissionsRoutes:
         status: int,
     ):
         role_schema = RoleCreateSchema(name="test", server=str(server.pk), permissions=permissions)
-        role = await create_item(item=role_schema, result_obj=Role, current_user=guest_user, user_field=None)
+        role = await create_role(
+            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+        )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
@@ -73,7 +76,9 @@ class TestPermissionsRoutes:
         status: int,
     ):
         role_schema = RoleCreateSchema(name="test", server=str(server.pk), permissions=permissions)
-        role = await create_item(item=role_schema, result_obj=Role, current_user=current_user, user_field=None)
+        role = await create_role(
+            server_id=str(server.pk), role_model=role_schema, current_user=current_user, ignore_permissions=True
+        )
 
         member = await get_item(
             filters={"server": server.pk, "user": current_user.pk}, result_obj=ServerMember, current_user=current_user
@@ -107,7 +112,9 @@ class TestPermissionsRoutes:
         status: int,
     ):
         role_schema = RoleCreateSchema(name="test", server=str(server.pk), permissions=permissions)
-        role = await create_item(item=role_schema, result_obj=Role, current_user=guest_user, user_field=None)
+        role = await create_role(
+            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+        )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
@@ -149,7 +156,9 @@ class TestPermissionsRoutes:
     ):
         default_role = "@everyone"
         role_schema = RoleCreateSchema(name=default_role, server=str(server.pk), permissions=role_permissions)
-        role = await create_item(item=role_schema, result_obj=Role, current_user=guest_user, user_field=None)
+        role = await create_role(
+            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+        )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
@@ -194,7 +203,9 @@ class TestPermissionsRoutes:
     ):
         default_role = "@everyone"
         role_schema = RoleCreateSchema(name=default_role, server=str(server.pk), permissions=role_permissions)
-        role = await create_item(item=role_schema, result_obj=Role, current_user=guest_user, user_field=None)
+        role = await create_role(
+            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+        )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
@@ -246,7 +257,9 @@ class TestPermissionsRoutes:
     ):
         default_role = "@everyone"
         role_schema = RoleCreateSchema(name=default_role, server=str(server.pk), permissions=role_permissions)
-        role = await create_item(item=role_schema, result_obj=Role, current_user=guest_user, user_field=None)
+        role = await create_role(
+            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+        )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
@@ -304,7 +317,9 @@ class TestPermissionsRoutes:
         roles = []
         for role_name, permissions in role_permissions.items():
             role_schema = RoleCreateSchema(name=role_name, server=str(server.pk), permissions=permissions)
-            role = await create_item(item=role_schema, result_obj=Role, current_user=guest_user, user_field=None)
+            role = await create_role(
+                server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+            )
             roles.append(role)
 
         guest_client = await get_authorized_client(guest_user)

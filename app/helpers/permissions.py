@@ -24,6 +24,9 @@ class Permission(Enum):
 
     MEMBERS_KICK = "members.kick"
 
+    ROLES_LIST = "roles.list"
+    ROLES_CREATE = "roles.create"
+
 
 # TODO: Move all of this to a constants file?
 ALL_PERMISSIONS = [p.value for p in Permission]

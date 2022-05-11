@@ -9,7 +9,9 @@ from app.models.user import User
 from app.schemas.channels import ServerChannelSchema
 from app.schemas.sections import SectionCreateSchema, SectionSchema
 from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema, ServerUpdateSchema
+from app.schemas.users import RoleCreateSchema, RoleSchema
 from app.services.channels import get_server_channels
+from app.services.roles import create_role, get_roles
 from app.services.sections import create_section, get_sections, update_server_sections
 from app.services.servers import (
     create_server,
@@ -107,3 +109,18 @@ async def put_update_sections(
     server_id, section_data: List[SectionCreateSchema], current_user: User = Depends(get_current_user)
 ):
     return await update_server_sections(server_id=server_id, sections=section_data, current_user=current_user)
+
+
+@router.get("/{server_id}/roles", summary="List roles", response_model=List[RoleSchema])
+async def get_list_roles(server_id, current_user: User = Depends(get_current_user)):
+    return await get_roles(server_id=server_id, current_user=current_user)
+
+
+@router.post(
+    "/{server_id}/roles",
+    summary="Create a role",
+    response_model=RoleSchema,
+    status_code=http.HTTPStatus.CREATED,
+)
+async def post_create_role(server_id, role_data: RoleCreateSchema, current_user: User = Depends(get_current_user)):
+    return await create_role(server_id=server_id, role_model=role_data, current_user=current_user)

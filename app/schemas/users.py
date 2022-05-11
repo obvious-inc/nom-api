@@ -61,5 +61,5 @@ class RoleSchema(APIBaseSchema):
 
 class RoleCreateSchema(APIBaseCreateSchema):
     name: str
-    server: str
+    server: Optional[str]
     permissions: List[str]
