@@ -105,6 +105,9 @@ async def get_user_roles(user: User, server_id: str) -> Dict[str, List[str]]:
     else:
         member_role_ids = cached_user_roles.split(",")
 
+    if not member_role_ids:
+        return {}
+
     server_role_keys = [f"roles.{role_id}" for role_id in member_role_ids]
     cached_server_roles = await cache.client.hmget(f"server:{server_id}", server_role_keys)
 
