@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from bson import ObjectId
 from fastapi import HTTPException
 
-from app.helpers.channels import fetch_channel_data, get_channel_online_users, get_channel_users, is_user_in_channel
+from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
 from app.helpers.permissions import Permission, needs
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
@@ -114,22 +114,14 @@ async def delete_message(message_id: str, current_user: User):
 
 @needs(permissions=[Permission.MESSAGES_LIST])
 async def get_messages(channel_id: str, current_user: User, **common_params) -> List[Message]:
-    channel = await fetch_channel_data(channel_id=channel_id)
-    if not channel:
-        raise Exception(f"couldn't find channel information for channel with id: {channel_id}")
-
     filters = {"channel": ObjectId(channel_id)}
-    if channel.get("kind") == "server":
-        filters["server"] = ObjectId(channel.get("server"))
-
     around_id = common_params.pop("around", None)
     if around_id:
         return await _get_around_messages(
             around_message_id=around_id, filters=filters, current_user=current_user, **common_params
         )
 
-    messages = await get_items(filters=filters, result_obj=Message, current_user=current_user, **common_params)
-    return messages
+    return await get_items(filters=filters, result_obj=Message, current_user=current_user, **common_params)
 
 
 async def _get_around_messages(

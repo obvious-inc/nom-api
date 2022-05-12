@@ -52,22 +52,22 @@ async def fetch_channel_data(channel_id: Optional[str]) -> Optional[Dict[str, An
         return None
 
     cached_channel = await cache.client.hgetall(f"channel:{channel_id}")
-    if not cached_channel:
-        channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-        if not channel:
-            return None
+    if cached_channel:
+        return cached_channel
 
-        dict_channel = {
-            "kind": channel.kind,
-        }
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if not channel:
+        return None
 
-        if channel.kind == "dm":
-            dict_channel["members"] = ",".join([str(member.pk) for member in channel.members])
+    dict_channel = {
+        "kind": channel.kind,
+    }
 
-        if channel.kind == "server":
-            dict_channel["server"] = str(channel.server.pk)
+    if channel.kind == "dm":
+        dict_channel["members"] = ",".join([str(member.pk) for member in channel.members])
 
-        await cache.client.hset(f"channel:{channel_id}", mapping=dict_channel)
-        return dict_channel
+    if channel.kind == "server":
+        dict_channel["server"] = str(channel.server.pk)
 
-    return cached_channel
+    await cache.client.hset(f"channel:{channel_id}", mapping=dict_channel)
+    return dict_channel
