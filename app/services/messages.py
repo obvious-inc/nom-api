@@ -13,7 +13,7 @@ from app.helpers.permissions import Permission, needs
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
-from app.models.channel import Channel, ChannelReadState
+from app.models.channel import ChannelReadState
 from app.models.message import Message, MessageReaction
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
@@ -153,25 +153,10 @@ async def _get_around_messages(
     return messages
 
 
+@needs(permissions=[Permission.MESSAGES_LIST])
 async def get_message(channel_id: str, message_id: str, current_user: User) -> Message:
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
-
-    filters = {"_id": ObjectId(message_id)}
-    if channel.kind == "server":
-        # TODO: make sure user can list channel's messages (in server + proper permissions)
-        filters.update({"channel": channel.id, "server": channel.server.pk})
-    elif channel.kind == "dm":
-        if current_user not in channel.members:
-            raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
-        filters.update({"channel": channel.id})
-
-    message = await get_item(
-        filters=filters,
-        result_obj=Message,
-        current_user=current_user,
-    )
-
-    return message
+    filters = {"_id": ObjectId(message_id), "channel": ObjectId(channel_id)}
+    return await get_item(filters=filters, result_obj=Message, current_user=current_user)
 
 
 async def add_reaction_to_message(message_id, reaction_emoji: str, current_user: User):
