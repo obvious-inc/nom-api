@@ -1,7 +1,8 @@
 import pytest
 from bson import ObjectId
 
-from app.helpers.permissions import Permission, _calc_final_permissions, is_server_owner, needs, user_belongs_to_server
+from app.helpers.permissions import Permission, _calc_final_permissions, needs, user_belongs_to_server
+from app.helpers.servers import is_server_owner
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User

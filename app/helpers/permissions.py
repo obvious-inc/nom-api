@@ -1,5 +1,4 @@
 import functools
-import json
 import logging
 from enum import Enum
 from typing import Dict, List, Optional, Set
@@ -8,13 +7,13 @@ from bson import ObjectId
 from sentry_sdk import capture_exception
 
 from app.exceptions import APIPermissionError
-from app.helpers.cache_utils import cache
-from app.helpers.channels import fetch_channel_data
-from app.models.channel import Channel
-from app.models.section import Section
-from app.models.server import Server, ServerMember
-from app.models.user import Role, User
-from app.services.crud import get_item, get_item_by_id, get_items
+from app.helpers.channels import fetch_channel_data, fetch_channel_permission_ow
+from app.helpers.sections import fetch_section_permission_ow
+from app.helpers.servers import is_server_owner
+from app.helpers.users import get_user_roles_permissions
+from app.models.server import ServerMember
+from app.models.user import User
+from app.services.crud import get_item
 
 logger = logging.getLogger(__name__)
 
@@ -91,87 +90,13 @@ async def _calc_final_permissions(
     return permissions
 
 
-async def get_user_roles(user: User, server_id: str) -> Dict[str, List[str]]:
-    cached_user_roles = await cache.client.hget(f"user:{str(user.pk)}", f"{server_id}.roles")
-
-    if not cached_user_roles:
-        member = await get_item(filters={"server": ObjectId(server_id), "user": user.pk}, result_obj=ServerMember)
-        if not member:
-            logger.warning("user (%s) doesn't belong to server (%s)", str(user.pk), server_id)
-            raise APIPermissionError(message="user does not belong to server")
-
-        member_role_ids = [str(role.pk) for role in member.roles]
-        await cache.client.hset(f"user:{str(user.pk)}", f"{server_id}.roles", ",".join(member_role_ids))
-    else:
-        member_role_ids = cached_user_roles.split(",")
-
-    if not member_role_ids:
-        return {}
-
-    server_role_keys = [f"roles.{role_id}" for role_id in member_role_ids]
-    cached_server_roles = await cache.client.hmget(f"server:{server_id}", server_role_keys)
-
-    if any([cached is None for cached in cached_server_roles]):
-        db_roles = await get_items(
-            filters={"_id": {"$in": [ObjectId(role_id) for role_id in member_role_ids]}},
-            result_obj=Role,
-            current_user=user,
-        )
-
-        mapping = {f"roles.{str(role.pk)}": ",".join(role.permissions) for role in db_roles}
-        await cache.client.hset(f"server:{server_id}", mapping=mapping)
-        cached_server_roles = await cache.client.hmget(f"server:{server_id}", server_role_keys)
-
-    result = {pair[0]: pair[1].split(",") for pair in zip(member_role_ids, cached_server_roles)}
-    return result
-
-
-async def _fetch_section_overwrites(channel_id: str) -> Dict[str, List[str]]:
-    section_id = await cache.client.hget(f"channel:{channel_id}", "section")
-    cached_section_permissions = await cache.client.hget(f"section:{section_id}", "permissions")
-    if cached_section_permissions is not None:
-        return json.loads(cached_section_permissions)
-
-    section = await get_item(filters={"channels": ObjectId(channel_id)}, result_obj=Section)
-    if not section:
-        return {}
-
-    section_overwrites = {str(overwrite.role.pk): overwrite.permissions for overwrite in section.permission_overwrites}
-    await cache.client.hset(f"section:{str(section.pk)}", "permissions", json.dumps(section_overwrites))
-    # TODO: this should be done on creating sections, not here...
-    await cache.client.hset(f"channel:{channel_id}", "section", str(section.pk))
-
-    return section_overwrites
-
-
-async def _fetch_channel_overwrites(channel_id: str) -> Dict[str, List[str]]:
-    channel_cache_key = f"channel:{channel_id}"
-    cached_channel_permissions = await cache.client.hget(channel_cache_key, "permissions")
-
-    if cached_channel_permissions is not None:
-        return json.loads(cached_channel_permissions)
-
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-    channel_overwrites = {str(overwrite.role.pk): overwrite.permissions for overwrite in channel.permission_overwrites}
-    await cache.client.hset(channel_cache_key, "permissions", json.dumps(channel_overwrites))
-    return channel_overwrites
-
-
 async def calc_permissions(user: User, channel_id: Optional[str], server_id: str) -> Set[str]:
-    roles = await get_user_roles(user=user, server_id=server_id)
-
-    channel_overwrites = {}
-    section_overwrites = {}
-
-    if channel_id:
-        channel_overwrites = await _fetch_channel_overwrites(channel_id=channel_id)
-        section_overwrites = await _fetch_section_overwrites(channel_id=channel_id)
-
-    if channel_overwrites or section_overwrites:
-        logger.debug("overwrites. section: %s | channel: %s", section_overwrites, channel_overwrites)
+    user_roles = await get_user_roles_permissions(user=user, server_id=server_id)
+    channel_overwrites = await fetch_channel_permission_ow(channel_id=channel_id)
+    section_overwrites = await fetch_section_permission_ow(channel_id=channel_id)
 
     user_permissions = await _calc_final_permissions(
-        user_roles=roles,
+        user_roles=user_roles,
         section_overwrites=section_overwrites,
         channel_overwrites=channel_overwrites,
     )
@@ -243,16 +168,7 @@ def needs(permissions):
     return decorator_needs
 
 
+# TODO: Deprecate this and use the @needs decorator instead
 async def user_belongs_to_server(user: User, server_id: str):
     server_member = await get_item(filters={"server": ObjectId(server_id), "user": user.id}, result_obj=ServerMember)
     return server_member is not None
-
-
-async def is_server_owner(user: User, server_id: str):
-    cached_owner = await cache.client.hget(f"server:{server_id}", "owner")
-    if cached_owner:
-        return cached_owner == str(user.pk)
-
-    server = await get_item_by_id(id_=server_id, result_obj=Server)
-    await cache.client.hset(f"server:{server_id}", "owner", str(server.owner.pk))
-    return server.owner == user

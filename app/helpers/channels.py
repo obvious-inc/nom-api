@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List, Optional
 
 from app.helpers.cache_utils import cache
@@ -71,3 +72,18 @@ async def fetch_channel_data(channel_id: Optional[str]) -> Optional[Dict[str, An
 
     await cache.client.hset(f"channel:{channel_id}", mapping=dict_channel)
     return dict_channel
+
+
+async def fetch_channel_permission_ow(channel_id: Optional[str]) -> Dict[str, List[str]]:
+    if not channel_id:
+        return {}
+
+    channel_cache_key = f"channel:{channel_id}"
+    cached_channel_permissions = await cache.client.hget(channel_cache_key, "permissions")
+    if cached_channel_permissions is not None:
+        return json.loads(cached_channel_permissions)
+
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    channel_overwrites = {str(overwrite.role.pk): overwrite.permissions for overwrite in channel.permission_overwrites}
+    await cache.client.hset(channel_cache_key, "permissions", json.dumps(channel_overwrites))
+    return channel_overwrites
