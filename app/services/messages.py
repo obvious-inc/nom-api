@@ -118,9 +118,9 @@ async def get_messages(channel_id: str, current_user: User, **common_params) -> 
     if not channel:
         raise Exception(f"couldn't find channel information for channel with id: {channel_id}")
 
-    filters = {"channel": channel_id}
+    filters = {"channel": ObjectId(channel_id)}
     if channel.get("kind") == "server":
-        filters = {"server": ObjectId(channel.get("server"))}
+        filters["server"] = ObjectId(channel.get("server"))
 
     around_id = common_params.pop("around", None)
     if around_id:

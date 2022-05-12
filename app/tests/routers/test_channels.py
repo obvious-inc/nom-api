@@ -11,8 +11,11 @@ from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
 from app.schemas.channels import ServerChannelCreateSchema
+from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
+from app.services.channels import create_server_channel
 from app.services.crud import create_item
+from app.services.messages import create_message
 from app.services.servers import create_server
 
 
@@ -454,3 +457,50 @@ class TestChannelsRoutes:
                 assert last_read_at == default_ts
             else:
                 default_ts = last_read_at
+
+    @pytest.mark.asyncio
+    async def test_fetch_channel_messages(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+    ):
+        channel1_model = ServerChannelCreateSchema(kind="server", server=str(server.id), name="channel1")
+        channel1 = await create_server_channel(channel_model=channel1_model, current_user=current_user)
+
+        channel2_model = ServerChannelCreateSchema(kind="server", server=str(server.id), name="channel2")
+        channel2 = await create_server_channel(channel_model=channel2_model, current_user=current_user)
+
+        channel1_msgs = []
+        channel1_len = 3
+        for _ in range(channel1_len):
+            message_model = MessageCreateSchema(server=str(server.id), channel=str(channel1.pk), content="hey")
+            message = await create_message(message_model=message_model, current_user=current_user)
+            channel1_msgs.append(message)
+        channel1_msgs_ids = [str(msg.pk) for msg in channel1_msgs]
+
+        channel2_msgs = []
+        channel2_len = 1
+        for _ in range(channel2_len):
+            message_model = MessageCreateSchema(server=str(server.id), channel=str(channel2.pk), content="hey")
+            message = await create_message(message_model=message_model, current_user=current_user)
+            channel2_msgs.append(message)
+        channel2_msgs_ids = [str(msg.pk) for msg in channel2_msgs]
+
+        response = await authorized_client.get(f"/channels/{str(channel1.pk)}/messages")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(response.json()) == channel1_len
+        resp_channels = [msg.get("channel") for msg in json_response]
+        assert all([channel_id == str(channel1.pk) for channel_id in resp_channels])
+        assert all([msg.get("id") in channel1_msgs_ids for msg in json_response])
+
+        response = await authorized_client.get(f"/channels/{str(channel2.pk)}/messages")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(response.json()) == channel2_len
+        resp_channels = [msg.get("channel") for msg in json_response]
+        assert all([channel_id == str(channel2.pk) for channel_id in resp_channels])
+        assert all([msg.get("id") in channel2_msgs_ids for msg in json_response])
