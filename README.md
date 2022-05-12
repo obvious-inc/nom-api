@@ -73,3 +73,12 @@ Go to `/docs` to find the API documentation. Locally: `http://localhost:5001/doc
 Pull requests are welcome. For major changes, please open an issue first or ping a core member in discord (#development) to discuss what you would like to change.
 
 Please make sure to update tests as appropriate.
+
+To run both linters and tests locally you can do:
+
+```
+docker compose exec web mypy . && flake8 && black . && isort .
+docker compose exec web pytest -rf
+```
+
+If you're not using docker, remove the `docker compose exec web` part.
