@@ -356,3 +356,104 @@ class TestPermissionsRoutes:
 
         response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
         assert response.status_code == status
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "role_permissions, section_overwrites, channel_overwrites, status",
+        [
+            ({"guest": ["messages.list"]}, None, None, 200),
+            ({"guest": []}, None, None, 403),
+            ({"guest": [], "mod": ["messages.list"]}, None, None, 200),
+            ({"guest": []}, {"guest": ["messages.list"]}, None, 200),
+            ({"guest": [], "mod": ["messages.list"]}, {"mod": []}, None, 403),
+            ({"guest": [], "mod": []}, {"mod": ["messages.list"]}, None, 200),
+            ({"guest": [], "mod": []}, None, {"mod": ["messages.list"]}, 200),
+            ({"guest": [], "mod": ["messages.list"]}, None, {"mod": []}, 403),
+            ({"guest": [], "mod": []}, {"mod": ["messages.list"]}, {"mod": []}, 403),
+            ({"guest": [], "mod": []}, {"guest": ["messages.list"], "mod": ["messages.list"]}, {"guest": []}, 200),
+        ],
+    )
+    async def test_fetch_messages_as_guest_with_channel_and_section_overwrites_multiple_roles_cached(
+        self,
+        app: FastAPI,
+        db: Database,
+        guest_user: User,
+        get_authorized_client: Callable,
+        server: Server,
+        server_channel: Channel,
+        role_permissions: Dict[str, List[str]],
+        status: int,
+        section_overwrites: Dict[str, List[str]],
+        channel_overwrites: Dict[str, List[str]],
+    ):
+        roles = []
+        for role_name, permissions in role_permissions.items():
+            role_schema = RoleCreateSchema(name=role_name, server=str(server.pk), permissions=permissions)
+            role = await create_role(
+                server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+            )
+            roles.append(role)
+
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/servers/{str(server.pk)}/join")
+        assert response.status_code == 201
+
+        member = await get_item(
+            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
+        )
+        assert member is not None
+        await update_item(item=member, data={"roles": [role.pk for role in roles]}, current_user=guest_user)
+
+        if section_overwrites is not None:
+            section_model = SectionCreateSchema(
+                name="who-cares", channels=[str(server_channel.pk)], server=str(server.pk)
+            )
+            section = await create_item(section_model, result_obj=Section, current_user=guest_user, user_field=None)
+
+            ow = []
+            for s_role_name, s_role_permissions in section_overwrites.items():
+                role = await get_item(filters={"name": s_role_name, "server": server.pk}, result_obj=Role)
+                ow.append({"role": role.pk, "permissions": s_role_permissions})
+            data = {"permission_overwrites": ow}
+
+            await update_item(item=section, data=data, current_user=guest_user)
+
+        if channel_overwrites is not None:
+            ow = []
+            for c_role_name, c_role_permissions in channel_overwrites.items():
+                role = await get_item(filters={"name": c_role_name, "server": server.pk}, result_obj=Role)
+                ow.append({"role": role.pk, "permissions": c_role_permissions})
+            data = {"permission_overwrites": ow}
+            await update_item(item=server_channel, data=data, current_user=guest_user)
+
+        response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
+        assert response.status_code == status
+
+        response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
+        assert response.status_code == status
+
+    @pytest.mark.asyncio
+    async def test_fetch_dm_messages_as_member(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        get_authorized_client: Callable,
+        dm_channel: Channel,
+    ):
+        client = await get_authorized_client(current_user)
+        response = await client.get(f"/channels/{str(dm_channel.id)}/messages")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_fetch_dm_messages_as_non_member(
+        self,
+        app: FastAPI,
+        db: Database,
+        guest_user: User,
+        get_authorized_client: Callable,
+        dm_channel: Channel,
+    ):
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.get(f"/channels/{str(dm_channel.id)}/messages")
+        assert response.status_code == 403
