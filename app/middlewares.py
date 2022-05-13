@@ -24,6 +24,7 @@ async def profile_request(request: Request, call_next):
     response = await call_next(request)
 
     profiler.stop()
+    profiler.print()
     end = time.perf_counter()
     ms = (end - start) * 1_000
     output_html = profiler.output_html(timeline=True)
