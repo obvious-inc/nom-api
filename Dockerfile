@@ -27,4 +27,4 @@ RUN poetry install \
 
 COPY app ./app
 
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app.main:app"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app"]
