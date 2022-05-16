@@ -13,12 +13,16 @@ async def fetch_section_permission_ow(channel_id: Optional[str]) -> Dict[str, Li
         return {}
 
     section_id = await cache.client.hget(f"channel:{channel_id}", "section")
+    if section_id is not None and section_id == "":
+        return {}
+
     cached_section_permissions = await cache.client.hget(f"section:{section_id}", "permissions")
     if cached_section_permissions is not None:
         return json.loads(cached_section_permissions)
 
     section = await get_item(filters={"channels": ObjectId(channel_id)}, result_obj=Section)
     if not section:
+        await cache.client.hset(f"channel:{channel_id}", "section", "")
         return {}
 
     section_overwrites = {str(overwrite.role.pk): overwrite.permissions for overwrite in section.permission_overwrites}
