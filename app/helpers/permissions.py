@@ -134,6 +134,9 @@ def needs(permissions):
             if kwargs.pop("ignore_permissions", False):
                 return await func(*args, **kwargs)
 
+            if len(permissions) == 0:
+                return await func(*args, **kwargs)
+
             try:
                 str_permissions = [p.value for p in permissions]
             except AttributeError as e:
