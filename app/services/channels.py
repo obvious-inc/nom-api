@@ -1,4 +1,5 @@
 import http
+import re
 from datetime import datetime, timezone
 from typing import List, Optional, Union
 
@@ -21,6 +22,7 @@ from app.schemas.channels import (
     DMChannelCreateSchema,
     ServerChannelCreateSchema,
 )
+from app.schemas.users import UserCreateSchema
 from app.services.crud import (
     create_item,
     delete_item,
@@ -30,11 +32,24 @@ from app.services.crud import (
     get_items,
     update_item,
 )
+from app.services.users import create_user, get_user_by_wallet_address
 from app.services.websockets import broadcast_channel_event
 
 
 async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
-    current_user_id = str(current_user.id)
+    dm_users = []
+    for member in channel_model.members:
+        if re.match(r"^0x[a-fA-F\d]{40}$", member):
+            user = await get_user_by_wallet_address(wallet_address=member)
+            if not user:
+                user = await create_user(user_model=UserCreateSchema(wallet_address=member))
+            dm_users.append(user.pk)
+        else:
+            dm_users.append(ObjectId(member))
+
+    channel_model.members = list(set(dm_users))
+
+    current_user_id = str(current_user.pk)
     if current_user_id not in channel_model.members:
         channel_model.members.insert(0, current_user_id)
 
@@ -42,7 +57,7 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
     filters = {
         "members": {
             "$size": len(channel_model.members),
-            "$all": [ObjectId(member) for member in channel_model.members],
+            "$all": channel_model.members,
         },
     }
     existing_dm_channels = await get_items(filters=filters, result_obj=Channel, current_user=current_user)
