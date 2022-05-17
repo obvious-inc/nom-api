@@ -7,6 +7,7 @@ from pydantic import BaseSettings
 class Settings(BaseSettings):
     testing: bool = True
     profiling: bool = False
+    profiling_json: bool = False
     cdn_url: str = "https://cdn.newshades.xyz"
     cdn_media_folder: str = "media"
     environment: str = "development"

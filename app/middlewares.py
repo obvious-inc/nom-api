@@ -7,6 +7,8 @@ import arrow
 from pyinstrument import Profiler
 from starlette.requests import Request
 
+from app.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 _request_id_ctx_var: ContextVar[str] = ContextVar("request_id")
@@ -17,16 +19,26 @@ def get_request_id() -> str:
 
 
 async def profile_request(request: Request, call_next):
+    settings = get_settings()
+
     profiler = Profiler(async_mode="enabled")
     profiler.start()
+    start = time.perf_counter()
 
     response = await call_next(request)
 
     profiler.stop()
-    output_html = profiler.output_html(timeline=True)
-    profile_file_name = f"{arrow.now().timestamp()}-{request.method}-{request.url.path[1:].replace('/', '-')}"
-    with open(f"{profile_file_name}.html", "w") as f:
-        f.write(output_html)
+    profiler.print()
+
+    if settings.profiling_json:
+        end = time.perf_counter()
+        ms = (end - start) * 1_000
+        output_html = profiler.output_html(timeline=True)
+        profile_file_name = (
+            f"{arrow.now().timestamp()}_{ms:.2f}_{request.method}_{request.url.path[1:].replace('/', '-')}"
+        )
+        with open(f"{profile_file_name}.html", "w") as f:
+            f.write(output_html)
 
     return response
 

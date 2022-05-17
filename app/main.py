@@ -70,10 +70,9 @@ def get_application(testing=False):
         sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
         app_.add_middleware(SentryAsgiMiddleware)
 
-    app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
-
     if settings.profiling:
         app_.add_middleware(BaseHTTPMiddleware, dispatch=profile_request)
+    app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
 
     app_.add_exception_handler(AssertionError, assertion_exception_handler)
     app_.add_exception_handler(TypeError, type_error_handler)
