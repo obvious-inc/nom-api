@@ -17,3 +17,15 @@ class User(APIDocument):
     class Meta:
         collection_name = "users"
         indexes = ["wallet_address"]
+
+
+@instance.register
+class Role(APIDocument):
+    server = fields.ReferenceField("Server")
+
+    name = fields.StrField()
+    permissions = fields.ListField(fields.StrField)
+
+    class Meta:
+        collection_name = "roles"
+        indexes = ["server"]

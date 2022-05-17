@@ -4,14 +4,15 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
+from app.helpers.cache_utils import cache
 from app.helpers.guild_xyz import is_user_eligible_for_guild
-from app.helpers.permissions import user_belongs_to_server
+from app.helpers.permissions import DEFAULT_ROLE_PERMISSIONS, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.server import Server, ServerJoinRule, ServerMember
-from app.models.user import User
+from app.models.user import Role, User
 from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import (
@@ -20,21 +21,31 @@ from app.schemas.servers import (
     ServerCreateSchema,
     ServerUpdateSchema,
 )
+from app.schemas.users import RoleCreateSchema
 from app.services.channels import create_server_channel
 from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
 from app.services.messages import create_message
+from app.services.roles import create_role
 from app.services.websockets import broadcast_server_event
 
 
 async def create_server(server_model: ServerCreateSchema, current_user: User) -> Union[Server, APIDocument]:
     created_server = await create_item(server_model, result_obj=Server, current_user=current_user, user_field="owner")
 
+    # add owner as server member
+    await join_server(server_id=str(created_server.pk), current_user=current_user, ignore_joining_rules=True)
+
     default_channel_model = ServerChannelCreateSchema(name="lounge", server=str(created_server.pk))
     default_channel = await create_server_channel(channel_model=default_channel_model, current_user=current_user)
     await update_item(item=created_server, data={"system_channel": default_channel}, current_user=current_user)
 
-    # add owner as server member
-    await join_server(server_id=str(created_server.pk), current_user=current_user, ignore_joining_rules=True)
+    # create default role
+    role_schema = RoleCreateSchema(
+        name="@everyone", server=str(created_server.pk), permissions=DEFAULT_ROLE_PERMISSIONS
+    )
+    await create_role(server_id=str(created_server.pk), role_model=role_schema, current_user=current_user)
+
+    await cache.client.hset(f"server:{str(created_server.pk)}", "owner", str(current_user.pk))
 
     return created_server
 
@@ -78,7 +89,15 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
         if not user_is_allowed_in:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot join this server")
 
-    member = ServerMember(server=server, user=current_user)
+    default_roles = await get_items(
+        filters={"server": server.pk, "name": "@everyone"},
+        result_obj=Role,
+        current_user=current_user,
+        sort_by_direction=1,
+        limit=1,
+    )
+
+    member = ServerMember(server=server, user=current_user, roles=default_roles)
     await member.commit()
 
     await queue_bg_task(
@@ -91,7 +110,7 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
 
     if server.owner != current_user:
         message = MessageCreateSchema(server=str(server.id), channel=str(server.system_channel.pk), type=1)
-        await create_message(message_model=message, current_user=current_user)
+        await create_message(message_model=message, current_user=current_user, ignore_permissions=True)
 
     return member
 

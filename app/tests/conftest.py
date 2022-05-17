@@ -113,25 +113,25 @@ async def server(current_user: User) -> Union[Server, APIDocument]:
 @pytest.fixture
 async def server_channel(current_user: User, server: Server) -> Union[Channel, APIDocument]:
     server_channel = ServerChannelCreateSchema(kind="server", server=str(server.id), name="testing-channel")
-    return await create_server_channel(server_channel, current_user=current_user)
+    return await create_server_channel(channel_model=server_channel, current_user=current_user)
 
 
 @pytest.fixture
 async def dm_channel(current_user: User, server: Server) -> Union[Channel, APIDocument]:
     dm_channel = DMChannelCreateSchema(kind="dm", members=[str(current_user.id)])
-    return await create_dm_channel(dm_channel, current_user=current_user)
+    return await create_dm_channel(channel_model=dm_channel, current_user=current_user)
 
 
 @pytest.fixture
 async def channel_message(current_user: User, server: Server, server_channel: Channel):
     message = MessageCreateSchema(server=str(server.id), channel=str(server_channel.id), content="hey")
-    return await create_message(message, current_user=current_user)
+    return await create_message(message_model=message, current_user=current_user)
 
 
 @pytest.fixture
 async def direct_message(current_user: User, server: Server, dm_channel: Channel):
     message = MessageCreateSchema(channel=str(dm_channel.id), content="hey")
-    return await create_message(message, current_user=current_user)
+    return await create_message(message_model=message, current_user=current_user)
 
 
 @pytest.fixture

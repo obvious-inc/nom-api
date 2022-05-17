@@ -4,6 +4,7 @@ from umongo import fields, validate
 
 from app.helpers.db_utils import instance
 from app.models.base import APIDocument
+from app.models.common import PermissionOverwrite
 from app.models.server import Server
 
 
@@ -21,6 +22,8 @@ class Channel(APIDocument):
     server = fields.ReferenceField(Server)
 
     name = fields.StrField()
+
+    permission_overwrites = fields.ListField(fields.EmbeddedField(PermissionOverwrite), default=[])
 
     def pre_insert(self):
         if self.kind == "dm":

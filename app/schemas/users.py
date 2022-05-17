@@ -1,8 +1,8 @@
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
-from app.schemas.base import APIBaseCreateSchema, APIBaseSchema
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
 from app.schemas.servers import ServerMemberSchema
 
 
@@ -59,3 +59,15 @@ class UserUpdateSchema(APIBaseCreateSchema):
 
 class EitherUserProfile(BaseModel):
     __root__: Union[ServerMemberSchema, UserSchema]
+
+
+class RoleSchema(APIBaseSchema):
+    server: PyObjectId
+    name: str
+    permissions: List[str]
+
+
+class RoleCreateSchema(APIBaseCreateSchema):
+    name: str
+    server: Optional[str]
+    permissions: List[str]
