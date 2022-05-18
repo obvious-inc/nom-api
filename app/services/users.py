@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from app.helpers.pfp import extract_contract_and_token_from_string, upload_pfp_url_and_update_profile
 from app.helpers.queue_utils import queue_bg_task
-from app.helpers.w3 import get_nft, get_nft_image_url, get_wallet_short_name, verify_token_ownership
+from app.helpers.w3 import checksum_address, get_nft, get_nft_image_url, get_wallet_short_name, verify_token_ownership
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 async def create_user(user_model: UserCreateSchema, fetch_ens: bool = False) -> User:
     user = User(**user_model.dict())
+    user.wallet_address = checksum_address(user_model.wallet_address)
     if not user_model.display_name:
         display_name = await get_wallet_short_name(address=user_model.wallet_address, check_ens=fetch_ens)
         user.display_name = display_name

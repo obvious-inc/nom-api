@@ -9,6 +9,7 @@ from starlette import status
 
 from app.helpers.permissions import Permission, needs, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
+from app.helpers.w3 import checksum_address
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
@@ -40,9 +41,10 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
     dm_users = []
     for member in channel_model.members:
         if re.match(r"^0x[a-fA-F\d]{40}$", member):
-            user = await get_user_by_wallet_address(wallet_address=member)
+            wallet_addr = checksum_address(member)
+            user = await get_user_by_wallet_address(wallet_address=wallet_addr)
             if not user:
-                user = await create_user(user_model=UserCreateSchema(wallet_address=member), fetch_ens=True)
+                user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr), fetch_ens=True)
             dm_users.append(user.pk)
         else:
             dm_users.append(ObjectId(member))
