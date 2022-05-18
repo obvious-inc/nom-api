@@ -68,8 +68,8 @@ async def set_user_profile_picture(data: dict, current_user: User, profile: Unio
         )
         if owns_nft:
             logger.debug(f"{current_user.id} owns {contract_address}/{token_id}")
-            token = await get_nft(contract_address=contract_address, token_id=token_id, provider="simplehash")
-            image_url = await get_nft_image_url(token, provider="simplehash")
+            token = await get_nft(contract_address=contract_address, token_id=token_id)
+            image_url = await get_nft_image_url(token)
             logger.debug(f"{contract_address}/{token_id} image: {image_url}")
 
             pfp_data.update(
