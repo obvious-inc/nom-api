@@ -16,11 +16,11 @@ from app.models.user import User
 from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
-from app.services.channels import create_server_channel
+from app.services.channels import create_server_channel, get_dm_channels
 from app.services.crud import create_item
 from app.services.messages import create_message
-from app.services.servers import create_server
-from app.services.users import get_user_by_id
+from app.services.servers import create_server, get_user_servers
+from app.services.users import get_user_by_id, get_user_by_wallet_address
 
 
 class TestChannelsRoutes:
@@ -570,3 +570,50 @@ class TestChannelsRoutes:
         for user_id in json_response["members"][1:]:
             user = await get_user_by_id(user_id=user_id)
             assert user.wallet_address in data["members"] or str(user.pk) in data["members"]
+
+    @pytest.mark.asyncio
+    async def test_create_dm_with_wallet_shows_on_signup(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        server: Server,
+        client: AsyncClient,
+        authorized_client: AsyncClient,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        get_signed_message_data: Callable,
+    ):
+        key = secrets.token_bytes(32)
+        priv = binascii.hexlify(key).decode("ascii")
+        private_key = "0x" + priv
+        acct = Account.from_key(private_key)
+        new_user_wallet_addr = acct.address
+
+        members = [str(current_user.pk), new_user_wallet_addr]
+        data = {"kind": "dm", "members": members}
+
+        # create DM with non-user address
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "kind" in json_response
+        assert json_response["kind"] == "dm"
+        assert len(json_response.get("members")) == 2
+
+        guest_user = await get_user_by_wallet_address(wallet_address=new_user_wallet_addr)
+        assert guest_user is not None
+
+        dm_channels = await get_dm_channels(current_user=guest_user)
+        assert len(dm_channels) == 1
+
+        user_servers = await get_user_servers(current_user=guest_user)
+        assert len(user_servers) == 0
+
+        data = await get_signed_message_data(private_key, new_user_wallet_addr)
+        response = await client.post("/auth/login", json=data)
+        assert response.status_code == 201
+
+        user_servers = await get_user_servers(current_user=guest_user)
+        assert len(user_servers) == 1

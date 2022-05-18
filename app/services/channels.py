@@ -42,7 +42,7 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
         if re.match(r"^0x[a-fA-F\d]{40}$", member):
             user = await get_user_by_wallet_address(wallet_address=member)
             if not user:
-                user = await create_user(user_model=UserCreateSchema(wallet_address=member))
+                user = await create_user(user_model=UserCreateSchema(wallet_address=member), fetch_ens=True)
             dm_users.append(user.pk)
         else:
             dm_users.append(ObjectId(member))
