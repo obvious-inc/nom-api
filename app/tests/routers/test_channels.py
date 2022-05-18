@@ -541,7 +541,7 @@ class TestChannelsRoutes:
     async def test_create_dm_channel_with_wallets_mix(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
-        members = [current_user.wallet_address]
+        members = []
         for x in range(2):
             key = secrets.token_bytes(32)
             priv = binascii.hexlify(key).decode("ascii")
@@ -565,7 +565,8 @@ class TestChannelsRoutes:
         assert "owner" in json_response
         assert json_response["owner"] == str(current_user.id)
         assert "members" in json_response
+        assert len(json_response["members"]) == len(members) + 1
         assert str(current_user.id) in json_response["members"]
-        for user_id in json_response["members"]:
+        for user_id in json_response["members"][1:]:
             user = await get_user_by_id(user_id=user_id)
             assert user.wallet_address in data["members"] or str(user.pk) in data["members"]

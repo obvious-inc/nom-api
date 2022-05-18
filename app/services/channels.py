@@ -49,9 +49,8 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
 
     channel_model.members = list(set(dm_users))
 
-    current_user_id = str(current_user.pk)
-    if current_user_id not in channel_model.members:
-        channel_model.members.insert(0, current_user_id)
+    if current_user.pk not in channel_model.members:
+        channel_model.members.insert(0, current_user.pk)
 
     # if same exact dm channel already exists, ignore
     filters = {
