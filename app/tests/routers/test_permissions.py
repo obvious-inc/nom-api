@@ -9,10 +9,14 @@ from app.models.channel import Channel
 from app.models.section import Section
 from app.models.server import Server, ServerMember
 from app.models.user import Role, User
+from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.sections import SectionCreateSchema
+from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import RoleCreateSchema
+from app.services.channels import create_server_channel
 from app.services.crud import create_item, get_item, update_item
 from app.services.roles import create_role
+from app.services.servers import create_server
 
 
 class TestPermissionsRoutes:
@@ -457,3 +461,25 @@ class TestPermissionsRoutes:
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.get(f"/channels/{str(dm_channel.id)}/messages")
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_multiple_servers(
+        self, app: FastAPI, db: Database, current_user: User, guest_user: User, get_authorized_client: Callable
+    ):
+        server1 = await create_server(ServerCreateSchema(name="server1"), current_user=current_user)
+        channel1_model = ServerChannelCreateSchema(kind="server", server=str(server1.id), name="channel1")
+        channel1 = await create_server_channel(channel_model=channel1_model, current_user=current_user)
+
+        server2 = await create_server(ServerCreateSchema(name="server2"), current_user=current_user)
+        channel2_model = ServerChannelCreateSchema(kind="server", server=str(server2.id), name="channel2")
+        channel2 = await create_server_channel(channel_model=channel2_model, current_user=current_user)
+
+        guest_client = await get_authorized_client(guest_user)
+        await guest_client.post(f"/servers/{str(server1.pk)}/join")
+        await guest_client.post(f"/servers/{str(server2.pk)}/join")
+
+        response = await guest_client.get(f"/channels/{str(channel1.id)}/messages")
+        assert response.status_code == 200
+
+        response = await guest_client.get(f"/channels/{str(channel2.id)}/messages")
+        assert response.status_code == 200

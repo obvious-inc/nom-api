@@ -1,3 +1,5 @@
+from typing import Any, List
+
 from redis.asyncio.client import Redis
 
 from app.config import get_settings
@@ -31,3 +33,8 @@ async def connect_to_redis_testing():
 
 async def close_redis_connection():
     await cache.client.close()
+
+
+async def convert_redis_list_to_dict(data: List[Any]):
+    data_iter = iter(data)
+    return dict(zip(data_iter, data_iter))
