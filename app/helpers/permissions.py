@@ -148,7 +148,7 @@ async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[
 
     # TODO: add admin flag with specific permission overwrite
 
-    if not user:
+    if not user or not user.get(f"{server_id}.roles", None):
         user = await fetch_and_cache_user(user_id=user_id, server_id=server_id)
 
     user_roles = await get_user_roles_permissions(user=user, server=server)
@@ -159,7 +159,8 @@ async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[
         channel_overwrites = json.loads(channel.get("permissions", {}))
         if not section:
             section_id = channel.get("section")
-            section = await fetch_and_cache_section(section_id=section_id, channel_id=channel_id)
+            if section_id != "":
+                section = await fetch_and_cache_section(section_id=section_id, channel_id=channel_id)
 
         if section:
             section_overwrites = json.loads(section.get("permissions", {}))

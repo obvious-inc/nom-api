@@ -1,4 +1,5 @@
 import json
+from typing import Any, Dict
 
 from bson import ObjectId
 
@@ -7,7 +8,7 @@ from app.models.section import Section
 from app.services.crud import get_item, get_item_by_id
 
 
-async def fetch_and_cache_section(section_id: str, channel_id: str):
+async def fetch_and_cache_section(section_id: str, channel_id: str) -> Dict[str, Any]:
     section = None
     if section_id:
         section = await get_item_by_id(id_=section_id, result_obj=Section)
