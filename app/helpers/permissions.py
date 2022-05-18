@@ -1,4 +1,5 @@
 import functools
+import json
 import logging
 from enum import Enum
 from typing import Dict, List, Optional, Set
@@ -7,10 +8,11 @@ from bson import ObjectId
 from sentry_sdk import capture_exception
 
 from app.exceptions import APIPermissionError
-from app.helpers.channels import fetch_channel_data, fetch_channel_permission_ow
-from app.helpers.sections import fetch_section_permission_ow
-from app.helpers.servers import is_server_owner
-from app.helpers.users import get_user_roles_permissions
+from app.helpers.cache_utils import cache, convert_redis_list_to_dict
+from app.helpers.channels import fetch_and_cache_channel
+from app.helpers.sections import fetch_and_cache_section
+from app.helpers.servers import fetch_and_cache_server
+from app.helpers.users import fetch_and_cache_user, get_user_roles_permissions
 from app.models.server import ServerMember
 from app.models.user import User
 from app.services.crud import get_item
@@ -90,40 +92,84 @@ async def _calc_final_permissions(
     return permissions
 
 
-async def calc_permissions(user: User, channel_id: Optional[str], server_id: str) -> Set[str]:
-    user_roles = await get_user_roles_permissions(user=user, server_id=server_id)
-    channel_overwrites = await fetch_channel_permission_ow(channel_id=channel_id)
-    section_overwrites = await fetch_section_permission_ow(channel_id=channel_id)
+async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str):
+    lua_script = """
+        local channel_data = redis.call('HGETALL', KEYS[1])
+        local user_data = redis.call('HGETALL', KEYS[2])
+        local server_id = redis.call('HGET', KEYS[1], 'server')
+        local server_data
+        if server_id then
+            server_data = redis.call('HGETALL', "server:" .. server_id)
+        else
+            server_data = {}
+        end
+        local section_id = redis.call('HGET', KEYS[1], 'section')
+        local section_data
+        if section_id then
+            section_data = redis.call('HGETALL', "section:" .. section_id)
+        else
+            section_data = {}
+        end
+
+        return { channel_data, user_data, server_data, section_data }
+        """
+    fetch_cached_data = cache.client.register_script(lua_script)
+    channel, user, server, section = await fetch_cached_data(keys=[f"channel:{channel_id}", f"user:{user_id}"])
+    channel_data = await convert_redis_list_to_dict(channel)
+    user_data = await convert_redis_list_to_dict(user)
+    server_data = await convert_redis_list_to_dict(server)
+    section_data = await convert_redis_list_to_dict(section)
+    return channel_data, user_data, server_data, section_data
+
+
+async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[str], user_id: str) -> List[str]:
+    channel, user, server, section = await fetch_cached_permissions_data(channel_id=channel_id, user_id=user_id)
+
+    if not channel:
+        channel = await fetch_and_cache_channel(channel_id=channel_id)
+
+    if channel and channel.get("kind") == "dm":
+        members = channel.get("members", []).split(",")
+        if user_id not in members:
+            raise APIPermissionError("user is not a member of DM channel")
+        return DEFAULT_DM_PERMISSIONS
+
+    if channel and not server_id:
+        server_id = channel.get("server")
+
+    if not server_id:
+        raise Exception("need a server_id at this stage!")
+
+    if not server:
+        server = await fetch_and_cache_server(server_id=server_id)
+
+    if server.get("owner") == user_id:
+        return ALL_PERMISSIONS
+
+    # TODO: add admin flag with specific permission overwrite
+
+    if not user:
+        user = await fetch_and_cache_user(user_id=user_id, server_id=server_id)
+
+    user_roles = await get_user_roles_permissions(user=user, server=server)
+    channel_overwrites = {}
+    section_overwrites = {}
+
+    if channel_id:
+        channel_overwrites = json.loads(channel.get("permissions", {}))
+        if not section:
+            section_id = channel.get("section")
+            section = await fetch_and_cache_section(section_id=section_id, channel_id=channel_id)
+
+        if section:
+            section_overwrites = json.loads(section.get("permissions", {}))
 
     user_permissions = await _calc_final_permissions(
         user_roles=user_roles,
         section_overwrites=section_overwrites,
         channel_overwrites=channel_overwrites,
     )
-    return user_permissions
 
-
-async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[str], user: User) -> List[str]:
-    channel_info = await fetch_channel_data(channel_id=channel_id)
-
-    if channel_info and channel_info.get("kind") == "dm":
-        members = channel_info.get("members", []).split(",")
-        if str(user.pk) not in members:
-            raise APIPermissionError("user is not a member of DM channel")
-        return DEFAULT_DM_PERMISSIONS
-
-    if channel_info and not server_id:
-        server_id = channel_info.get("server")
-
-    if not server_id:
-        raise Exception("need a server_id at this stage!")
-
-    if await is_server_owner(user=user, server_id=server_id):
-        return ALL_PERMISSIONS
-
-    # TODO: add admin flag with specific permission overwrite
-
-    user_permissions = await calc_permissions(user=user, channel_id=channel_id, server_id=server_id)
     return list(user_permissions)
 
 
@@ -157,7 +203,7 @@ def needs(permissions):
                 raise Exception(f"no channel and server found in kwargs: {kwargs}")
 
             user_permissions = await fetch_user_permissions(
-                user=current_user, channel_id=channel_id, server_id=server_id
+                user_id=str(current_user.pk), channel_id=channel_id, server_id=server_id
             )
 
             if not all([req_permission in user_permissions for req_permission in str_permissions]):

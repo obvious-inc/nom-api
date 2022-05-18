@@ -1,38 +1,28 @@
-from typing import List
-
 from bson import ObjectId
 
 from app.helpers.cache_utils import cache
 from app.models.server import Server
-from app.models.user import Role, User
+from app.models.user import Role
 from app.services.crud import get_item_by_id, get_items
 
 
-async def get_server_roles_permissions(role_ids: List[str], server_id: str):
-    server_role_keys = [f"roles.{role_id}" for role_id in role_ids]
-    server_roles_permissions = await cache.client.hmget(f"server:{server_id}", server_role_keys)
+async def fetch_and_cache_server(server_id: str):
+    if not server_id:
+        return {}
 
-    if all([cached is not None for cached in server_roles_permissions]):
-        return server_roles_permissions
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
+    if not server:
+        return {}
 
-    db_roles = await get_items(
-        filters={"_id": {"$in": [ObjectId(role_id) for role_id in role_ids]}},
+    server_roles = await get_items(
+        filters={"server": ObjectId(server_id)},
         result_obj=Role,
         current_user=None,
     )
+    dict_server = {f"roles.{str(role.pk)}": ",".join(role.permissions) for role in server_roles}
 
-    mapping = {f"roles.{str(role.pk)}": ",".join(role.permissions) for role in db_roles}
-    await cache.client.hset(f"server:{server_id}", mapping=mapping)
+    dict_server["owner"] = str(server.owner.pk)
+    dict_server["id"] = server_id
 
-    server_roles_permissions = await cache.client.hmget(f"server:{server_id}", server_role_keys)
-    return server_roles_permissions
-
-
-async def is_server_owner(user: User, server_id: str):
-    cached_owner = await cache.client.hget(f"server:{server_id}", "owner")
-    if cached_owner:
-        return cached_owner == str(user.pk)
-
-    server = await get_item_by_id(id_=server_id, result_obj=Server)
-    await cache.client.hset(f"server:{server_id}", "owner", str(server.owner.pk))
-    return server.owner == user
+    await cache.client.hset(f"server:{server_id}", mapping=dict_server)
+    return dict_server

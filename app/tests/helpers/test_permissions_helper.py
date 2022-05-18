@@ -2,7 +2,6 @@ import pytest
 from bson import ObjectId
 
 from app.helpers.permissions import Permission, _calc_final_permissions, needs, user_belongs_to_server
-from app.helpers.servers import is_server_owner
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
@@ -23,14 +22,6 @@ class TestPermissionsHelper:
         assert await user_belongs_to_server(user=guest_user, server_id=str(server.pk)) is False
         await join_server(str(server.pk), current_user=guest_user, ignore_joining_rules=True)
         assert await user_belongs_to_server(user=guest_user, server_id=str(server.pk)) is True
-
-    @pytest.mark.asyncio
-    async def test_user_is_server_owner(self, db, current_user: User, server: Server):
-        assert await is_server_owner(user=current_user, server_id=str(server.pk)) is True
-
-    @pytest.mark.asyncio
-    async def test_guest_user_is_not_server_owner(self, db, current_user: User, server: Server, guest_user: User):
-        assert await is_server_owner(user=guest_user, server_id=str(server.pk)) is False
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
