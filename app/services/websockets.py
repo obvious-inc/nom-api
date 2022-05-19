@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 async def _get_users_online_channels(users: List[User]):
     channels = []
-    for user in users:  # type: User
+    user: User
+    for user in users:
         channels.extend(user.online_channels)
     return list(set(channels))
 

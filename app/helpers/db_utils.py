@@ -33,10 +33,12 @@ async def close_mongo_connection():
 
 async def create_all_indexes():
     index_names = []
-    for name, doc in instance._doc_lookup.items():  # type: str, DocumentImplementation
+    name: str
+    doc: DocumentImplementation
+    for name, doc in instance._doc_lookup.items():
         indexes = getattr(doc.Meta, "indexes", [])
         for index in indexes:
-            collection = doc.collection  # type: Collection
+            collection: Collection = doc.collection
             index_opts = {}
             if isinstance(index, list) and isinstance(index[-1], dict):
                 index_opts = index.pop(-1)

@@ -353,7 +353,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)  # type: Message
+        message: Message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.edited_at is None
 
         data = {"content": "new message update!"}
@@ -778,7 +778,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)  # type: Message
+        message: Message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.edited_at is None
 
         content = "new message update!"
@@ -821,7 +821,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)  # type: Message
+        message: Message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.edited_at is None
 
         data: dict = {"blocks": []}
@@ -839,7 +839,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)  # type: Message
+        message: Message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.edited_at is None
 
         data = {"content": ""}

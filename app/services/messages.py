@@ -152,14 +152,15 @@ async def get_message(channel_id: str, message_id: str, current_user: User) -> M
 
 
 async def add_reaction_to_message(message_id, reaction_emoji: str, current_user: User):
-    message = await get_item_by_id(id_=message_id, result_obj=Message)  # type: Union[Message, APIDocument]
+    message: Message = await get_item_by_id(id_=message_id, result_obj=Message)
 
     reaction = MessageReaction(emoji=reaction_emoji, count=1, users=[current_user])
     existing_reactions = message.reactions
 
     found = False
     added = False
-    for existing_reaction in existing_reactions:  # type: MessageReaction
+    existing_reaction: MessageReaction
+    for existing_reaction in existing_reactions:
         if existing_reaction.emoji == reaction.emoji:
             found = True
             if current_user in existing_reaction.users:
@@ -187,7 +188,7 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
 
 
 async def remove_reaction_from_message(message_id, reaction_emoji: str, current_user: User):
-    message = await get_item_by_id(id_=message_id, result_obj=Message)  # type: Union[Message, APIDocument]
+    message: Message = await get_item_by_id(id_=message_id, result_obj=Message)
 
     reaction = MessageReaction(emoji=reaction_emoji)
 
@@ -195,7 +196,10 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
 
     remove_index = None
     removed = False
-    for index, existing_reaction in enumerate(existing_reactions):  # type: (int, MessageReaction)
+
+    index: int
+    existing_reaction: MessageReaction
+    for index, existing_reaction in enumerate(existing_reactions):
         if existing_reaction.emoji == reaction.emoji:
             if current_user not in existing_reaction.users:
                 break
