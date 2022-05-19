@@ -23,11 +23,16 @@ class SectionSchema(APIBaseSchema):
 
 class SectionCreateSchema(APIBaseCreateSchema):
     name: str
-    channels: Optional[List[str]] = []
     server: Optional[str]
     position: Optional[int] = 0
 
 
 class SectionUpdateSchema(APIBaseUpdateSchema):
     name: Optional[str]
+
+
+class SectionServerUpdateSchema(APIBaseUpdateSchema):
+    id: Optional[str]
+    name: Optional[str]
     channels: Optional[List[str]]
+    position: Optional[int]

@@ -1,9 +1,11 @@
 import http
+import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Union
 
 from bson import ObjectId
 from fastapi import HTTPException
+from sentry_sdk import capture_exception
 from starlette import status
 
 from app.helpers.permissions import Permission, needs, user_belongs_to_server
@@ -12,6 +14,7 @@ from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
+from app.models.section import Section
 from app.models.server import ServerMember
 from app.models.user import User
 from app.schemas.channels import (
@@ -31,6 +34,8 @@ from app.services.crud import (
     update_item,
 )
 from app.services.websockets import broadcast_channel_event
+
+logger = logging.getLogger(__name__)
 
 
 async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
@@ -98,7 +103,18 @@ async def delete_channel(channel_id, current_user: User):
     else:
         raise Exception(f"unexpected kind of channel: {channel.kind}")
 
-    return await delete_item(item=channel)
+    deleted_channel = await delete_item(item=channel)
+
+    try:
+        section = await get_item(filters={"channels": ObjectId(channel_id)}, result_obj=Section)
+        if section:
+            section.channels.remove(channel)
+            await section.commit()
+    except Exception as e:
+        logger.warning("trying to delete channel from section failed: %s", e)
+        capture_exception(e)
+
+    return deleted_channel
 
 
 async def update_channel_last_message(channel_id, message: Union[Message, APIDocument], current_user: User):

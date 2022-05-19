@@ -7,7 +7,7 @@ from starlette import status
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.channels import ServerChannelSchema
-from app.schemas.sections import SectionCreateSchema, SectionSchema
+from app.schemas.sections import SectionCreateSchema, SectionSchema, SectionServerUpdateSchema
 from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema, ServerUpdateSchema
 from app.schemas.users import RoleCreateSchema, RoleSchema
 from app.services.channels import get_server_channels
@@ -106,7 +106,7 @@ async def post_create_section(
     status_code=http.HTTPStatus.OK,
 )
 async def put_update_sections(
-    server_id, section_data: List[SectionCreateSchema], current_user: User = Depends(get_current_user)
+    server_id, section_data: List[SectionServerUpdateSchema], current_user: User = Depends(get_current_user)
 ):
     return await update_server_sections(server_id=server_id, sections=section_data, current_user=current_user)
 
