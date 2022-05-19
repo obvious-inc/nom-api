@@ -43,7 +43,9 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
     role_schema = RoleCreateSchema(
         name="@everyone", server=str(created_server.pk), permissions=DEFAULT_ROLE_PERMISSIONS
     )
-    await create_role(server_id=str(created_server.pk), role_model=role_schema, current_user=current_user)
+    await create_role(
+        server_id=str(created_server.pk), role_model=role_schema, current_user=current_user, internal=True
+    )
 
     await cache.client.hset(f"server:{str(created_server.pk)}", "owner", str(current_user.pk))
 

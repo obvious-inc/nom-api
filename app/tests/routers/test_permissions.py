@@ -43,7 +43,11 @@ class TestPermissionsRoutes:
     ):
         role_schema = RoleCreateSchema(name="test", server=str(server.pk), permissions=permissions)
         role = await create_role(
-            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+            server_id=str(server.pk),
+            role_model=role_schema,
+            current_user=guest_user,
+            ignore_permissions=True,
+            internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
@@ -81,7 +85,11 @@ class TestPermissionsRoutes:
     ):
         role_schema = RoleCreateSchema(name="test", server=str(server.pk), permissions=permissions)
         role = await create_role(
-            server_id=str(server.pk), role_model=role_schema, current_user=current_user, ignore_permissions=True
+            server_id=str(server.pk),
+            role_model=role_schema,
+            current_user=current_user,
+            ignore_permissions=True,
+            internal=True,
         )
 
         member = await get_item(
@@ -117,7 +125,11 @@ class TestPermissionsRoutes:
     ):
         role_schema = RoleCreateSchema(name="test", server=str(server.pk), permissions=permissions)
         role = await create_role(
-            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+            server_id=str(server.pk),
+            role_model=role_schema,
+            current_user=guest_user,
+            ignore_permissions=True,
+            internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
@@ -161,7 +173,11 @@ class TestPermissionsRoutes:
         default_role = "@everyone"
         role_schema = RoleCreateSchema(name=default_role, server=str(server.pk), permissions=role_permissions)
         role = await create_role(
-            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+            server_id=str(server.pk),
+            role_model=role_schema,
+            current_user=guest_user,
+            ignore_permissions=True,
+            internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
@@ -208,7 +224,11 @@ class TestPermissionsRoutes:
         default_role = "@everyone"
         role_schema = RoleCreateSchema(name=default_role, server=str(server.pk), permissions=role_permissions)
         role = await create_role(
-            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+            server_id=str(server.pk),
+            role_model=role_schema,
+            current_user=guest_user,
+            ignore_permissions=True,
+            internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
@@ -262,7 +282,11 @@ class TestPermissionsRoutes:
         default_role = "@everyone"
         role_schema = RoleCreateSchema(name=default_role, server=str(server.pk), permissions=role_permissions)
         role = await create_role(
-            server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+            server_id=str(server.pk),
+            role_model=role_schema,
+            current_user=guest_user,
+            ignore_permissions=True,
+            internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
@@ -322,7 +346,11 @@ class TestPermissionsRoutes:
         for role_name, permissions in role_permissions.items():
             role_schema = RoleCreateSchema(name=role_name, server=str(server.pk), permissions=permissions)
             role = await create_role(
-                server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+                server_id=str(server.pk),
+                role_model=role_schema,
+                current_user=guest_user,
+                ignore_permissions=True,
+                internal=True,
             )
             roles.append(role)
 
@@ -394,7 +422,11 @@ class TestPermissionsRoutes:
         for role_name, permissions in role_permissions.items():
             role_schema = RoleCreateSchema(name=role_name, server=str(server.pk), permissions=permissions)
             role = await create_role(
-                server_id=str(server.pk), role_model=role_schema, current_user=guest_user, ignore_permissions=True
+                server_id=str(server.pk),
+                role_model=role_schema,
+                current_user=guest_user,
+                ignore_permissions=True,
+                internal=True,
             )
             roles.append(role)
 
