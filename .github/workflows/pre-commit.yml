@@ -20,4 +20,4 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Run pre-commit
-    - uses: pre-commit/action@v2.0.3
+      uses: pre-commit/action@v2.0.3
