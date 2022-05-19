@@ -124,7 +124,7 @@ class TestAuthService:
         user = await get_user_by_id(user_id=token_user_id)
         assert user.wallet_address == wallet
 
-        refresh_tokens = await get_items(filters={"user": user.pk}, result_obj=RefreshToken, current_user=user)
+        refresh_tokens = await get_items(filters={"user": user.pk}, result_obj=RefreshToken)
         assert len(refresh_tokens) == 1
 
         assert refresh_tokens[0].refresh_token == token.refresh_token
@@ -136,9 +136,7 @@ class TestAuthService:
         data = await get_signed_message_data(private_key, wallet)
         token = await generate_wallet_token(AuthWalletSchema(**data))
 
-        refresh_tokens = await get_items(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        refresh_tokens = await get_items(filters={"user": current_user.pk}, result_obj=RefreshToken)
         assert len(refresh_tokens) == 1
         assert refresh_tokens[0].refresh_token == token.refresh_token
 
@@ -148,9 +146,7 @@ class TestAuthService:
         assert getattr(new_token, "access_token") is not None
         assert getattr(new_token, "refresh_token") is not None
 
-        refresh_tokens = await get_items(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        refresh_tokens = await get_items(filters={"user": current_user.pk}, result_obj=RefreshToken)
         assert len(refresh_tokens) == 2
         assert refresh_tokens[0].refresh_token == new_token.refresh_token
         assert refresh_tokens[0].used is False
@@ -165,9 +161,7 @@ class TestAuthService:
         data = await get_signed_message_data(private_key, wallet)
         token = await generate_wallet_token(AuthWalletSchema(**data))
 
-        db_refresh_token = await get_item(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        db_refresh_token = await get_item(filters={"user": current_user.pk}, result_obj=RefreshToken)
         await update_item(db_refresh_token, data={"used": True})
 
         refresh_token_model = RefreshTokenCreateSchema(user=str(current_user.pk), refresh_token=token.refresh_token)
@@ -183,9 +177,7 @@ class TestAuthService:
         data = await get_signed_message_data(private_key, wallet)
         token = await generate_wallet_token(AuthWalletSchema(**data))
 
-        db_refresh_token = await get_item(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        db_refresh_token = await get_item(filters={"user": current_user.pk}, result_obj=RefreshToken)
         await delete_item(db_refresh_token)
 
         refresh_token_model = RefreshTokenCreateSchema(user=str(current_user.pk), refresh_token=token.refresh_token)
@@ -223,17 +215,13 @@ class TestAuthService:
         data = await get_signed_message_data(private_key, wallet)
         token = await generate_wallet_token(AuthWalletSchema(**data))
 
-        refresh_tokens = await get_items(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        refresh_tokens = await get_items(filters={"user": current_user.pk}, result_obj=RefreshToken)
         assert len(refresh_tokens) == 1
         assert refresh_tokens[0].refresh_token == token.refresh_token
 
         await revoke_tokens(current_user=current_user)
 
-        refresh_tokens = await get_items(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        refresh_tokens = await get_items(filters={"user": current_user.pk}, result_obj=RefreshToken)
         assert len(refresh_tokens) == 0
 
     @pytest.mark.asyncio
@@ -243,9 +231,7 @@ class TestAuthService:
         data = await get_signed_message_data(private_key, wallet)
         token = await generate_wallet_token(AuthWalletSchema(**data))
 
-        refresh_tokens = await get_items(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        refresh_tokens = await get_items(filters={"user": current_user.pk}, result_obj=RefreshToken)
         assert len(refresh_tokens) == 1
         assert refresh_tokens[0].refresh_token == token.refresh_token
 
@@ -255,9 +241,7 @@ class TestAuthService:
         assert getattr(new_token, "access_token") is not None
         assert getattr(new_token, "refresh_token") is not None
 
-        refresh_tokens = await get_items(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        refresh_tokens = await get_items(filters={"user": current_user.pk}, result_obj=RefreshToken)
         assert len(refresh_tokens) == 2
         assert refresh_tokens[0].refresh_token == new_token.refresh_token
         assert refresh_tokens[0].used is False
@@ -270,9 +254,7 @@ class TestAuthService:
             await create_refresh_token(token_model=refresh_token_model)
 
         assert "already used" in e_info.value.detail
-        refresh_tokens = await get_items(
-            filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user
-        )
+        refresh_tokens = await get_items(filters={"user": current_user.pk}, result_obj=RefreshToken)
         assert len(refresh_tokens) == 0
 
     @pytest.mark.asyncio

@@ -14,11 +14,7 @@ async def fetch_and_cache_server(server_id: str):
     if not server:
         return {}
 
-    server_roles = await get_items(
-        filters={"server": ObjectId(server_id)},
-        result_obj=Role,
-        current_user=None,
-    )
+    server_roles = await get_items(filters={"server": ObjectId(server_id)}, result_obj=Role)
     dict_server = {f"roles.{str(role.pk)}": ",".join(role.permissions) for role in server_roles}
 
     dict_server["owner"] = str(server.owner.pk)

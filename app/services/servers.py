@@ -37,7 +37,7 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
 
     default_channel_model = ServerChannelCreateSchema(name="lounge", server=str(created_server.pk))
     default_channel = await create_server_channel(channel_model=default_channel_model, current_user=current_user)
-    await update_item(item=created_server, data={"system_channel": default_channel}, current_user=current_user)
+    await update_item(item=created_server, data={"system_channel": default_channel})
 
     # create default role
     role_schema = RoleCreateSchema(
@@ -51,7 +51,7 @@ async def create_server(server_model: ServerCreateSchema, current_user: User) ->
 
 
 async def is_eligible_to_join_server(server_id: str, current_user: User):
-    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
     if not server.join_rules:
         # if no rules, let anyone in
         return True
@@ -75,11 +75,10 @@ async def is_eligible_to_join_server(server_id: str, current_user: User):
 
 
 async def join_server(server_id: str, current_user: User, ignore_joining_rules: bool = False) -> ServerMember:
-    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
     server_member = await get_item(
         filters={"server": ObjectId(server_id), "user": current_user.id},
         result_obj=ServerMember,
-        current_user=current_user,
     )
     if server_member:
         return server_member
@@ -90,11 +89,7 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot join this server")
 
     default_roles = await get_items(
-        filters={"server": server.pk, "name": "@everyone"},
-        result_obj=Role,
-        current_user=current_user,
-        sort_by_direction=1,
-        limit=1,
+        filters={"server": server.pk, "name": "@everyone"}, result_obj=Role, sort_by_direction=1, limit=1
     )
 
     member = ServerMember(server=server, user=current_user, roles=default_roles)
@@ -117,12 +112,7 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
 
 async def get_user_servers(current_user: User) -> List[Server]:
     server_members = await get_items(
-        {"user": current_user.id},
-        result_obj=ServerMember,
-        current_user=current_user,
-        limit=None,
-        sort_by_field="joined_at",
-        sort_by_direction=1,
+        {"user": current_user.id}, result_obj=ServerMember, sort_by_field="joined_at", sort_by_direction=1, limit=None
     )
     return [await member.server.fetch() for member in server_members]
 
@@ -131,28 +121,24 @@ async def get_server_members(server_id: str, current_user: User):
     if not await user_belongs_to_server(user=current_user, server_id=server_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
 
-    server_members = await get_items(
-        {"server": ObjectId(server_id)}, result_obj=ServerMember, current_user=current_user, limit=None
-    )
+    server_members = await get_items({"server": ObjectId(server_id)}, result_obj=ServerMember, limit=None)
     return server_members
 
 
 async def get_servers(current_user: User):
     # TODO: add flag to filter out private/non-exposed servers
-    servers = await get_items(filters={}, result_obj=Server, current_user=current_user)
+    servers = await get_items(filters={}, result_obj=Server)
 
     resp_servers = []
     for server in servers:
-        server_members = await get_items(
-            {"server": server.pk}, result_obj=ServerMember, current_user=current_user, limit=None
-        )
+        server_members = await get_items({"server": server.pk}, result_obj=ServerMember, limit=None)
         resp_servers.append({**server.dump(), "member_count": len(server_members)})
 
     return resp_servers
 
 
 async def update_server(server_id: str, update_data: ServerUpdateSchema, current_user: User):
-    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
     if server.owner != current_user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot make changes to this server")
 
@@ -182,7 +168,7 @@ async def update_server(server_id: str, update_data: ServerUpdateSchema, current
 
     system_channel_id = data.get("system_channel")
     if system_channel_id:
-        system_channel = await get_item_by_id(id_=system_channel_id, result_obj=Channel, current_user=current_user)
+        system_channel = await get_item_by_id(id_=system_channel_id, result_obj=Channel)
         if system_channel.kind != "server" or system_channel.server != server:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Cannot use this channel for system messages"

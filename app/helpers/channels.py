@@ -37,13 +37,11 @@ async def get_channel_users(channel: Channel) -> List[User]:
         for member in channel.members:
             user_ids.add(member.pk)
     elif channel.kind == "server":
-        members = await get_items(
-            filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=None, limit=None
-        )
+        members = await get_items(filters={"server": channel.server.pk}, result_obj=ServerMember, limit=None)
         for member in members:
             user_ids.add(member.user.pk)
 
-    users = await get_items(filters={"_id": {"$in": list(user_ids)}}, result_obj=User, current_user=None, limit=None)
+    users = await get_items(filters={"_id": {"$in": list(user_ids)}}, result_obj=User, limit=None)
 
     return users
 

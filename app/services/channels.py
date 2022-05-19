@@ -45,7 +45,7 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
             "$all": [ObjectId(member) for member in channel_model.members],
         },
     }
-    existing_dm_channels = await get_items(filters=filters, result_obj=Channel, current_user=current_user)
+    existing_dm_channels = await get_items(filters=filters, result_obj=Channel)
     if existing_dm_channels:
         # TODO: return 200 status code
         return existing_dm_channels[0]
@@ -76,19 +76,15 @@ async def get_server_channels(server_id, current_user: User) -> List[Union[Chann
     if not await user_belongs_to_server(user=current_user, server_id=server_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing permissions")
 
-    return await get_items(
-        filters={"server": ObjectId(server_id)}, result_obj=Channel, current_user=current_user, limit=None
-    )
+    return await get_items(filters={"server": ObjectId(server_id)}, result_obj=Channel, limit=None)
 
 
 async def get_dm_channels(current_user: User, limit: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
-    return await get_items(
-        filters={"members": current_user.pk}, result_obj=Channel, current_user=current_user, limit=limit
-    )
+    return await get_items(filters={"members": current_user.pk}, result_obj=Channel, limit=limit)
 
 
 async def delete_channel(channel_id, current_user: User):
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
     channel_owner = channel.owner
     is_channel_owner = channel_owner == current_user
 
@@ -106,9 +102,9 @@ async def delete_channel(channel_id, current_user: User):
 
 
 async def update_channel_last_message(channel_id, message: Union[Message, APIDocument], current_user: User):
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
     if not channel.last_message_at or message.created_at > channel.last_message_at:
-        await update_item(item=channel, data={"last_message_at": message.created_at}, current_user=current_user)
+        await update_item(item=channel, data={"last_message_at": message.created_at})
 
 
 async def bulk_mark_channels_as_read(ack_data: ChannelBulkReadStateCreateSchema, current_user: User):
@@ -147,7 +143,6 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
         user_member = await get_item(
             filters={"user": current_user, "server": channel.server.pk},
             result_obj=ServerMember,
-            current_user=current_user,
         )
         notify = True if user_member else False
     elif channel.kind == "dm":
@@ -164,7 +159,7 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
 
 
 async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, current_user: User):
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
 
     data = update_data.dict(exclude_unset=True)
 

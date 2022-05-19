@@ -62,9 +62,7 @@ class TestServerRoutes:
         assert "owner" in json_response
         assert json_response["owner"] == str(current_user.id)
 
-        members = await get_items(
-            {"server": ObjectId(json_response["id"])}, result_obj=ServerMember, current_user=current_user, limit=None
-        )
+        members = await get_items({"server": ObjectId(json_response["id"])}, result_obj=ServerMember, limit=None)
         assert len(members) == 1
         assert members[0].user == current_user
         assert members[0].joined_at < datetime.now(timezone.utc)
@@ -133,9 +131,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
 
         assert member is not None
         assert member.user == guest_user
@@ -146,7 +142,7 @@ class TestServerRoutes:
     ):
         rule = ServerJoinRule(type="allowlist", allowlist_addresses=[])
         await rule.commit()
-        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        updated_server = await update_item(server, data={"join_rules": [rule]})
         assert len(updated_server.join_rules) == 1
 
         server_id = str(server.id)
@@ -154,9 +150,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 403
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is None
 
     @pytest.mark.asyncio
@@ -170,7 +164,7 @@ class TestServerRoutes:
     ):
         rule = ServerJoinRule(type="allowlist", allowlist_addresses=[guest_user.wallet_address])
         await rule.commit()
-        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        updated_server = await update_item(server, data={"join_rules": [rule]})
         assert len(updated_server.join_rules) == 1
 
         server_id = str(server.id)
@@ -178,9 +172,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
 
         assert member is not None
         assert member.user == guest_user
@@ -191,7 +183,7 @@ class TestServerRoutes:
     ):
         rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1985")  # everyone has access to this guild
         await rule.commit()
-        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        updated_server = await update_item(server, data={"join_rules": [rule]})
         assert len(updated_server.join_rules) == 1
 
         server_id = str(server.id)
@@ -199,9 +191,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
         assert member.user == guest_user
 
@@ -211,7 +201,7 @@ class TestServerRoutes:
     ):
         rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1898")
         await rule.commit()
-        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        updated_server = await update_item(server, data={"join_rules": [rule]})
         assert len(updated_server.join_rules) == 1
 
         server_id = str(server.id)
@@ -219,9 +209,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 403
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is None
 
     @pytest.mark.asyncio
@@ -237,9 +225,7 @@ class TestServerRoutes:
         await guild_rule.commit()
         allowlist_rule = ServerJoinRule(type="allowlist", allowlist_addresses=[guest_user.wallet_address])
         await allowlist_rule.commit()
-        updated_server = await update_item(
-            server, data={"join_rules": [allowlist_rule, guild_rule]}, current_user=guest_user
-        )
+        updated_server = await update_item(server, data={"join_rules": [allowlist_rule, guild_rule]})
         assert len(updated_server.join_rules) == 2
 
         server_id = str(server.id)
@@ -247,9 +233,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
 
         assert member is not None
         assert member.user == guest_user
@@ -267,9 +251,7 @@ class TestServerRoutes:
         await guild_rule.commit()
         allowlist_rule = ServerJoinRule(type="allowlist", allowlist_addresses=[])
         await allowlist_rule.commit()
-        updated_server = await update_item(
-            server, data={"join_rules": [allowlist_rule, guild_rule]}, current_user=guest_user
-        )
+        updated_server = await update_item(server, data={"join_rules": [allowlist_rule, guild_rule]})
         assert len(updated_server.join_rules) == 2
 
         server_id = str(server.id)
@@ -277,9 +259,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
 
         assert member is not None
         assert member.user == guest_user

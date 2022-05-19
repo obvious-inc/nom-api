@@ -53,9 +53,7 @@ async def create_items(
     return created_object_ids
 
 
-async def get_item_by_id(
-    id_: str, result_obj: Type[APIDocumentType], current_user: Optional[User] = None
-) -> APIDocumentType:
+async def get_item_by_id(id_: str, result_obj: Type[APIDocumentType]) -> APIDocumentType:
     if type(id_) == str:
         try:
             id_ = ObjectId(id_)
@@ -74,7 +72,6 @@ async def get_item_by_id(
 async def get_items(
     filters: dict,
     result_obj: Type[APIDocumentType],
-    current_user: Optional[User],
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
     before: str = None,
@@ -106,9 +103,7 @@ async def get_items(
     return items
 
 
-async def get_item(
-    filters: dict, result_obj: Type[APIDocumentType], current_user: Optional[User] = None
-) -> APIDocumentType:
+async def get_item(filters: dict, result_obj: Type[APIDocumentType]) -> APIDocumentType:
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
     filters.update(deleted_filter)
 
@@ -116,7 +111,7 @@ async def get_item(
     return item
 
 
-async def update_item(item: APIDocumentType, data: dict, current_user: Optional[User] = None) -> APIDocumentType:
+async def update_item(item: APIDocumentType, data: dict) -> APIDocumentType:
     local_data = dict(data)
     none_fields = [field for field, value in local_data.items() if value is None]
     for field in none_fields:
@@ -139,7 +134,7 @@ async def delete_item(item: APIDocumentType) -> APIDocumentType:
     return await update_item(item, {"deleted": True})
 
 
-async def delete_items(filters: dict, result_obj: Type[APIDocumentType], current_user: Optional[User] = None):
+async def delete_items(filters: dict, result_obj: Type[APIDocumentType]):
     updated_result = await result_obj.collection.update_many(
         filter=filters, update={"$set": {"deleted": True}}
     )  # type: UpdateResult

@@ -23,15 +23,11 @@ async def _get_users_online_channels(users: List[User]):
 
 async def get_server_online_channels(server: Server, current_user: Optional[User]):
     user_ids = set()
-    members = await get_items(
-        filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user, limit=None
-    )
+    members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, limit=None)
     for member in members:
         user_ids.add(member.user.pk)
 
-    users = await get_items(
-        filters={"_id": {"$in": list(user_ids)}}, result_obj=User, current_user=current_user, limit=None
-    )
+    users = await get_items(filters={"_id": {"$in": list(user_ids)}}, result_obj=User, limit=None)
 
     return await _get_users_online_channels(users)
 
@@ -42,15 +38,11 @@ async def get_channel_online_channels(channel: Channel, current_user: Optional[U
         for member in channel.members:
             user_ids.add(member.pk)
     elif channel.kind == "server":
-        members = await get_items(
-            filters={"server": channel.server.pk}, result_obj=ServerMember, current_user=current_user, limit=None
-        )
+        members = await get_items(filters={"server": channel.server.pk}, result_obj=ServerMember, limit=None)
         for member in members:
             user_ids.add(member.user.pk)
 
-    users = await get_items(
-        filters={"_id": {"$in": list(user_ids)}}, result_obj=User, current_user=current_user, limit=None
-    )
+    users = await get_items(filters={"_id": {"$in": list(user_ids)}}, result_obj=User, limit=None)
 
     return await _get_users_online_channels(users)
 
@@ -59,16 +51,12 @@ async def get_servers_online_channels(servers: List[Server], current_user: Optio
     user_ids = set()
     members = []
     for server in servers:
-        server_members = await get_items(
-            filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user, limit=None
-        )
+        server_members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, limit=None)
         members.extend(server_members)
         for member in server_members:
             user_ids.add(member.user.pk)
 
-    users = await get_items(
-        filters={"_id": {"$in": list(user_ids)}}, result_obj=User, current_user=current_user, limit=None
-    )
+    users = await get_items(filters={"_id": {"$in": list(user_ids)}}, result_obj=User, limit=None)
 
     return await _get_users_online_channels(users)
 
@@ -132,7 +120,7 @@ async def broadcast_message_event(
     message_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+    message = await get_item_by_id(id_=message_id, result_obj=Message)
 
     event_data = {"message": message.dump()}
     if custom_data:
@@ -151,7 +139,7 @@ async def broadcast_channel_event(
     channel_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel, current_user=current_user)
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
 
     event_data = {"channel": channel.dump()}
     if custom_data:
@@ -166,7 +154,7 @@ async def broadcast_server_event(
     server_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
-    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
 
     event_data = {}
     if custom_data:
@@ -198,9 +186,7 @@ async def broadcast_user_servers_event(current_user_id: str, event: WebSocketSer
     if custom_data:
         event_data.update(custom_data)
 
-    server_members = await get_items(
-        {"user": current_user}, result_obj=ServerMember, current_user=current_user, limit=None
-    )
+    server_members = await get_items({"user": current_user}, result_obj=ServerMember, limit=None)
     servers = [member.server for member in server_members]
 
     await pusher_broadcast_messages(

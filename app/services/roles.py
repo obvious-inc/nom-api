@@ -9,7 +9,7 @@ from app.services.crud import create_item, get_items
 
 @needs(permissions=[Permission.ROLES_LIST])
 async def get_roles(server_id: str, current_user: User):
-    return await get_items(filters={"server": ObjectId(server_id)}, result_obj=Role, current_user=current_user)
+    return await get_items(filters={"server": ObjectId(server_id)}, result_obj=Role)
 
 
 @needs(permissions=[Permission.ROLES_CREATE])
