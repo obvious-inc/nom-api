@@ -34,7 +34,7 @@ class SectionUpdateSchema(APIBaseUpdateSchema):
 
 
 class SectionServerUpdateSchema(APIBaseUpdateSchema):
-    id: str
+    id: Optional[str]
     name: Optional[str]
     channels: Optional[List[str]]
     position: Optional[int]

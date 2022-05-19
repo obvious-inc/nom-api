@@ -4,13 +4,14 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
+from app.helpers.cache_utils import cache
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.section import Section
 from app.models.server import Server
 from app.models.user import User
 from app.schemas.sections import SectionCreateSchema, SectionServerUpdateSchema, SectionUpdateSchema
-from app.services.crud import create_item, delete_item, find_and_update_item, get_item_by_id, get_items, update_item
+from app.services.crud import create_item, delete_item, get_item_by_id, get_items, update_item
 from app.services.websockets import broadcast_server_event
 
 
@@ -77,7 +78,12 @@ async def update_server_sections(server_id: str, sections: List[SectionServerUpd
 
     final_sections = []
     for section_model in sections:
-        section_id = section_model.id
+        section = await get_item_by_id(id_=section_model.id, result_obj=Section)
+        section_id = str(section.pk)
+
+        section_prev_channels = [str(channel.pk) for channel in section.channels]
+        section_latest_channels = section_model.channels
+
         update_data = {
             "name": section_model.name,
             "channels": section_model.channels,
@@ -86,9 +92,17 @@ async def update_server_sections(server_id: str, sections: List[SectionServerUpd
         if section_model.position is not None:
             update_data["position"] = section_model.position
 
-        updated_section = await find_and_update_item(
-            filters={"_id": ObjectId(section_id)}, data={"$set": update_data}, result_obj=Section
-        )
+        updated_section = await update_item(section, data=update_data)
+
+        for channel_id in filter(lambda elem: elem not in section_latest_channels, section_prev_channels):
+            old_section_id = await cache.client.hget(f"channel:{channel_id}", "section")
+            if old_section_id != section_id:
+                continue
+
+            await cache.client.hset(f"channel:{channel_id}", "section", "")
+
+        for channel_id in filter(lambda elem: elem not in section_prev_channels, section_latest_channels):
+            await cache.client.hset(f"channel:{channel_id}", "section", section_id)
 
         final_sections.append(updated_section)
 
