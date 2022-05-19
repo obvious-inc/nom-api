@@ -35,3 +35,26 @@ class TestRoleRoutes:
         for role, perms in resp_roles.items():
             cached_perms = await cache.client.hget(f"server:{str(server.pk)}", f"roles.{role}")
             assert cached_perms == perms
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "role_name, success",
+        [("@role", False), ("mod", True)],
+    )
+    async def test_create_role_names(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        role_name: str,
+        success: bool,
+    ):
+        new_role = {"name": role_name, "permissions": [Permission.MESSAGES_LIST.value]}
+        if success:
+            response = await authorized_client.post(f"/servers/{str(server.pk)}/roles", json=new_role)
+            assert response.status_code == 201
+        else:
+            with pytest.raises(Exception):
+                await authorized_client.post(f"/servers/{str(server.pk)}/roles", json=new_role)
