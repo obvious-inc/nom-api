@@ -54,10 +54,6 @@ async def update_section(section_id: str, update_data: SectionUpdateSchema, curr
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has no permissions to update section")
 
     data = update_data.dict(exclude_unset=True)
-    section = await get_item_by_id(id_=section_id, result_obj=Section, current_user=current_user)
-
-    # TODO: verify channels belong to server?
-
     updated_section = await update_item(section, data=data, current_user=current_user)
 
     await queue_bg_task(
@@ -122,6 +118,9 @@ async def delete_section(section_id: str, current_user: User):
     server = await section.server.fetch()
     if server.owner != current_user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has no permissions to delete section")
+
+    for channel in section.channels:
+        await cache.client.hset(f"channel:{str(channel.pk)}", "section", "")
 
     await queue_bg_task(
         broadcast_server_event,
