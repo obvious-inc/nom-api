@@ -132,6 +132,9 @@ async def find_and_update_item(filters: dict, data: dict, result_obj: Type[APIDo
     updated_item = await result_obj.collection.find_one_and_update(
         filter=filters, update=data, return_document=ReturnDocument.AFTER
     )
+    if updated_item:
+        return result_obj.build_from_mongo(updated_item)
+
     return updated_item
 
 

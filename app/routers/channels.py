@@ -57,8 +57,7 @@ async def get_specific_message(channel_id, message_id, current_user: User = Depe
 
 @router.delete("/{channel_id}", response_description="Delete channel", response_model=EitherChannel)
 async def delete_remove_channel(channel_id, current_user: User = Depends(get_current_user)):
-    channel = await delete_channel(channel_id=channel_id, current_user=current_user)
-    return channel
+    return await delete_channel(channel_id=channel_id, current_user=current_user)
 
 
 @router.post("/{channel_id}/typing", summary="Notify typing", status_code=http.HTTPStatus.NO_CONTENT)

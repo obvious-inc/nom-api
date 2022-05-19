@@ -241,11 +241,12 @@ class TestPermissionsRoutes:
         await update_item(item=member, data={"roles": [role]}, current_user=guest_user)
 
         if section_overwrites is not None:
-            section_model = SectionCreateSchema(
-                name="who-cares", channels=[str(server_channel.pk)], server=str(server.pk)
-            )
+            section_model = SectionCreateSchema(name="who-cares", server=str(server.pk))
             section = await create_item(section_model, result_obj=Section, current_user=guest_user, user_field=None)
-            data = {"permission_overwrites": [{"role": role.pk, "permissions": section_overwrites}]}
+            data = {
+                "channels": [str(server_channel.pk)],
+                "permission_overwrites": [{"role": role.pk, "permissions": section_overwrites}],
+            }
             await update_item(item=section, data=data, current_user=guest_user)
 
         response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
@@ -299,11 +300,12 @@ class TestPermissionsRoutes:
         await update_item(item=member, data={"roles": [role]}, current_user=guest_user)
 
         if section_overwrites is not None:
-            section_model = SectionCreateSchema(
-                name="who-cares", channels=[str(server_channel.pk)], server=str(server.pk)
-            )
+            section_model = SectionCreateSchema(name="who-cares", server=str(server.pk))
             section = await create_item(section_model, result_obj=Section, current_user=guest_user, user_field=None)
-            data = {"permission_overwrites": [{"role": role.pk, "permissions": section_overwrites}]}
+            data = {
+                "channels": [str(server_channel.pk)],
+                "permission_overwrites": [{"role": role.pk, "permissions": section_overwrites}],
+            }
             await update_item(item=section, data=data, current_user=guest_user)
 
         if channel_overwrites is not None:
@@ -365,16 +367,14 @@ class TestPermissionsRoutes:
         await update_item(item=member, data={"roles": [role.pk for role in roles]}, current_user=guest_user)
 
         if section_overwrites is not None:
-            section_model = SectionCreateSchema(
-                name="who-cares", channels=[str(server_channel.pk)], server=str(server.pk)
-            )
+            section_model = SectionCreateSchema(name="who-cares", server=str(server.pk))
             section = await create_item(section_model, result_obj=Section, current_user=guest_user, user_field=None)
 
             ow = []
             for s_role_name, s_role_permissions in section_overwrites.items():
                 role = await get_item(filters={"name": s_role_name, "server": server.pk}, result_obj=Role)
                 ow.append({"role": role.pk, "permissions": s_role_permissions})
-            data = {"permission_overwrites": ow}
+            data = {"channels": [str(server_channel.pk)], "permission_overwrites": ow}
 
             await update_item(item=section, data=data, current_user=guest_user)
 
@@ -441,16 +441,14 @@ class TestPermissionsRoutes:
         await update_item(item=member, data={"roles": [role.pk for role in roles]}, current_user=guest_user)
 
         if section_overwrites is not None:
-            section_model = SectionCreateSchema(
-                name="who-cares", channels=[str(server_channel.pk)], server=str(server.pk)
-            )
+            section_model = SectionCreateSchema(name="who-cares", server=str(server.pk))
             section = await create_item(section_model, result_obj=Section, current_user=guest_user, user_field=None)
 
             ow = []
             for s_role_name, s_role_permissions in section_overwrites.items():
                 role = await get_item(filters={"name": s_role_name, "server": server.pk}, result_obj=Role)
                 ow.append({"role": role.pk, "permissions": s_role_permissions})
-            data = {"permission_overwrites": ow}
+            data = {"channels": [str(server_channel.pk)], "permission_overwrites": ow}
 
             await update_item(item=section, data=data, current_user=guest_user)
 
