@@ -31,3 +31,10 @@ class SectionCreateSchema(APIBaseCreateSchema):
 class SectionUpdateSchema(APIBaseUpdateSchema):
     name: Optional[str]
     channels: Optional[List[str]]
+
+
+class SectionServerUpdateSchema(APIBaseUpdateSchema):
+    id: str
+    name: Optional[str]
+    channels: Optional[List[str]]
+    position: Optional[int]
