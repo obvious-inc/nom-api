@@ -84,7 +84,7 @@ class TestWebsocketRoutes:
             item=message_model, result_obj=Message, current_user=current_user, user_field="author"
         )
 
-        members = await get_items(filters={}, result_obj=ServerMember, current_user=current_user, limit=None)
+        members = await get_items(filters={}, result_obj=ServerMember, limit=None)
         assert len(members) == 1
         member = members[0]
         assert member.server == server

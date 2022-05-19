@@ -43,7 +43,6 @@ async def get_user_profile_by_server_id(server_id: str, current_user: User) -> U
     profile = await get_item(
         filters={"server": ObjectId(server_id), "user": current_user.pk},
         result_obj=ServerMember,
-        current_user=current_user,
     )
 
     if not profile:
@@ -113,7 +112,6 @@ async def update_user_profile(
         profile = await get_item(
             filters={"server": ObjectId(server_id), "user": current_user.pk},
             result_obj=ServerMember,
-            current_user=current_user,
         )
 
         if not profile:
@@ -150,6 +148,4 @@ async def update_user_profile(
 
 
 async def get_user_read_states(current_user: User):
-    return await get_items(
-        filters={"user": current_user.pk}, result_obj=ChannelReadState, current_user=current_user, limit=None
-    )
+    return await get_items(filters={"user": current_user.pk}, result_obj=ChannelReadState, limit=None)

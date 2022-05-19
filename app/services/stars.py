@@ -30,7 +30,7 @@ async def create_star(star_model: StarCreateSchema, current_user: User) -> Union
     filters["type"] = star_type
     filters["user"] = current_user.pk
 
-    existing_star = await get_items(filters=filters, result_obj=Star, current_user=current_user)
+    existing_star = await get_items(filters=filters, result_obj=Star)
     if existing_star:
         raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST, detail="Star already exists")
 
@@ -41,11 +41,11 @@ async def get_stars(current_user: User, stars_type: Optional[str] = None) -> Lis
     filters = {"user": current_user.pk}
     if stars_type:
         filters["type"] = stars_type
-    return await get_items(filters=filters, result_obj=Star, current_user=current_user)
+    return await get_items(filters=filters, result_obj=Star)
 
 
 async def delete_star(star_id: str, current_user: User):
-    star = await get_item_by_id(id_=star_id, result_obj=Star, current_user=current_user)
+    star = await get_item_by_id(id_=star_id, result_obj=Star)
     if not star:
         return
     can_delete = star.user == current_user

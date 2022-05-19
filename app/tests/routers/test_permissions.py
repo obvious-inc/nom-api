@@ -53,11 +53,9 @@ class TestPermissionsRoutes:
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
-        await update_item(item=member, data={"roles": [role]}, current_user=guest_user)
+        await update_item(item=member, data={"roles": [role]})
 
         response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
         assert response.status_code == status
@@ -92,11 +90,9 @@ class TestPermissionsRoutes:
             internal=True,
         )
 
-        member = await get_item(
-            filters={"server": server.pk, "user": current_user.pk}, result_obj=ServerMember, current_user=current_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": current_user.pk}, result_obj=ServerMember)
         assert member is not None
-        await update_item(item=member, data={"roles": [role]}, current_user=current_user)
+        await update_item(item=member, data={"roles": [role]})
 
         response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages")
         assert response.status_code == status
@@ -135,11 +131,9 @@ class TestPermissionsRoutes:
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
-        await update_item(item=member, data={"roles": [role]}, current_user=guest_user)
+        await update_item(item=member, data={"roles": [role]})
 
         data = {"kind": "server", "name": "fancy-announcements", "server": str(server.id)}
         response = await guest_client.post("/channels", json=data)
@@ -183,15 +177,13 @@ class TestPermissionsRoutes:
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
-        await update_item(item=member, data={"roles": [role]}, current_user=guest_user)
+        await update_item(item=member, data={"roles": [role]})
 
         if channel_overwrites is not None:
             data = {"permission_overwrites": [{"role": role.pk, "permissions": channel_overwrites}]}
-            await update_item(item=server_channel, data=data, current_user=guest_user)
+            await update_item(item=server_channel, data=data)
 
         response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
         assert response.status_code == status
@@ -234,11 +226,9 @@ class TestPermissionsRoutes:
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
-        await update_item(item=member, data={"roles": [role]}, current_user=guest_user)
+        await update_item(item=member, data={"roles": [role]})
 
         if section_overwrites is not None:
             section_model = SectionCreateSchema(name="who-cares", server=str(server.pk))
@@ -247,7 +237,7 @@ class TestPermissionsRoutes:
                 "channels": [str(server_channel.pk)],
                 "permission_overwrites": [{"role": role.pk, "permissions": section_overwrites}],
             }
-            await update_item(item=section, data=data, current_user=guest_user)
+            await update_item(item=section, data=data)
 
         response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
         assert response.status_code == status
@@ -293,11 +283,9 @@ class TestPermissionsRoutes:
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
-        await update_item(item=member, data={"roles": [role]}, current_user=guest_user)
+        await update_item(item=member, data={"roles": [role]})
 
         if section_overwrites is not None:
             section_model = SectionCreateSchema(name="who-cares", server=str(server.pk))
@@ -306,11 +294,11 @@ class TestPermissionsRoutes:
                 "channels": [str(server_channel.pk)],
                 "permission_overwrites": [{"role": role.pk, "permissions": section_overwrites}],
             }
-            await update_item(item=section, data=data, current_user=guest_user)
+            await update_item(item=section, data=data)
 
         if channel_overwrites is not None:
             data = {"permission_overwrites": [{"role": role.pk, "permissions": channel_overwrites}]}
-            await update_item(item=server_channel, data=data, current_user=guest_user)
+            await update_item(item=server_channel, data=data)
 
         response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
         assert response.status_code == status
@@ -360,11 +348,9 @@ class TestPermissionsRoutes:
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
-        await update_item(item=member, data={"roles": [role.pk for role in roles]}, current_user=guest_user)
+        await update_item(item=member, data={"roles": [role.pk for role in roles]})
 
         if section_overwrites is not None:
             section_model = SectionCreateSchema(name="who-cares", server=str(server.pk))
@@ -376,7 +362,7 @@ class TestPermissionsRoutes:
                 ow.append({"role": role.pk, "permissions": s_role_permissions})
             data = {"channels": [str(server_channel.pk)], "permission_overwrites": ow}
 
-            await update_item(item=section, data=data, current_user=guest_user)
+            await update_item(item=section, data=data)
 
         if channel_overwrites is not None:
             ow = []
@@ -384,7 +370,7 @@ class TestPermissionsRoutes:
                 role = await get_item(filters={"name": c_role_name, "server": server.pk}, result_obj=Role)
                 ow.append({"role": role.pk, "permissions": c_role_permissions})
             data = {"permission_overwrites": ow}
-            await update_item(item=server_channel, data=data, current_user=guest_user)
+            await update_item(item=server_channel, data=data)
 
         response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
         assert response.status_code == status
@@ -434,11 +420,9 @@ class TestPermissionsRoutes:
         response = await guest_client.post(f"/servers/{str(server.pk)}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
-        await update_item(item=member, data={"roles": [role.pk for role in roles]}, current_user=guest_user)
+        await update_item(item=member, data={"roles": [role.pk for role in roles]})
 
         if section_overwrites is not None:
             section_model = SectionCreateSchema(name="who-cares", server=str(server.pk))
@@ -450,7 +434,7 @@ class TestPermissionsRoutes:
                 ow.append({"role": role.pk, "permissions": s_role_permissions})
             data = {"channels": [str(server_channel.pk)], "permission_overwrites": ow}
 
-            await update_item(item=section, data=data, current_user=guest_user)
+            await update_item(item=section, data=data)
 
         if channel_overwrites is not None:
             ow = []
@@ -458,7 +442,7 @@ class TestPermissionsRoutes:
                 role = await get_item(filters={"name": c_role_name, "server": server.pk}, result_obj=Role)
                 ow.append({"role": role.pk, "permissions": c_role_permissions})
             data = {"permission_overwrites": ow}
-            await update_item(item=server_channel, data=data, current_user=guest_user)
+            await update_item(item=server_channel, data=data)
 
         response = await guest_client.get(f"/channels/{str(server_channel.id)}/messages")
         assert response.status_code == status

@@ -17,16 +17,12 @@ from app.services.websockets import broadcast_server_event
 
 async def get_sections(server_id: str, current_user: User):
     return await get_items(
-        filters={"server": ObjectId(server_id)},
-        result_obj=Section,
-        current_user=current_user,
-        sort_by_field="position",
-        sort_by_direction=1,
+        filters={"server": ObjectId(server_id)}, result_obj=Section, sort_by_field="position", sort_by_direction=1
     )
 
 
 async def create_section(server_id: str, section_model: SectionCreateSchema, current_user: User):
-    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
     if server.owner != current_user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has no permissions to create section")
 
@@ -48,13 +44,13 @@ async def create_section(server_id: str, section_model: SectionCreateSchema, cur
 
 
 async def update_section(section_id: str, update_data: SectionUpdateSchema, current_user: User):
-    section = await get_item_by_id(id_=section_id, result_obj=Section, current_user=current_user)
+    section = await get_item_by_id(id_=section_id, result_obj=Section)
     server = await section.server.fetch()
     if server.owner != current_user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has no permissions to update section")
 
     data = update_data.dict(exclude_unset=True)
-    updated_section = await update_item(section, data=data, current_user=current_user)
+    updated_section = await update_item(section, data=data)
 
     await queue_bg_task(
         broadcast_server_event,
@@ -68,7 +64,7 @@ async def update_section(section_id: str, update_data: SectionUpdateSchema, curr
 
 
 async def update_server_sections(server_id: str, sections: List[SectionServerUpdateSchema], current_user: User):
-    server = await get_item_by_id(id_=server_id, result_obj=Server, current_user=current_user)
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
     if server.owner != current_user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has no permissions to update sections")
 
@@ -119,7 +115,7 @@ async def update_server_sections(server_id: str, sections: List[SectionServerUpd
 
 
 async def delete_section(section_id: str, current_user: User):
-    section = await get_item_by_id(id_=section_id, result_obj=Section, current_user=current_user)
+    section = await get_item_by_id(id_=section_id, result_obj=Section)
     server = await section.server.fetch()
     if server.owner != current_user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has no permissions to delete section")
