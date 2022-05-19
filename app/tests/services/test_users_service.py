@@ -1,6 +1,7 @@
 import ens
 import pytest
 
+from app.helpers.w3 import checksum_address
 from app.models.user import User
 from app.schemas.users import UserCreateSchema
 from app.services.users import create_user, set_user_profile_picture
@@ -19,7 +20,7 @@ class TestUsersService:
         user_model = UserCreateSchema(wallet_address=wallet_address)
         user = await create_user(user_model=user_model)
         assert user is not None
-        assert user.wallet_address == wallet_address
+        assert user.wallet_address == checksum_address(wallet_address)
         assert user.display_name == expected_display_name
 
     @pytest.mark.asyncio
@@ -44,7 +45,7 @@ class TestUsersService:
 
         user = await create_user(user_model=user_model, fetch_ens=True)
         assert user is not None
-        assert user.wallet_address == wallet_address
+        assert user.wallet_address == checksum_address(wallet_address)
         assert user.display_name == expected_display_name
 
     @pytest.mark.asyncio
