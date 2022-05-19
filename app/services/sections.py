@@ -81,9 +81,11 @@ async def update_server_sections(server_id: str, sections: List[SectionServerUpd
         section_latest_channels = section_model.channels
 
         update_data = {
-            "name": section_model.name,
             "channels": section_model.channels,
         }
+
+        if section_model.name is not None:
+            update_data["name"] = section_model.name
 
         if section_model.position is not None:
             update_data["position"] = section_model.position

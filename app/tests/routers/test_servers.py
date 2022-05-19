@@ -7,6 +7,8 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.helpers.cache_utils import cache
+from app.models.channel import Channel
 from app.models.section import Section
 from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
@@ -517,6 +519,33 @@ class TestServerRoutes:
         for i in range(3):
             assert resp_sections[i]["name"] == section_updates[i]["name"]
             assert resp_sections[i]["channels"] == section_updates[i]["channels"]
+
+    @pytest.mark.asyncio
+    async def test_update_sections_remove_channel_from_section(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        section = await create_item(
+            item=SectionCreateSchema(name="test", server=str(server.pk)), result_obj=Section, user_field=None
+        )
+        section_updates = [{"id": str(section.pk), "channels": [str(server_channel.pk)]}]
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=section_updates)
+        assert response.status_code == 200
+
+        cached_section_id = await cache.client.hget(f"channel:{str(server_channel.pk)}", "section")
+        assert cached_section_id == str(section.pk)
+
+        section_updates = [{"id": str(section.pk), "channels": []}]
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=section_updates)
+        assert response.status_code == 200
+
+        cached_section_id = await cache.client.hget(f"channel:{str(server_channel.pk)}", "section")
+        assert cached_section_id == ""
 
     @pytest.mark.asyncio
     async def test_update_all_sections_order(
