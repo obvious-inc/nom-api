@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -74,13 +74,16 @@ async def update_server_sections(server_id: str, sections: List[SectionServerUpd
 
     final_sections = []
     for section_model in sections:
+        if not section_model.id:
+            raise Exception("need section id to update it.")
+
         section = await get_item_by_id(id_=section_model.id, result_obj=Section)
         section_id = str(section.pk)
 
         section_prev_channels = [str(channel.pk) for channel in section.channels]
-        section_latest_channels = section_model.channels
+        section_latest_channels = section_model.channels or []
 
-        update_data = {
+        update_data: Dict[str, Any] = {
             "channels": section_model.channels,
         }
 
