@@ -37,9 +37,7 @@ class TestAuthRoutes:
         Nonce: {nonce}
         Issued At: {signed_at}"""
         encoded_message = encode_defunct(text=message)
-        signed_message = Web3().eth.account.sign_message(
-            encoded_message, private_key=private_key
-        )  # type: SignedMessage
+        signed_message: SignedMessage = Web3().eth.account.sign_message(encoded_message, private_key=private_key)
         data = {
             "message": message,
             "signature": signed_message.signature.hex(),
@@ -76,9 +74,7 @@ class TestAuthRoutes:
         Nonce: {nonce}
         Issued At: {signed_at}"""
         encoded_message = encode_defunct(text=message)
-        signed_message = Web3().eth.account.sign_message(
-            encoded_message, private_key=private_key
-        )  # type: SignedMessage
+        signed_message: SignedMessage = Web3().eth.account.sign_message(encoded_message, private_key=private_key)
         data = {
             "message": message,
             "signature": signed_message.signature.hex(),
@@ -130,9 +126,7 @@ class TestAuthRoutes:
         Nonce: {nonce}
         Issued At: {signed_at}"""
         encoded_message = encode_defunct(text=message)
-        signed_message = Web3().eth.account.sign_message(
-            encoded_message, private_key=private_key
-        )  # type: SignedMessage
+        signed_message: SignedMessage = Web3().eth.account.sign_message(encoded_message, private_key=private_key)
         data = {
             "message": message,
             "signature": signed_message.signature.hex(),
@@ -169,9 +163,7 @@ class TestAuthRoutes:
         Nonce: {nonce}
         Issued At: {signed_at}"""
         encoded_message = encode_defunct(text=message)
-        signed_message = Web3().eth.account.sign_message(
-            encoded_message, private_key=private_key
-        )  # type: SignedMessage
+        signed_message: SignedMessage = Web3().eth.account.sign_message(encoded_message, private_key=private_key)
         data = {
             "message": message,
             "signature": signed_message.signature.hex(),
@@ -215,9 +207,7 @@ class TestAuthRoutes:
             Nonce: {nonce}
             Issued At: {signed_at}"""
         encoded_message = encode_defunct(text=message)
-        signed_message = Web3().eth.account.sign_message(
-            encoded_message, private_key=private_key
-        )  # type: SignedMessage
+        signed_message: SignedMessage = Web3().eth.account.sign_message(encoded_message, private_key=private_key)
         data = {
             "message": message + "corrupt",
             "signature": signed_message.signature.hex(),

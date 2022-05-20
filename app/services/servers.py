@@ -61,7 +61,9 @@ async def is_eligible_to_join_server(server_id: str, current_user: User):
     user_is_allowed_in = False
 
     joining_rules = [await role.fetch() for role in server.join_rules]
-    for rule in joining_rules:  # type: ServerJoinRule
+
+    rule: ServerJoinRule
+    for rule in joining_rules:
         if user_is_allowed_in:
             break
 

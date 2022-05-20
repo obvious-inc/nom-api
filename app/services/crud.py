@@ -45,7 +45,7 @@ async def create_items(
         db_objects.append(db_object)
 
     mongo_objects = [obj.to_mongo() for obj in db_objects]
-    created_result = await result_obj.collection.insert_many(mongo_objects)  # type: InsertManyResult
+    created_result: InsertManyResult = await result_obj.collection.insert_many(mongo_objects)
     created_object_ids = created_result.inserted_ids
 
     logger.info("%d objects created. [object_type=%s", len(created_object_ids), result_obj.__name__)
@@ -138,8 +138,8 @@ async def delete_item(item: APIDocumentType) -> APIDocumentType:
 
 
 async def delete_items(filters: dict, result_obj: Type[APIDocumentType]):
-    updated_result = await result_obj.collection.update_many(
+    updated_result: UpdateResult = await result_obj.collection.update_many(
         filter=filters, update={"$set": {"deleted": True}}
-    )  # type: UpdateResult
+    )
 
     logger.info("%d objects deleted. [object_type=%s", updated_result.modified_count, result_obj.__name__)
