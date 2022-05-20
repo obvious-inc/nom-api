@@ -8,7 +8,6 @@ from sentry_sdk import set_user
 from starlette.requests import Request
 
 from app.helpers.cache_utils import cache
-from app.helpers.connection import get_db
 from app.helpers.jwt import decode_jwt_token
 from app.services.users import get_user_by_id
 
@@ -17,9 +16,7 @@ oauth2_scheme = HTTPBearer()
 logger = logging.getLogger(__name__)
 
 
-async def get_current_user(
-    request: Request, token: HTTPAuthorizationCredentials = Depends(oauth2_scheme), db=Depends(get_db)
-):
+async def get_current_user(request: Request, token: HTTPAuthorizationCredentials = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate token",
