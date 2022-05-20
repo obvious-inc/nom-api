@@ -143,3 +143,7 @@ async def delete_items(filters: dict, result_obj: Type[APIDocumentType]):
     )
 
     logger.info("%d objects deleted. [object_type=%s", updated_result.modified_count, result_obj.__name__)
+
+
+async def count_items(filters: dict, result_obj: Type[APIDocumentType]) -> int:
+    return await result_obj.collection.count_documents(filter=filters)
