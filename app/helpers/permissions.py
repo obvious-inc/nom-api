@@ -1,11 +1,13 @@
 import functools
 import json
 import logging
+import re
 from enum import Enum
 from typing import Dict, List, Optional, Set
 
 from bson import ObjectId
 from sentry_sdk import capture_exception
+from starlette.requests import Request
 
 from app.exceptions import APIPermissionError
 from app.helpers.cache_utils import cache, convert_redis_list_to_dict
@@ -24,6 +26,7 @@ logger = logging.getLogger(__name__)
 class Permission(Enum):
     MESSAGES_CREATE = "messages.create"
     MESSAGES_LIST = "messages.list"
+    MESSAGES_PUBLIC_LIST = "messages.public.list"
 
     CHANNELS_CREATE = "channels.create"
 
@@ -51,6 +54,32 @@ DEFAULT_DM_PERMISSIONS = [
         Permission.MESSAGES_CREATE,
     ]
 ]
+
+
+async def _fetch_channel_from_request(request: Request) -> Optional[str]:
+    request_path = request.url.path
+    channel_matches = re.findall(r"^/channels/(.{24})/", request_path)
+    if channel_matches:
+        return channel_matches[0]
+
+    body = await request.json()
+    if not body:
+        return None
+
+    for param in ["channel", "channel_id"]:
+        if hasattr(body, param):
+            return body.get(param)
+
+    return None
+
+
+async def _fetch_server_from_request(request: Request) -> Optional[str]:
+    request_path = request.url.path
+    server_matches = re.findall(r"^/servers/(.{24})/", request_path)
+    if not server_matches:
+        return None
+
+    return server_matches[0]
 
 
 async def _fetch_channel_from_kwargs(kwargs: dict) -> Optional[str]:
@@ -96,7 +125,12 @@ async def _calc_final_permissions(
 async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str):
     lua_script = """
         local channel_data = redis.call('HGETALL', KEYS[1])
-        local user_data = redis.call('HGETALL', KEYS[2])
+        local user_data
+        if KEYS[2] then
+            user_data = redis.call('HGETALL', KEYS[2])
+        else
+            user_data = {}
+        end
         local server_id = redis.call('HGET', KEYS[1], 'server')
         local server_data
         if server_id then
@@ -115,7 +149,9 @@ async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str)
         return { channel_data, user_data, server_data, section_data }
         """
     fetch_cached_data = cache.client.register_script(lua_script)
-    channel, user, server, section = await fetch_cached_data(keys=[f"channel:{channel_id}", f"user:{user_id}"])
+    channel, user, server, section = await fetch_cached_data(
+        keys=[f"channel:{channel_id}", f"user:{user_id}" if user_id != "" else user_id]
+    )
     channel_data = await convert_redis_list_to_dict(channel)
     user_data = await convert_redis_list_to_dict(user)
     server_data = await convert_redis_list_to_dict(server)
@@ -123,15 +159,17 @@ async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str)
     return channel_data, user_data, server_data, section_data
 
 
-async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[str], user_id: str) -> List[str]:
-    channel, user, server, section = await fetch_cached_permissions_data(channel_id=channel_id, user_id=user_id)
+async def fetch_user_permissions(
+    channel_id: Optional[str], server_id: Optional[str], user_id: Optional[str]
+) -> List[str]:
+    channel, user, server, section = await fetch_cached_permissions_data(channel_id=channel_id, user_id=user_id or "")
 
     if not channel:
         channel = await fetch_and_cache_channel(channel_id=channel_id)
 
     if channel and channel.get("kind") == "dm":
         members = channel.get("members", []).split(",")
-        if user_id not in members:
+        if not user_id or user_id not in members:
             raise APIPermissionError("user is not a member of DM channel")
         return DEFAULT_DM_PERMISSIONS
 
@@ -144,15 +182,18 @@ async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[
     if not server:
         server = await fetch_and_cache_server(server_id=server_id)
 
-    if server.get("owner") == user_id:
+    if user_id and server.get("owner") == user_id:
         return ALL_PERMISSIONS
 
     # TODO: add admin flag with specific permission overwrite
 
-    if not user or not user.get(f"{server_id}.roles", None):
-        user = await fetch_and_cache_user(user_id=user_id, server_id=server_id)
+    user_roles = {}
+    if user_id:
+        if not user or not user.get(f"{server_id}.roles", None):
+            user = await fetch_and_cache_user(user_id=user_id, server_id=server_id)
 
-    user_roles = await get_user_roles_permissions(user=user, server=server)
+        user_roles = await get_user_roles_permissions(user=user, server=server)
+
     channel_overwrites = {}
     section_overwrites = {}
 
@@ -172,7 +213,26 @@ async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[
         channel_overwrites=channel_overwrites,
     )
 
+    if not user_id:
+        # TODO: this should only be temporary!
+        user_permissions.add("messages.public.list")
+
     return list(user_permissions)
+
+
+async def check_request_permissions(request: Request, permissions: List[str], current_user: Optional[User] = None):
+    channel_id = await _fetch_channel_from_request(request=request)
+    server_id = await _fetch_server_from_request(request=request)
+
+    if not channel_id and not server_id:
+        logger.error("no channel and server found for request URL: %s", request.url)
+        raise Exception(f"no channel and server found for request: {request.url}")
+
+    user_id = str(current_user.pk) if current_user else None
+    user_permissions = await fetch_user_permissions(user_id=user_id, channel_id=channel_id, server_id=server_id)
+
+    if not any([req_permission in user_permissions for req_permission in permissions]):
+        raise APIPermissionError(needed_permissions=permissions, user_permissions=user_permissions)
 
 
 def needs(permissions):
