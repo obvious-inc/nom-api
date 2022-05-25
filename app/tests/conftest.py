@@ -80,7 +80,7 @@ def wallet(private_key: bytes) -> str:
 
 @pytest.fixture
 async def current_user(private_key: bytes, wallet: str) -> User:
-    return await create_user(UserCreateSchema(wallet_address=wallet), fetch_ens=False)
+    return await create_user(UserCreateSchema(wallet_address=wallet))
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ async def guest_user() -> User:
     priv = binascii.hexlify(key).decode("ascii")
     private_key = "0x" + priv
     acct = Account.from_key(private_key)
-    return await create_user(UserCreateSchema(wallet_address=acct.address), fetch_ens=False)
+    return await create_user(UserCreateSchema(wallet_address=acct.address))
 
 
 @pytest.fixture
@@ -99,7 +99,7 @@ async def create_new_user():
         priv = binascii.hexlify(key).decode("ascii")
         private_key = "0x" + priv
         acct = Account.from_key(private_key)
-        return await create_user(UserCreateSchema(wallet_address=acct.address), fetch_ens=False)
+        return await create_user(UserCreateSchema(wallet_address=acct.address))
 
     return _create_new_user
 
