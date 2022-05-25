@@ -23,7 +23,7 @@ from app.schemas.servers import (
 )
 from app.schemas.users import RoleCreateSchema
 from app.services.channels import create_server_channel
-from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
+from app.services.crud import count_items, create_item, get_item, get_item_by_id, get_items, update_item
 from app.services.messages import create_message
 from app.services.roles import create_role
 from app.services.websockets import broadcast_server_event
@@ -129,16 +129,22 @@ async def get_server_members(server_id: str, current_user: User):
     return server_members
 
 
-async def get_servers(current_user: User):
+async def get_servers():
     # TODO: add flag to filter out private/non-exposed servers
     servers = await get_items(filters={}, result_obj=Server)
 
     resp_servers = []
     for server in servers:
-        server_members = await get_items({"server": server.pk}, result_obj=ServerMember, limit=None)
-        resp_servers.append({**server.dump(), "member_count": len(server_members)})
+        server_members_count = await count_items({"server": server.pk}, result_obj=ServerMember)
+        resp_servers.append({**server.dump(), "member_count": server_members_count})
 
     return resp_servers
+
+
+async def get_public_server_info(server_id: str):
+    server = await get_item_by_id(id_=server_id, result_obj=Server)
+    server_members_count = await count_items({"server": server.pk}, result_obj=ServerMember)
+    return {**server.dump(), "member_count": server_members_count}
 
 
 async def update_server(server_id: str, update_data: ServerUpdateSchema, current_user: User):

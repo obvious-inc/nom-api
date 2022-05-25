@@ -613,3 +613,11 @@ class TestServerRoutes:
                 if section_position == update["position"]:
                     assert section["name"] == update["name"]
                     assert section["channels"] == update["channels"]
+
+    @pytest.mark.asyncio
+    async def test_fetch_server_info(self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server):
+        response = await authorized_client.get(f"/servers/{str(server.pk)}")
+        assert response.status_code == 200
+        json_server = response.json()
+        assert json_server["id"] == str(server.id)
+        assert json_server["member_count"] == 1
