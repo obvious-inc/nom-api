@@ -9,12 +9,12 @@ class TestPFP:
         "string_input, contract_address, token_id",
         [
             (
-                "https://opensea.io/assets/0x5180db8f5c931aae63c74266b211f580155ecac8/8900",
+                "https://opensea.io/assets/ethereum/0x5180db8f5c931aae63c74266b211f580155ecac8/8900",
                 "0x5180db8f5c931aae63c74266b211f580155ecac8",
                 "8900",
             ),
             (
-                "https://opensea.io/assets/0x5180db8f5c931aae63c74266b211f580155ecac8/8900?test=1",
+                "https://opensea.io/assets/ethereum/0x5180db8f5c931aae63c74266b211f580155ecac8/8900?test=1",
                 "0x5180db8f5c931aae63c74266b211f580155ecac8",
                 "8900",
             ),
