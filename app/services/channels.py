@@ -96,7 +96,7 @@ async def delete_channel(channel_id, current_user: User):
     if channel.kind == "server":
         server = await channel.server.fetch()
         server_owner = server.owner
-        if not is_channel_owner or not current_user == server_owner:
+        if not is_channel_owner and not current_user == server_owner:
             raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
     elif channel.kind == "dm":
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
