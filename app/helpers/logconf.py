@@ -48,6 +48,7 @@ log_configuration = {
         "app": {"handlers": ["app"], "level": "DEBUG", "propagate": False},
         "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
         "uvicorn.access": {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "gql": {"handlers": ["default"], "level": "WARNING", "propagate": False},
     },
     "root": {"level": "INFO", "handlers": ["default"]},
     "disable_existing_loggers": False,

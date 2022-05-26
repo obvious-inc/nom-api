@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     alchemy_api_key: Optional[str]
     simplehash_api_key: Optional[str]
 
+    lens_protocol_endpoint: str = "https://api.lens.dev"
+
     class Config:
         env_file = ".env"
 
