@@ -70,7 +70,7 @@ async def _replace_with_cloudflare_gateway(token_image_url: str) -> str:
     return token_image_url
 
 
-async def get_nft(contract_address: str, token_id: str, provider: str = "simplehash") -> dict:
+async def get_nft(contract_address: str, token_id: str, provider: str = "alchemy") -> dict:
     if provider == "alchemy":
         return await get_alchemy_nft(contract_address, token_id)
     elif provider == "simplehash":
@@ -79,7 +79,7 @@ async def get_nft(contract_address: str, token_id: str, provider: str = "simpleh
         raise NotImplementedError("no other providers implemented")
 
 
-async def get_nft_image_url(nft, provider: str = "simplehash"):
+async def get_nft_image_url(nft, provider: str = "alchemy"):
     if provider == "alchemy":
         image_url = await get_alchemy_image_url(nft)
     elif provider == "simplehash":
