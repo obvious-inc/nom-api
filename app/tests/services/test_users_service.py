@@ -1,3 +1,5 @@
+import asyncio
+
 import ens
 import pytest
 
@@ -109,3 +111,11 @@ class TestUsersService:
         data = {"pfp": "asdfasdf"}
         updated_data = await set_user_profile_picture(data, current_user, current_user)
         assert "pfp" not in updated_data
+
+    @pytest.mark.asyncio
+    async def test_create_user_has_lens_profile(self, db):
+        user_model = UserCreateSchema(wallet_address="0x3A5bd1E37b099aE3386D13947b6a90d97675e5e3")
+        user = await create_user(user_model=user_model, fetch_lens_profile=True)
+        await asyncio.sleep(2)
+        assert user.lens_id is not None
+        assert user.lens_handle is not None

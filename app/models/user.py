@@ -14,6 +14,8 @@ class User(APIDocument):
     description = fields.StrField()
     online_channels = fields.ListField(fields.StrField(), required=False, default=[])
     status = fields.StrField(default="offline")
+    lens_id = fields.StrField()
+    lens_handle = fields.StrField()
 
     class Meta:
         collection_name = "users"

@@ -5,6 +5,7 @@ from typing import Optional, Union
 from bson import ObjectId
 from fastapi import HTTPException
 
+from app.helpers.lens import LensClient
 from app.helpers.pfp import extract_contract_and_token_from_string, upload_pfp_url_and_update_profile
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address, get_nft, get_nft_image_url, verify_token_ownership
@@ -21,9 +22,14 @@ from app.services.websockets import broadcast_server_event, broadcast_user_serve
 logger = logging.getLogger(__name__)
 
 
-async def create_user(user_model: UserCreateSchema) -> User:
+async def create_user(user_model: UserCreateSchema, fetch_lens_profile=False) -> User:
     user_model.wallet_address = checksum_address(user_model.wallet_address)
-    return await create_item(item=user_model, result_obj=User, user_field=None)
+    user = await create_item(item=user_model, result_obj=User, user_field=None)
+
+    if fetch_lens_profile:
+        await queue_bg_task(LensClient.update_user_lens_data, user)
+
+    return user
 
 
 async def get_user_by_wallet_address(wallet_address: str) -> Union[User, APIDocument]:

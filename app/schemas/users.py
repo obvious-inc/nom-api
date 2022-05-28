@@ -14,6 +14,8 @@ class UserSchema(APIBaseSchema):
     pfp: Optional[dict]
     status: Optional[str]
     description: Optional[str]
+    lens_id: Optional[str]
+    lens_handle: Optional[str]
 
     class Config:
         schema_extra = {
@@ -34,6 +36,8 @@ class UserSchema(APIBaseSchema):
                     "input_image_url": "https://cloudflare-ipfs.com/ipfs/.../image.png",
                 },
                 "status": "online",
+                "lens_id": "0x01",
+                "lens_handle": "vitalik.lens",
             }
         }
 
