@@ -12,6 +12,7 @@ from app.schemas.channels import (
     DMChannelCreateSchema,
     EitherChannel,
     ServerChannelCreateSchema,
+    URLChannelCreateSchema,
 )
 from app.schemas.messages import MessageSchema
 from app.services.channels import (
@@ -34,7 +35,7 @@ router = APIRouter()
     status_code=http.HTTPStatus.CREATED,
 )
 async def post_create_channel(
-    channel: Union[ServerChannelCreateSchema, DMChannelCreateSchema] = Body(...),
+    channel: Union[URLChannelCreateSchema, DMChannelCreateSchema, ServerChannelCreateSchema] = Body(...),
     current_user: User = Depends(get_current_user),
 ):
     return await create_channel(channel, current_user=current_user)

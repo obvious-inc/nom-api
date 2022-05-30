@@ -78,6 +78,25 @@ class ChannelBulkReadStateCreateSchema(APIBaseCreateSchema):
     last_read_at: Optional[datetime]
 
 
+class URLChannelSchema(ChannelSchema):
+    url: str = Field()
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": "61e17018c3ee162141baf5c9",
+                "kind": "url",
+                "url": "https://nouns.wtf/",
+                "owner": "61e17018c3ee162141baf5c1",
+            }
+        }
+
+
+class URLChannelCreateSchema(ChannelCreateSchema):
+    kind: str = "url"
+    url: str
+
+
 # Need this EitherChannel class due to mypy and fastapi issue: https://github.com/tiangolo/fastapi/issues/2279
 class EitherChannel(BaseModel):
-    __root__: Union[ServerChannelSchema, DMChannelSchema]
+    __root__: Union[URLChannelSchema, ServerChannelSchema, DMChannelSchema]

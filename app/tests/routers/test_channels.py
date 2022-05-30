@@ -528,3 +528,20 @@ class TestChannelsRoutes:
         resp_channels = [msg.get("channel") for msg in json_response]
         assert all([channel_id == str(channel2.pk) for channel_id in resp_channels])
         assert all([msg.get("id") in channel2_msgs_ids for msg in json_response])
+
+    @pytest.mark.asyncio
+    async def test_create_url_channel(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        data = {"kind": "url", "url": "https://nouns.wtf"}
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "kind" in json_response
+        assert json_response["kind"] == data["kind"]
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+        assert "url" in json_response
+        assert json_response["url"] == data["url"]

@@ -23,6 +23,7 @@ from app.schemas.channels import (
     ChannelUpdateSchema,
     DMChannelCreateSchema,
     ServerChannelCreateSchema,
+    URLChannelCreateSchema,
 )
 from app.services.crud import (
     create_item,
@@ -65,14 +66,20 @@ async def create_server_channel(
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
+async def create_url_channel(channel_model: URLChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
+    return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
+
+
 async def create_channel(
-    channel_model: Union[DMChannelCreateSchema, ServerChannelCreateSchema], current_user: User
+    channel_model: Union[URLChannelCreateSchema, DMChannelCreateSchema, ServerChannelCreateSchema], current_user: User
 ) -> Union[Channel, APIDocument]:
     kind = channel_model.kind
     if isinstance(channel_model, DMChannelCreateSchema):
         return await create_dm_channel(channel_model, current_user)
     elif isinstance(channel_model, ServerChannelCreateSchema):
         return await create_server_channel(channel_model=channel_model, current_user=current_user)
+    elif isinstance(channel_model, URLChannelCreateSchema):
+        return await create_url_channel(channel_model=channel_model, current_user=current_user)
     else:
         raise Exception(f"unexpected channel kind: {kind}")
 

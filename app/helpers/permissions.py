@@ -128,11 +128,15 @@ async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[
     if not channel:
         channel = await fetch_and_cache_channel(channel_id=channel_id)
 
-    if channel and channel.get("kind") == "dm":
-        members = channel.get("members", []).split(",")
-        if user_id not in members:
-            raise APIPermissionError("user is not a member of DM channel")
-        return DEFAULT_DM_PERMISSIONS
+    if channel:
+        if channel.get("kind") == "dm":
+            members = channel.get("members", []).split(",")
+            if user_id not in members:
+                raise APIPermissionError("user is not a member of DM channel")
+            return DEFAULT_DM_PERMISSIONS
+        elif channel.get("kind") == "url":
+            # TODO: temporary!
+            return ALL_PERMISSIONS
 
     if channel and not server_id:
         server_id = channel.get("server")

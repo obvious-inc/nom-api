@@ -10,7 +10,7 @@ from app.models.server import Server
 
 @instance.register
 class Channel(APIDocument):
-    kind: str = fields.StrField(validate=validate.OneOf(["dm", "server"]), required=True)  # TODO: make enum?
+    kind: str = fields.StrField(validate=validate.OneOf(["dm", "server", "url"]), required=True)  # TODO: make enum?
     owner = fields.ReferenceField("User")
 
     last_message_at = fields.AwareDateTimeField()
@@ -20,6 +20,9 @@ class Channel(APIDocument):
 
     # Server fields
     server = fields.ReferenceField(Server)
+
+    # URL fields
+    url = fields.StrField()
 
     name = fields.StrField()
 
