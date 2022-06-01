@@ -12,5 +12,7 @@ class App(APIDocument):
     client_id = fields.StrField()
     client_secret = fields.StrField()
 
+    permissions = fields.ListField(fields.StrField)
+
     class Meta:
         collection_name = "apps"

@@ -12,6 +12,7 @@ from app.helpers.message_utils import blockify_content, get_message_mentions, st
 from app.helpers.permissions import Permission, needs
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
+from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
 from app.models.message import Message, MessageReaction, WebhookMessage
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 @needs(permissions=[Permission.MESSAGES_CREATE])
-async def create_webhook_message(message_model: WebhookMessageCreateSchema):
+async def create_webhook_message(message_model: WebhookMessageCreateSchema, current_app: App):
     message = await create_item(item=message_model, result_obj=WebhookMessage, user_field=None)
 
     bg_tasks = [

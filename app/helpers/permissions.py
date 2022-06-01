@@ -13,6 +13,7 @@ from app.helpers.channels import fetch_and_cache_channel
 from app.helpers.sections import fetch_and_cache_section
 from app.helpers.servers import fetch_and_cache_server
 from app.helpers.users import fetch_and_cache_user, get_user_roles_permissions
+from app.models.app import App
 from app.models.server import ServerMember
 from app.models.user import User
 from app.services.crud import get_item
@@ -192,20 +193,24 @@ def needs(permissions):
                 raise e
 
             current_user: User = kwargs.get("current_user", None)
-            if not current_user:
-                logger.error("no current user found. args: %s | kwargs: %s", args, kwargs)
-                raise Exception(f"missing current_user from method. args: {args} | kwargs: {kwargs}")
+            current_app: App = kwargs.get("current_app", None)
 
-            channel_id = await _fetch_channel_from_kwargs(kwargs)
-            server_id = await _fetch_server_from_kwargs(kwargs)
+            if current_user:
+                channel_id = await _fetch_channel_from_kwargs(kwargs)
+                server_id = await _fetch_server_from_kwargs(kwargs)
 
-            if not channel_id and not server_id:
-                logger.error("no channel and server found. kwargs: %s", kwargs)
-                raise Exception(f"no channel and server found in kwargs: {kwargs}")
+                if not channel_id and not server_id:
+                    logger.error("no channel and server found. kwargs: %s", kwargs)
+                    raise Exception(f"no channel and server found in kwargs: {kwargs}")
 
-            user_permissions = await fetch_user_permissions(
-                user_id=str(current_user.pk), channel_id=channel_id, server_id=server_id
-            )
+                user_permissions = await fetch_user_permissions(
+                    user_id=str(current_user.pk), channel_id=channel_id, server_id=server_id
+                )
+            elif current_app:
+                user_permissions = current_app.permissions
+            else:
+                logger.error("no current user or app found. args: %s | kwargs: %s", args, kwargs)
+                raise Exception(f"missing current_user or app from method. args: {args} | kwargs: {kwargs}")
 
             if not all([req_permission in user_permissions for req_permission in str_permissions]):
                 raise APIPermissionError(needed_permissions=str_permissions, user_permissions=user_permissions)
