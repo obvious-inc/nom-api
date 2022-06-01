@@ -34,3 +34,16 @@ class Message(APIDocument):
         indexes = [
             (("channel", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)),
         ]
+
+
+@instance.register
+class AppMessage(Message):
+    author = fields.ReferenceField("User", required=False)
+    app = fields.ReferenceField("App", required=True)
+    type = fields.IntField(default=3)
+
+
+@instance.register
+class WebhookMessage(AppMessage):
+    webhook = fields.ReferenceField("Webhook", required=True)
+    type = fields.IntField(default=2)

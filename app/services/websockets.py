@@ -118,9 +118,12 @@ async def pusher_broadcast_messages(
 
 
 async def broadcast_message_event(
-    message_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+    message_id: str, current_user_id: Optional[str], event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
-    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
+    if current_user_id:
+        current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
+    else:
+        current_user = None
     message = await get_item_by_id(id_=message_id, result_obj=Message)
 
     event_data = {"message": message.dump()}

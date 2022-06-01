@@ -14,10 +14,10 @@ from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
-from app.models.message import Message, MessageReaction
+from app.models.message import Message, MessageReaction, WebhookMessage
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
-from app.schemas.messages import MessageCreateSchema, MessageUpdateSchema
+from app.schemas.messages import MessageCreateSchema, MessageUpdateSchema, WebhookMessageCreateSchema
 from app.services.channels import update_channel_last_message
 from app.services.crud import (
     create_item,
@@ -33,6 +33,22 @@ from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_current_user_event, broadcast_message_event, broadcast_users_event
 
 logger = logging.getLogger(__name__)
+
+
+@needs(permissions=[Permission.MESSAGES_CREATE])
+async def create_webhook_message(message_model: WebhookMessageCreateSchema):
+    message = await create_item(item=message_model, result_obj=WebhookMessage, user_field=None)
+
+    bg_tasks = [
+        (broadcast_message_event, (str(message.id), None, WebSocketServerEvent.MESSAGE_CREATE)),
+        (update_channel_last_message, (message.channel, message, None)),
+    ]
+
+    # mypy has some issues with changing Callable signatures so we have to exclude that type check:
+    # https://github.com/python/mypy/issues/10740
+    await queue_bg_tasks(bg_tasks)  # type: ignore[arg-type]
+
+    return message
 
 
 @needs(permissions=[Permission.MESSAGES_CREATE])
