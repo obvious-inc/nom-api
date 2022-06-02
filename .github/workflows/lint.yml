@@ -3,7 +3,7 @@ name: lint
 on: [push, pull_request]
 
 env:
-  PYTHON_VERSION: 3.9.12
+  PYTHON_VERSION: 3.9.13
 
 jobs:
   build:

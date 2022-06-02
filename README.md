@@ -17,7 +17,7 @@ Major tech being used:
 
 ### Prerequisites
 
-We're using Python 3.9.9. Make sure you're using the same version, or use Docker to run this.
+We're using Python 3.9+. Make sure you're using the same version, or use Docker to run this.
 
 ### Installation
 

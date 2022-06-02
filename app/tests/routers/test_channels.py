@@ -1,8 +1,11 @@
+import binascii
 import datetime
+import secrets
 from typing import Callable
 
 import arrow
 import pytest
+from eth_account import Account
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
@@ -15,10 +18,11 @@ from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.sections import SectionCreateSchema
 from app.schemas.servers import ServerCreateSchema
-from app.services.channels import create_server_channel
+from app.services.channels import create_server_channel, get_dm_channels
 from app.services.crud import create_item, get_item
 from app.services.messages import create_message
-from app.services.servers import create_server
+from app.services.servers import create_server, get_user_servers
+from app.services.users import get_user_by_id, get_user_by_wallet_address
 
 
 class TestChannelsRoutes:
@@ -528,3 +532,112 @@ class TestChannelsRoutes:
         resp_channels = [msg.get("channel") for msg in json_response]
         assert all([channel_id == str(channel2.pk) for channel_id in resp_channels])
         assert all([msg.get("id") in channel2_msgs_ids for msg in json_response])
+
+    @pytest.mark.asyncio
+    async def test_create_dm_channel_with_wallets(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        wallets = [current_user.wallet_address]
+        for x in range(3):
+            key = secrets.token_bytes(32)
+            priv = binascii.hexlify(key).decode("ascii")
+            private_key = "0x" + priv
+            acct = Account.from_key(private_key)
+            wallets.append(acct.address)
+
+        data = {"kind": "dm", "members": wallets}
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "kind" in json_response
+        assert json_response["kind"] == data["kind"]
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+        assert "members" in json_response
+        assert str(current_user.id) in json_response["members"]
+        for user_id in json_response["members"]:
+            user = await get_user_by_id(user_id=user_id)
+            assert user.wallet_address in data["members"]
+
+    @pytest.mark.asyncio
+    async def test_create_dm_channel_with_wallets_mix(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        members = []
+        for x in range(2):
+            key = secrets.token_bytes(32)
+            priv = binascii.hexlify(key).decode("ascii")
+            private_key = "0x" + priv
+            acct = Account.from_key(private_key)
+            members.append(acct.address)
+
+        for x in range(3):
+            user = User(wallet_address=f"0x{x}")
+            await user.commit()
+            members.append(str(user.pk))
+
+        data = {"kind": "dm", "members": members}
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "kind" in json_response
+        assert json_response["kind"] == data["kind"]
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+        assert "members" in json_response
+        assert len(json_response["members"]) == len(members) + 1
+        assert str(current_user.id) in json_response["members"]
+        for user_id in json_response["members"][1:]:
+            user = await get_user_by_id(user_id=user_id)
+            assert user.wallet_address in data["members"] or str(user.pk) in data["members"]
+
+    @pytest.mark.asyncio
+    async def test_create_dm_with_wallet_shows_on_signup(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        server: Server,
+        client: AsyncClient,
+        authorized_client: AsyncClient,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        get_signed_message_data: Callable,
+    ):
+        key = secrets.token_bytes(32)
+        priv = binascii.hexlify(key).decode("ascii")
+        private_key = "0x" + priv
+        acct = Account.from_key(private_key)
+        new_user_wallet_addr = acct.address
+
+        members = [str(current_user.pk), new_user_wallet_addr]
+        data = {"kind": "dm", "members": members}
+
+        # create DM with non-user address
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "kind" in json_response
+        assert json_response["kind"] == "dm"
+        assert len(json_response.get("members")) == 2
+
+        guest_user = await get_user_by_wallet_address(wallet_address=new_user_wallet_addr)
+        assert guest_user is not None
+
+        dm_channels = await get_dm_channels(current_user=guest_user)
+        assert len(dm_channels) == 1
+
+        user_servers = await get_user_servers(current_user=guest_user)
+        assert len(user_servers) == 0
+
+        data = await get_signed_message_data(private_key, new_user_wallet_addr)
+        response = await client.post("/auth/login", json=data)
+        assert response.status_code == 201
+
+        user_servers = await get_user_servers(current_user=guest_user)
+        assert len(user_servers) == 1
