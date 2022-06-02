@@ -1,3 +1,4 @@
+from pymongo import ASCENDING
 from umongo import fields
 
 from app.helpers.db_utils import instance
@@ -17,7 +18,7 @@ class User(APIDocument):
 
     class Meta:
         collection_name = "users"
-        indexes = ["wallet_address"]
+        indexes = [[("wallet_address", ASCENDING), {"unique": True}]]
 
 
 @instance.register

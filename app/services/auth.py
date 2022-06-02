@@ -15,7 +15,7 @@ from app.models.user import User
 from app.schemas.auth import AccessTokenSchema, AuthWalletSchema, RefreshTokenCreateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.crud import create_item, delete_items, get_item, get_items, update_item
-from app.services.servers import join_server
+from app.services.servers import get_user_servers, join_server
 from app.services.users import create_user, get_user_by_id, get_user_by_wallet_address
 
 logger = logging.getLogger(__name__)
@@ -76,6 +76,8 @@ async def generate_wallet_token(data: AuthWalletSchema) -> AccessTokenSchema:
     if not user:
         user = await create_user(UserCreateSchema(wallet_address=signed_address))
 
+    servers = await get_user_servers(current_user=user)
+    if not servers:
         # TODO: delete this once things are live
         await add_user_to_default_server(str(user.id))
 
