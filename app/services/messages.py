@@ -57,8 +57,8 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
                 {"channel": (await message.channel.fetch()).dump(), "read_at": message.created_at.isoformat()},
             ),
         ),
-        (post_process_message_creation, (str(message.id), str(current_user.id))),
-        (process_message_mentions, (str(message.id), str(current_user.id))),
+        (post_process_message_creation, (str(message.id),)),
+        (process_message_mentions, (str(message.id),)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -69,7 +69,7 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
 
 
 async def update_message(message_id: str, update_data: MessageUpdateSchema, current_user: User):
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+    message = await get_item_by_id(id_=message_id, result_obj=Message)
     if not message.author == current_user:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
@@ -95,7 +95,7 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
 
 
 async def delete_message(message_id: str, current_user: User):
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+    message = await get_item_by_id(id_=message_id, result_obj=Message)
     can_delete = message.author == current_user
 
     if message.server:
@@ -121,13 +121,13 @@ async def get_messages(channel_id: str, current_user: User, **common_params) -> 
             around_message_id=around_id, filters=filters, current_user=current_user, **common_params
         )
 
-    return await get_items(filters=filters, result_obj=Message, current_user=current_user, **common_params)
+    return await get_items(filters=filters, result_obj=Message, **common_params)
 
 
 async def _get_around_messages(
     around_message_id: str, filters: dict, current_user: User, **common_params
 ) -> List[Message]:
-    around_message = await get_item_by_id(id_=around_message_id, result_obj=Message, current_user=current_user)
+    around_message = await get_item_by_id(id_=around_message_id, result_obj=Message)
 
     limit = common_params.get("limit", 50)
     before_count = limit // 2
@@ -136,10 +136,10 @@ async def _get_around_messages(
         after_count -= 1
 
     before_params = {**common_params, "limit": before_count, "before": around_message_id}
-    before_messages = await get_items(filters=filters, result_obj=Message, current_user=current_user, **before_params)
+    before_messages = await get_items(filters=filters, result_obj=Message, **before_params)
 
     after_params = {**common_params, "limit": after_count, "after": around_message_id}
-    after_messages = await get_items(filters=filters, result_obj=Message, current_user=current_user, **after_params)
+    after_messages = await get_items(filters=filters, result_obj=Message, **after_params)
 
     messages = after_messages[::-1] + [around_message] + before_messages
     return messages
@@ -148,20 +148,19 @@ async def _get_around_messages(
 @needs(permissions=[Permission.MESSAGES_LIST])
 async def get_message(channel_id: str, message_id: str, current_user: User) -> Message:
     filters = {"_id": ObjectId(message_id), "channel": ObjectId(channel_id)}
-    return await get_item(filters=filters, result_obj=Message, current_user=current_user)
+    return await get_item(filters=filters, result_obj=Message)
 
 
 async def add_reaction_to_message(message_id, reaction_emoji: str, current_user: User):
-    message = await get_item_by_id(
-        id_=message_id, result_obj=Message, current_user=current_user
-    )  # type: Union[Message, APIDocument]
+    message: Message = await get_item_by_id(id_=message_id, result_obj=Message)
 
     reaction = MessageReaction(emoji=reaction_emoji, count=1, users=[current_user])
     existing_reactions = message.reactions
 
     found = False
     added = False
-    for existing_reaction in existing_reactions:  # type: MessageReaction
+    existing_reaction: MessageReaction
+    for existing_reaction in existing_reactions:
         if existing_reaction.emoji == reaction.emoji:
             found = True
             if current_user in existing_reaction.users:
@@ -189,9 +188,7 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
 
 
 async def remove_reaction_from_message(message_id, reaction_emoji: str, current_user: User):
-    message = await get_item_by_id(
-        id_=message_id, result_obj=Message, current_user=current_user
-    )  # type: Union[Message, APIDocument]
+    message: Message = await get_item_by_id(id_=message_id, result_obj=Message)
 
     reaction = MessageReaction(emoji=reaction_emoji)
 
@@ -199,7 +196,10 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
 
     remove_index = None
     removed = False
-    for index, existing_reaction in enumerate(existing_reactions):  # type: (int, MessageReaction)
+
+    index: int
+    existing_reaction: MessageReaction
+    for index, existing_reaction in enumerate(existing_reactions):
         if existing_reaction.emoji == reaction.emoji:
             if current_user not in existing_reaction.users:
                 break
@@ -229,9 +229,8 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
     return message
 
 
-async def post_process_message_creation(message_id: str, user_id: str):
-    user = await get_user_by_id(user_id=user_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=user)
+async def post_process_message_creation(message_id: str):
+    message = await get_item_by_id(id_=message_id, result_obj=Message)
     data = {}
 
     # If a gif, embed it
@@ -246,12 +245,11 @@ async def post_process_message_creation(message_id: str, user_id: str):
     if not data:
         return
 
-    await update_item(item=message, data=data, current_user=user)
+    await update_item(item=message, data=data)
 
 
-async def process_message_mentions(message_id: str, user_id: str):
-    current_user = await get_user_by_id(user_id=user_id)
-    message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+async def process_message_mentions(message_id: str):
+    message = await get_item_by_id(id_=message_id, result_obj=Message)
     channel = await message.channel.fetch()
     mentions = await get_message_mentions(message)
     if not mentions:

@@ -7,13 +7,17 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.helpers.cache_utils import cache
+from app.models.channel import Channel
+from app.models.section import Section
 from app.models.server import Server, ServerJoinRule, ServerMember
 from app.models.user import User
 from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
+from app.schemas.sections import SectionCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.channels import create_dm_channel, create_server_channel
-from app.services.crud import get_item, get_items, update_item
+from app.services.crud import create_item, get_item, get_items, update_item
 from app.services.servers import create_server
 from app.services.users import create_user
 
@@ -62,9 +66,7 @@ class TestServerRoutes:
         assert "owner" in json_response
         assert json_response["owner"] == str(current_user.id)
 
-        members = await get_items(
-            {"server": ObjectId(json_response["id"])}, result_obj=ServerMember, current_user=current_user, limit=None
-        )
+        members = await get_items({"server": ObjectId(json_response["id"])}, result_obj=ServerMember, limit=None)
         assert len(members) == 1
         assert members[0].user == current_user
         assert members[0].joined_at < datetime.now(timezone.utc)
@@ -133,9 +135,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
 
         assert member is not None
         assert member.user == guest_user
@@ -146,7 +146,7 @@ class TestServerRoutes:
     ):
         rule = ServerJoinRule(type="allowlist", allowlist_addresses=[])
         await rule.commit()
-        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        updated_server = await update_item(server, data={"join_rules": [rule]})
         assert len(updated_server.join_rules) == 1
 
         server_id = str(server.id)
@@ -154,9 +154,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 403
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is None
 
     @pytest.mark.asyncio
@@ -170,7 +168,7 @@ class TestServerRoutes:
     ):
         rule = ServerJoinRule(type="allowlist", allowlist_addresses=[guest_user.wallet_address])
         await rule.commit()
-        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        updated_server = await update_item(server, data={"join_rules": [rule]})
         assert len(updated_server.join_rules) == 1
 
         server_id = str(server.id)
@@ -178,9 +176,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
 
         assert member is not None
         assert member.user == guest_user
@@ -191,7 +187,7 @@ class TestServerRoutes:
     ):
         rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1985")  # everyone has access to this guild
         await rule.commit()
-        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        updated_server = await update_item(server, data={"join_rules": [rule]})
         assert len(updated_server.join_rules) == 1
 
         server_id = str(server.id)
@@ -199,9 +195,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is not None
         assert member.user == guest_user
 
@@ -211,7 +205,7 @@ class TestServerRoutes:
     ):
         rule = ServerJoinRule(type="guild_xyz", guild_xyz_id="1898")
         await rule.commit()
-        updated_server = await update_item(server, data={"join_rules": [rule]}, current_user=guest_user)
+        updated_server = await update_item(server, data={"join_rules": [rule]})
         assert len(updated_server.join_rules) == 1
 
         server_id = str(server.id)
@@ -219,9 +213,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 403
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is None
 
     @pytest.mark.asyncio
@@ -237,9 +229,7 @@ class TestServerRoutes:
         await guild_rule.commit()
         allowlist_rule = ServerJoinRule(type="allowlist", allowlist_addresses=[guest_user.wallet_address])
         await allowlist_rule.commit()
-        updated_server = await update_item(
-            server, data={"join_rules": [allowlist_rule, guild_rule]}, current_user=guest_user
-        )
+        updated_server = await update_item(server, data={"join_rules": [allowlist_rule, guild_rule]})
         assert len(updated_server.join_rules) == 2
 
         server_id = str(server.id)
@@ -247,9 +237,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
 
         assert member is not None
         assert member.user == guest_user
@@ -267,9 +255,7 @@ class TestServerRoutes:
         await guild_rule.commit()
         allowlist_rule = ServerJoinRule(type="allowlist", allowlist_addresses=[])
         await allowlist_rule.commit()
-        updated_server = await update_item(
-            server, data={"join_rules": [allowlist_rule, guild_rule]}, current_user=guest_user
-        )
+        updated_server = await update_item(server, data={"join_rules": [allowlist_rule, guild_rule]})
         assert len(updated_server.join_rules) == 2
 
         server_id = str(server.id)
@@ -277,9 +263,7 @@ class TestServerRoutes:
         response = await guest_client.post(f"/servers/{server_id}/join")
         assert response.status_code == 201
 
-        member = await get_item(
-            filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember, current_user=guest_user
-        )
+        member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
 
         assert member is not None
         assert member.user == guest_user
@@ -468,6 +452,14 @@ class TestServerRoutes:
     async def test_update_all_sections(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
     ):
+        section_names = ["community", "dao", "offtopic"]
+        sections = []
+        for name in section_names:
+            section = await create_item(
+                item=SectionCreateSchema(name=name, server=str(server.pk)), result_obj=Section, user_field=None
+            )
+            sections.append(section)
+
         channels = []
         for i in range(10):
             channel = await create_server_channel(
@@ -476,13 +468,28 @@ class TestServerRoutes:
             )
             channels.append(channel)
 
-        sections = [
-            {"name": "community", "position": 0, "channels": [str(channel.pk) for channel in channels[:3]]},
-            {"name": "dao", "position": 1, "channels": [str(channel.pk) for channel in channels[3:7]]},
-            {"name": "offtopic", "position": 2, "channels": [str(channel.pk) for channel in channels[7:]]},
+        section_updates = [
+            {
+                "id": str(sections[0].pk),
+                "name": section_names[0],
+                "position": 0,
+                "channels": [str(channel.pk) for channel in channels[:3]],
+            },
+            {
+                "id": str(sections[1].pk),
+                "name": section_names[1],
+                "position": 1,
+                "channels": [str(channel.pk) for channel in channels[3:7]],
+            },
+            {
+                "id": str(sections[2].pk),
+                "name": section_names[2],
+                "position": 2,
+                "channels": [str(channel.pk) for channel in channels[7:]],
+            },
         ]
 
-        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=sections)
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=section_updates)
         assert response.status_code == 200
 
         response = await authorized_client.get(f"/servers/{str(server.pk)}/sections")
@@ -490,13 +497,48 @@ class TestServerRoutes:
         resp_sections = response.json()
         assert len(resp_sections) == 3
         for i in range(3):
-            assert resp_sections[i]["name"] == sections[i]["name"]
-            assert resp_sections[i]["channels"] == sections[i]["channels"]
+            assert resp_sections[i]["name"] == section_updates[i]["name"]
+            assert resp_sections[i]["channels"] == section_updates[i]["channels"]
+
+    @pytest.mark.asyncio
+    async def test_update_sections_remove_channel_from_section(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+    ):
+        section = await create_item(
+            item=SectionCreateSchema(name="test", server=str(server.pk)), result_obj=Section, user_field=None
+        )
+        section_updates = [{"id": str(section.pk), "channels": [str(server_channel.pk)]}]
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=section_updates)
+        assert response.status_code == 200
+
+        cached_section_id = await cache.client.hget(f"channel:{str(server_channel.pk)}", "section")
+        assert cached_section_id == str(section.pk)
+
+        section_updates = [{"id": str(section.pk), "channels": []}]
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=section_updates)
+        assert response.status_code == 200
+
+        cached_section_id = await cache.client.hget(f"channel:{str(server_channel.pk)}", "section")
+        assert cached_section_id == ""
 
     @pytest.mark.asyncio
     async def test_update_all_sections_order(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
     ):
+        section_names = ["community", "dao", "offtopic"]
+        sections = []
+        for name in section_names:
+            section = await create_item(
+                item=SectionCreateSchema(name=name, server=str(server.pk)), result_obj=Section, user_field=None
+            )
+            sections.append(section)
+
         channels = []
         for i in range(10):
             channel = await create_server_channel(
@@ -505,13 +547,28 @@ class TestServerRoutes:
             )
             channels.append(channel)
 
-        sections = [
-            {"name": "community", "position": 0, "channels": [str(channel.pk) for channel in channels[:3]]},
-            {"name": "dao", "position": 1, "channels": [str(channel.pk) for channel in channels[3:7]]},
-            {"name": "offtopic", "position": 2, "channels": [str(channel.pk) for channel in channels[7:]]},
+        section_updates = [
+            {
+                "id": str(sections[0].pk),
+                "name": section_names[0],
+                "position": 0,
+                "channels": [str(channel.pk) for channel in channels[:3]],
+            },
+            {
+                "id": str(sections[1].pk),
+                "name": section_names[1],
+                "position": 1,
+                "channels": [str(channel.pk) for channel in channels[3:7]],
+            },
+            {
+                "id": str(sections[2].pk),
+                "name": section_names[2],
+                "position": 2,
+                "channels": [str(channel.pk) for channel in channels[7:]],
+            },
         ]
 
-        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=sections)
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=section_updates)
         assert response.status_code == 200
 
         response = await authorized_client.get(f"/servers/{str(server.pk)}/sections")
@@ -519,13 +576,28 @@ class TestServerRoutes:
         resp_sections = response.json()
         assert len(resp_sections) == 3
         for i in range(3):
-            assert resp_sections[i]["name"] == sections[i]["name"]
-            assert resp_sections[i]["channels"] == sections[i]["channels"]
+            assert resp_sections[i]["name"] == section_updates[i]["name"]
+            assert resp_sections[i]["channels"] == section_updates[i]["channels"]
 
         update_sections = [
-            {"name": "offtopic", "position": 1, "channels": [str(channel.pk) for channel in channels[7:]]},
-            {"name": "dao", "position": 0, "channels": [str(channel.pk) for channel in channels[3:7]]},
-            {"name": "community", "position": 2, "channels": [str(channel.pk) for channel in channels[:3]]},
+            {
+                "id": str(sections[2].pk),
+                "name": section_names[2],
+                "position": 1,
+                "channels": [str(channel.pk) for channel in channels[7:]],
+            },
+            {
+                "id": str(sections[1].pk),
+                "name": section_names[1],
+                "position": 0,
+                "channels": [str(channel.pk) for channel in channels[3:7]],
+            },
+            {
+                "id": str(sections[0].pk),
+                "name": section_names[0],
+                "position": 2,
+                "channels": [str(channel.pk) for channel in channels[:3]],
+            },
         ]
 
         response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=update_sections)
@@ -541,3 +613,11 @@ class TestServerRoutes:
                 if section_position == update["position"]:
                     assert section["name"] == update["name"]
                     assert section["channels"] == update["channels"]
+
+    @pytest.mark.asyncio
+    async def test_fetch_server_info(self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server):
+        response = await authorized_client.get(f"/servers/{str(server.pk)}")
+        assert response.status_code == 200
+        json_server = response.json()
+        assert json_server["id"] == str(server.id)
+        assert json_server["member_count"] == 1

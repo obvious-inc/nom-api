@@ -53,13 +53,13 @@ class TestCRUDService:
 
     @pytest.mark.asyncio
     async def test_get_items_with_size(self, db: Database, current_user: User, server: Server):
-        members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, current_user=current_user)
+        members = await get_items(filters={"server": server.pk}, result_obj=ServerMember)
         assert members is not None
         assert len(members) == 1
 
     @pytest.mark.asyncio
     async def test_create_items(self, db: Database, current_user: User, server: Server):
-        channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
+        channels = await get_items(filters={}, result_obj=Channel)
         assert len(channels) == 1  # server has 1 channel by default
 
         to_create_channels = []
@@ -73,12 +73,12 @@ class TestCRUDService:
         )
         assert len(object_ids) == 100
 
-        channels = await get_items(filters={}, result_obj=Channel, current_user=current_user)
+        channels = await get_items(filters={}, result_obj=Channel)
         assert len(channels) == 101
 
     @pytest.mark.asyncio
     async def test_get_items_by_id_invalid(self, db: Database, current_user: User, server: Server):
         with pytest.raises(TypeError) as e_info:
-            await get_item_by_id(id_="0", result_obj=Server, current_user=current_user)
+            await get_item_by_id(id_="0", result_obj=Server)
 
         assert "must be ObjectId" in e_info.value.args[0]

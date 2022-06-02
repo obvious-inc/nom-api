@@ -8,7 +8,7 @@ from app.services.crud import update_item
 
 logger = logging.getLogger(__name__)
 
-OPENSEA_LINK_REGEX_PAT = re.compile(r".+?assets/(?P<contract>.+?)/(?P<token_id>.+?)\b")
+OPENSEA_LINK_REGEX_PAT = re.compile(r".+?assets/ethereum/(?P<contract>.+?)/(?P<token_id>.+?)\b")
 RARIBLE_LINK_REGEX_PAT = re.compile(r".+?token/(?P<contract>.+?):(?P<token_id>.+?)\b")
 LOOKS_RARE_LINK_REGEX_PAT = re.compile(r".+?collections/(?P<contract>.+?)/(?P<token_id>.+?)\b")
 ETHERSCAN_NFT_LINK_REGEX_PAT = re.compile(r".+?nft/(?P<contract>.+?)/(?P<token_id>.+?)\b")

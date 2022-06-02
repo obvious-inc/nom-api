@@ -3,7 +3,6 @@ import http
 from fastapi import APIRouter, Body, Depends
 
 from app.dependencies import get_current_user
-from app.helpers.connection import get_db
 from app.models.user import User
 from app.schemas.auth import AccessTokenSchema, AuthWalletSchema, RefreshTokenCreateSchema
 from app.services.auth import create_refresh_token, generate_wallet_token, revoke_tokens
@@ -17,7 +16,7 @@ router = APIRouter()
     response_model=AccessTokenSchema,
     status_code=http.HTTPStatus.CREATED,
 )
-async def login_with_wallet(data: AuthWalletSchema = Body(...), db=Depends(get_db)):
+async def login_with_wallet(data: AuthWalletSchema = Body(...)):
     return await generate_wallet_token(data)
 
 

@@ -45,7 +45,7 @@ async def create_items(
         db_objects.append(db_object)
 
     mongo_objects = [obj.to_mongo() for obj in db_objects]
-    created_result = await result_obj.collection.insert_many(mongo_objects)  # type: InsertManyResult
+    created_result: InsertManyResult = await result_obj.collection.insert_many(mongo_objects)
     created_object_ids = created_result.inserted_ids
 
     logger.info("%d objects created. [object_type=%s", len(created_object_ids), result_obj.__name__)
@@ -53,9 +53,7 @@ async def create_items(
     return created_object_ids
 
 
-async def get_item_by_id(
-    id_: str, result_obj: Type[APIDocumentType], current_user: Optional[User] = None
-) -> APIDocumentType:
+async def get_item_by_id(id_: str, result_obj: Type[APIDocumentType]) -> APIDocumentType:
     if type(id_) == str:
         try:
             id_ = ObjectId(id_)
@@ -74,7 +72,6 @@ async def get_item_by_id(
 async def get_items(
     filters: dict,
     result_obj: Type[APIDocumentType],
-    current_user: Optional[User],
     sort_by_field: str = "created_at",
     sort_by_direction: int = -1,
     before: str = None,
@@ -106,9 +103,7 @@ async def get_items(
     return items
 
 
-async def get_item(
-    filters: dict, result_obj: Type[APIDocumentType], current_user: Optional[User] = None
-) -> APIDocumentType:
+async def get_item(filters: dict, result_obj: Type[APIDocumentType]) -> APIDocumentType:
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
     filters.update(deleted_filter)
 
@@ -116,7 +111,7 @@ async def get_item(
     return item
 
 
-async def update_item(item: APIDocumentType, data: dict, current_user: Optional[User] = None) -> APIDocumentType:
+async def update_item(item: APIDocumentType, data: dict) -> APIDocumentType:
     local_data = dict(data)
     none_fields = [field for field, value in local_data.items() if value is None]
     for field in none_fields:
@@ -132,6 +127,9 @@ async def find_and_update_item(filters: dict, data: dict, result_obj: Type[APIDo
     updated_item = await result_obj.collection.find_one_and_update(
         filter=filters, update=data, return_document=ReturnDocument.AFTER
     )
+    if updated_item:
+        return result_obj.build_from_mongo(updated_item)
+
     return updated_item
 
 
@@ -139,9 +137,13 @@ async def delete_item(item: APIDocumentType) -> APIDocumentType:
     return await update_item(item, {"deleted": True})
 
 
-async def delete_items(filters: dict, result_obj: Type[APIDocumentType], current_user: Optional[User] = None):
-    updated_result = await result_obj.collection.update_many(
+async def delete_items(filters: dict, result_obj: Type[APIDocumentType]):
+    updated_result: UpdateResult = await result_obj.collection.update_many(
         filter=filters, update={"$set": {"deleted": True}}
-    )  # type: UpdateResult
+    )
 
     logger.info("%d objects deleted. [object_type=%s", updated_result.modified_count, result_obj.__name__)
+
+
+async def count_items(filters: dict, result_obj: Type[APIDocumentType]) -> int:
+    return await result_obj.collection.count_documents(filter=filters)

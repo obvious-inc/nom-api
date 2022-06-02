@@ -66,7 +66,7 @@ class TestUsersService:
         "input_str, wallet_address, verified",
         [
             (
-                "https://opensea.io/assets/0x58f7e9810f5559dc759b731843212370363e433e/449",
+                "https://opensea.io/assets/ethereum/0x58f7e9810f5559dc759b731843212370363e433e/449",
                 "0x4977A4b74D3a81dB4c462d9073E10796d0cEE333",
                 True,
             ),

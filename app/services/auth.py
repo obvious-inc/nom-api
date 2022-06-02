@@ -27,7 +27,7 @@ SIGNED_AT_SIGNATURE_REGEX = re.compile(r"issued at:\s?(.+?)$", flags=re.IGNORECA
 
 async def add_user_to_default_server(user_id):
     user = await get_user_by_id(user_id=user_id)
-    servers = await get_items(filters={}, result_obj=Server, current_user=user, limit=1, sort_by_direction=1)
+    servers = await get_items(filters={}, result_obj=Server, sort_by_direction=1, limit=1)
     if not len(servers):
         logger.warning("no servers exist, ignoring default join!")
         return
@@ -127,11 +127,11 @@ async def create_refresh_token(token_model: RefreshTokenCreateSchema) -> AccessT
 
     if refresh_token.used is True:
         logger.warning("tried to reuse already used refresh token. revoking all!")
-        await delete_items(filters={"user": user.pk}, result_obj=RefreshToken, current_user=user)
+        await delete_items(filters={"user": user.pk}, result_obj=RefreshToken)
         await cache.client.delete(f"refresh_tokens:{str(user.pk)}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token already used")
     else:
-        await update_item(refresh_token, data={"used": True}, current_user=user)
+        await update_item(refresh_token, data={"used": True})
 
     access_token = generate_jwt_token({"sub": str(user.id)})
     refresh_token = generate_jwt_token({"sub": str(user.id)}, token_type="refresh")
@@ -149,4 +149,4 @@ async def create_refresh_token(token_model: RefreshTokenCreateSchema) -> AccessT
 
 async def revoke_tokens(current_user: User):
     await cache.client.delete(f"refresh_tokens:{str(current_user.pk)}")
-    await delete_items(filters={"user": current_user.pk}, result_obj=RefreshToken, current_user=current_user)
+    await delete_items(filters={"user": current_user.pk}, result_obj=RefreshToken)

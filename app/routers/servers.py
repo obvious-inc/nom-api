@@ -7,14 +7,21 @@ from starlette import status
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.channels import ServerChannelSchema
-from app.schemas.sections import SectionCreateSchema, SectionSchema
-from app.schemas.servers import ServerCreateSchema, ServerMemberSchema, ServerSchema, ServerUpdateSchema
+from app.schemas.sections import SectionCreateSchema, SectionSchema, SectionServerUpdateSchema
+from app.schemas.servers import (
+    PublicServerSchema,
+    ServerCreateSchema,
+    ServerMemberSchema,
+    ServerSchema,
+    ServerUpdateSchema,
+)
 from app.schemas.users import RoleCreateSchema, RoleSchema
 from app.services.channels import get_server_channels
 from app.services.roles import create_role, get_roles
 from app.services.sections import create_section, get_sections, update_server_sections
 from app.services.servers import (
     create_server,
+    get_public_server_info,
     get_server_members,
     get_servers,
     is_eligible_to_join_server,
@@ -25,9 +32,14 @@ from app.services.servers import (
 router = APIRouter()
 
 
-@router.get("", summary="List servers", response_model=List[ServerSchema])
-async def get_list_servers(current_user: User = Depends(get_current_user)):
-    return await get_servers(current_user=current_user)
+@router.get("", summary="List servers", response_model=List[ServerSchema], dependencies=[Depends(get_current_user)])
+async def get_list_servers():
+    return await get_servers()
+
+
+@router.get("/{server_id}", summary="Get server info", response_model=PublicServerSchema)
+async def get_fetch_server(server_id: str):
+    return await get_public_server_info(server_id=server_id)
 
 
 @router.post(
@@ -106,7 +118,7 @@ async def post_create_section(
     status_code=http.HTTPStatus.OK,
 )
 async def put_update_sections(
-    server_id, section_data: List[SectionCreateSchema], current_user: User = Depends(get_current_user)
+    server_id, section_data: List[SectionServerUpdateSchema], current_user: User = Depends(get_current_user)
 ):
     return await update_server_sections(server_id=server_id, sections=section_data, current_user=current_user)
 

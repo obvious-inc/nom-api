@@ -54,14 +54,14 @@ class TestMessagesRoutes:
         messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=100)
         assert len(messages) == 1
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message == channel_message
         assert len(message.reactions) == 0
 
         response = await authorized_client.post(f"/messages/{str(message.id)}/reactions/🙌")
         assert response.status_code == 204
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert len(message.reactions) == 1
         reaction = message.reactions[0]
         assert reaction.emoji == "🙌"
@@ -84,14 +84,14 @@ class TestMessagesRoutes:
         channel_message.reactions = [MessageReaction(emoji=emoji, count=1, users=[guest_user.pk])]
         await channel_message.commit()
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message == channel_message
         assert len(message.reactions) == 1
 
         response = await authorized_client.post(f"/messages/{str(message.id)}/reactions/{emoji}")
         assert response.status_code == 204
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert len(message.reactions) == 1
         reaction = message.reactions[0]
         assert reaction.emoji == emoji
@@ -114,14 +114,14 @@ class TestMessagesRoutes:
         channel_message.reactions = [MessageReaction(emoji=emoji, count=1, users=[current_user.pk])]
         await channel_message.commit()
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message == channel_message
         assert len(message.reactions) == 1
 
         response = await authorized_client.post(f"/messages/{str(message.id)}/reactions/{emoji}")
         assert response.status_code == 204
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert len(message.reactions) == 1
         reaction = message.reactions[0]
         assert reaction.emoji == emoji
@@ -143,7 +143,7 @@ class TestMessagesRoutes:
         channel_message.reactions = [MessageReaction(emoji="😍", count=1, users=[guest_user.pk])]
         await channel_message.commit()
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message == channel_message
         assert len(message.reactions) == 1
 
@@ -151,7 +151,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post(f"/messages/{str(message.id)}/reactions/{new_emoji}")
         assert response.status_code == 204
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert len(message.reactions) == 2
         first_reaction = message.reactions[0]
         assert first_reaction.emoji == "😍"
@@ -185,14 +185,14 @@ class TestMessagesRoutes:
         channel_message.reactions = [MessageReaction(emoji="😍", count=1, users=[current_user.pk])]
         await channel_message.commit()
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message == channel_message
         assert len(message.reactions) == 1
 
         response = await authorized_client.delete(f"/messages/{str(message.id)}/reactions/😍")
         assert response.status_code == 204
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert len(message.reactions) == 0
 
     @pytest.mark.asyncio
@@ -210,14 +210,14 @@ class TestMessagesRoutes:
         channel_message.reactions = [MessageReaction(emoji="😍", count=2, users=[current_user.pk, guest_user.pk])]
         await channel_message.commit()
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message == channel_message
         assert len(message.reactions) == 1
 
         response = await authorized_client.delete(f"/messages/{str(message.id)}/reactions/😍")
         assert response.status_code == 204
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert len(message.reactions) == 1
         reaction = message.reactions[0]
         assert reaction.emoji == "😍"
@@ -273,7 +273,7 @@ class TestMessagesRoutes:
         messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 0
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.deleted is True
 
     @pytest.mark.asyncio
@@ -308,7 +308,7 @@ class TestMessagesRoutes:
         messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 1
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.deleted is False
 
     @pytest.mark.asyncio
@@ -339,7 +339,7 @@ class TestMessagesRoutes:
         messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
         assert len(messages) == 0
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.deleted is True
 
     @pytest.mark.asyncio
@@ -353,9 +353,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        message = await get_item_by_id(
-            id_=channel_message.id, result_obj=Message, current_user=current_user
-        )  # type: Message
+        message: Message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.edited_at is None
 
         data = {"content": "new message update!"}
@@ -363,7 +361,7 @@ class TestMessagesRoutes:
         assert response.status_code == 200
         json_response = response.json()
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message is not None
         assert json_response["id"] == str(message.id)
         assert json_response["content"] == message.content == data["content"]
@@ -399,7 +397,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 1
         mention_type, mention_ref = mentions[0]
@@ -439,7 +437,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 2
         mention_type, mention_ref = mentions[0]
@@ -480,7 +478,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 1
         mention_type, mention_ref = mentions[0]
@@ -510,7 +508,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 1
         mention_type, mention_ref = mentions[0]
@@ -548,7 +546,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 2
         mention_type, mention_ref = mentions[0]
@@ -584,7 +582,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 1
         mention_type, mention_ref = mentions[0]
@@ -619,7 +617,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 2
         mention_type, mention_ref = mentions[0]
@@ -657,7 +655,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 1
         mention_type, mention_ref = mentions[0]
@@ -706,7 +704,7 @@ class TestMessagesRoutes:
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 3
         mention_type, mention_ref = mentions[0]
@@ -780,9 +778,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        message = await get_item_by_id(
-            id_=channel_message.id, result_obj=Message, current_user=current_user
-        )  # type: Message
+        message: Message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.edited_at is None
 
         content = "new message update!"
@@ -792,7 +788,7 @@ class TestMessagesRoutes:
         assert response.status_code == 200
         json_response = response.json()
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message is not None
         assert json_response["id"] == str(message.id)
         assert json_response["content"] == message.content == content
@@ -825,9 +821,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        message = await get_item_by_id(
-            id_=channel_message.id, result_obj=Message, current_user=current_user
-        )  # type: Message
+        message: Message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.edited_at is None
 
         data: dict = {"blocks": []}
@@ -845,9 +839,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        message = await get_item_by_id(
-            id_=channel_message.id, result_obj=Message, current_user=current_user
-        )  # type: Message
+        message: Message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message.edited_at is None
 
         data = {"content": ""}
@@ -916,7 +908,7 @@ class TestMessagesRoutes:
         response = await guest_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 1
         mention_type, mention_ref = mentions[0]
@@ -963,7 +955,7 @@ class TestMessagesRoutes:
         response = await guest_client.post("/messages", json=data)
         assert response.status_code == 201
         message_id = response.json().get("id")
-        message = await get_item_by_id(id_=message_id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=message_id, result_obj=Message)
         mentions = await get_message_mentions(message)
         assert len(mentions) == 1
         mention_type, mention_ref = mentions[0]
@@ -991,7 +983,7 @@ class TestMessagesRoutes:
         channel_message: Message,
         guest_user: User,
     ):
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message == channel_message
 
         response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(channel_message.id)}")
@@ -1011,7 +1003,7 @@ class TestMessagesRoutes:
         channel_message: Message,
         guest_user: User,
     ):
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message, current_user=current_user)
+        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
         assert message == channel_message
 
         response = await authorized_client.delete("/messages/0")

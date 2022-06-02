@@ -16,11 +16,7 @@ async def get_connection_ready_data(current_user: User) -> dict:
         channels = await get_server_channels(server_id=str(server.id), current_user=current_user)
         members = await get_server_members(server_id=str(server.id), current_user=current_user)
         sections = await get_items(
-            filters={"server": server.pk},
-            result_obj=Section,
-            current_user=current_user,
-            sort_by_field="position",
-            sort_by_direction=1,
+            filters={"server": server.pk}, result_obj=Section, sort_by_field="position", sort_by_direction=1
         )
 
         member_list = []
@@ -60,9 +56,7 @@ async def get_connection_ready_data(current_user: User) -> dict:
 
     data["dms"] = dm_channels
 
-    user_list = await get_items(
-        filters={"_id": {"$in": list(common_user_ids)}}, result_obj=User, current_user=current_user, limit=None
-    )
+    user_list = await get_items(filters={"_id": {"$in": list(common_user_ids)}}, result_obj=User, limit=None)
 
     data["users"] = [
         {

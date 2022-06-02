@@ -11,13 +11,15 @@ from httpx import AsyncClient
 from pymongo.database import Database
 
 from app.models.channel import Channel
+from app.models.section import Section
 from app.models.server import Server
 from app.models.user import User
 from app.schemas.channels import ServerChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
+from app.schemas.sections import SectionCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.services.channels import create_server_channel, get_dm_channels
-from app.services.crud import create_item
+from app.services.crud import create_item, get_item
 from app.services.messages import create_message
 from app.services.servers import create_server, get_user_servers
 from app.services.users import get_user_by_id, get_user_by_wallet_address
@@ -192,6 +194,28 @@ class TestChannelsRoutes:
         assert json_response["name"] == server_channel.name
         assert json_response["server"] == str(server.id)
         assert json_response["deleted"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_channel_in_section(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server, server_channel: Channel
+    ):
+        section = await create_item(
+            item=SectionCreateSchema(name="test", server=str(server.pk)), result_obj=Section, user_field=None
+        )
+        section_updates = [{"id": str(section.pk), "channels": [str(server_channel.pk)]}]
+        response = await authorized_client.put(f"/servers/{str(server.pk)}/sections", json=section_updates)
+        assert response.status_code == 200
+
+        channel_section = await get_item(filters={"channels": server_channel.pk}, result_obj=Section)
+        assert channel_section == section
+
+        response = await authorized_client.delete(f"/channels/{str(server_channel.id)}")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response["deleted"] is True
+
+        channel_section = await get_item(filters={"channels": server_channel.pk}, result_obj=Section)
+        assert channel_section is None
 
     @pytest.mark.asyncio
     async def test_delete_dm_channel(

@@ -44,7 +44,6 @@ async def get_user_profile_by_server_id(server_id: str, current_user: User) -> U
     profile = await get_item(
         filters={"server": ObjectId(server_id), "user": current_user.pk},
         result_obj=ServerMember,
-        current_user=current_user,
     )
 
     if not profile:
@@ -69,8 +68,8 @@ async def set_user_profile_picture(data: dict, current_user: User, profile: Unio
         )
         if owns_nft:
             logger.debug(f"{current_user.id} owns {contract_address}/{token_id}")
-            token = await get_nft(contract_address=contract_address, token_id=token_id, provider="alchemy")
-            image_url = await get_nft_image_url(token, provider="alchemy")
+            token = await get_nft(contract_address=contract_address, token_id=token_id)
+            image_url = await get_nft_image_url(token)
             logger.debug(f"{contract_address}/{token_id} image: {image_url}")
 
             pfp_data.update(
@@ -114,7 +113,6 @@ async def update_user_profile(
         profile = await get_item(
             filters={"server": ObjectId(server_id), "user": current_user.pk},
             result_obj=ServerMember,
-            current_user=current_user,
         )
 
         if not profile:
@@ -151,6 +149,4 @@ async def update_user_profile(
 
 
 async def get_user_read_states(current_user: User):
-    return await get_items(
-        filters={"user": current_user.pk}, result_obj=ChannelReadState, current_user=current_user, limit=None
-    )
+    return await get_items(filters={"user": current_user.pk}, result_obj=ChannelReadState, limit=None)

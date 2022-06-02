@@ -1,10 +1,9 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from starlette import status
 
-from app.helpers.connection import get_db
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.websockets import pusher_client
 from app.services.webhooks import handle_pusher_event
@@ -16,10 +15,7 @@ router = APIRouter()
 
 @router.post("/pusher", include_in_schema=False)
 async def post_pusher_webhooks(
-    request: Request,
-    x_pusher_key: Optional[str] = Header(None),
-    x_pusher_signature: Optional[str] = Header(None),
-    db=Depends(get_db),
+    request: Request, x_pusher_key: Optional[str] = Header(None), x_pusher_signature: Optional[str] = Header(None)
 ):
     # need to use raw body
     data = await request.body()
