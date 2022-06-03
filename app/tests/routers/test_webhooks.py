@@ -13,7 +13,11 @@ from httpx import AsyncClient
 from pymongo.database import Database
 
 from app.config import get_settings
+from app.models.app import App
+from app.models.message import Message
 from app.models.user import User
+from app.models.webhook import Webhook
+from app.services.crud import get_items
 
 
 class TestWebhookRoutes:
@@ -344,3 +348,29 @@ class TestWebhookRoutes:
         await current_user.reload()
         assert current_user.online_channels == []
         assert current_user.status == "offline"
+
+    @pytest.mark.asyncio
+    async def test_post_webhook_message_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        client,
+        current_user: User,
+        integration_app: App,
+        integration_app_webhook: Webhook,
+    ):
+        wh_url = f"/webhooks/{str(integration_app_webhook.pk)}/{integration_app_webhook.secret}"
+        data = {"blocks": [{"type": "paragraph", "children": [{"text": "New webhook!"}]}]}
+
+        messages = await get_items(filters={}, result_obj=Message)
+        assert len(messages) == 0
+
+        response = await client.post(wh_url, json=data)
+        assert response.status_code == 200
+
+        messages = await get_items(filters={}, result_obj=Message)
+        assert len(messages) == 1
+        message = messages[0]
+        assert message.type == 2
+        assert message.app == integration_app
+        assert message.webhook == integration_app_webhook

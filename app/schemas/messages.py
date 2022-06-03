@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import Field, root_validator, validator
+from pydantic import BaseModel, Field, root_validator, validator
 
 from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, APIEmbeddedBaseSchema, PyObjectId
 
@@ -13,7 +13,7 @@ class MessageReactionSchema(APIEmbeddedBaseSchema):
 
 
 class MessageSchema(APIBaseSchema):
-    author: PyObjectId = Field()
+    author: Optional[PyObjectId] = Field()
     server: Optional[PyObjectId] = Field()
     channel: PyObjectId = Field()
     content: Optional[str]
@@ -27,7 +27,7 @@ class MessageSchema(APIBaseSchema):
 
 class MessageCreateSchema(APIBaseCreateSchema):
     server: Optional[str]
-    channel: str
+    channel: Optional[str]
     content: Optional[str] = ""
     blocks: Optional[List[dict]] = []
     reply_to: Optional[str]
@@ -57,3 +57,28 @@ class MessageUpdateSchema(APIBaseUpdateSchema):
         if len(v) == 0:
             raise ValueError("blocks can't be empty list")
         return v
+
+
+class AppMessageCreateSchema(MessageCreateSchema):
+    app: Optional[str]
+    channel: Optional[str]
+    type: int = 3
+
+
+class AppMessageSchema(MessageSchema):
+    app: PyObjectId = Field()
+    type: Optional[int] = 3
+
+
+class WebhookMessageCreateSchema(AppMessageCreateSchema):
+    webhook: Optional[str]
+    type: int = 2
+
+
+class WebhookMessageSchema(AppMessageSchema):
+    webhook: PyObjectId = Field()
+    type: Optional[int] = 2
+
+
+class EitherMessage(BaseModel):
+    __root__: Union[WebhookMessageSchema, AppMessageSchema, MessageSchema]

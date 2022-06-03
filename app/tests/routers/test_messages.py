@@ -10,13 +10,15 @@ from httpx import AsyncClient
 from pymongo.database import Database
 
 from app.helpers.message_utils import blockify_content, get_message_mentions
+from app.models.app import App
 from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
 from app.models.server import Server
 from app.models.user import User
-from app.schemas.messages import MessageCreateSchema
+from app.models.webhook import Webhook
+from app.schemas.messages import MessageCreateSchema, WebhookMessageCreateSchema
 from app.services.crud import create_item, get_item_by_id
-from app.services.messages import get_messages
+from app.services.messages import create_webhook_message, get_messages
 
 
 class TestMessagesRoutes:
@@ -990,6 +992,35 @@ class TestMessagesRoutes:
         assert response.status_code == 200
         json_message = response.json()
         assert json_message["content"] == message.content
+
+    @pytest.mark.asyncio
+    async def test_get_specific_webhook_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        integration_app: App,
+        integration_app_webhook: Webhook,
+    ):
+        wh_message_model = WebhookMessageCreateSchema(
+            webhook=str(integration_app_webhook.pk),
+            app=str(integration_app.pk),
+            content="webhook message!",
+            channel=str(integration_app_webhook.channel.pk),
+        )
+        wh_message = await create_webhook_message(message_model=wh_message_model, current_app=integration_app)
+
+        response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(wh_message.id)}")
+        assert response.status_code == 200
+        json_message = response.json()
+        assert json_message["content"] == wh_message.content
+        assert json_message.get("type") == 2
+        assert json_message.get("author") is None
+        assert json_message.get("app") == str(integration_app.pk)
+        assert json_message.get("webhook") == str(integration_app_webhook.pk)
 
     @pytest.mark.asyncio
     async def test_delete_message_invalid_id(

@@ -1,3 +1,4 @@
+from app.models.app import App
 from app.models.section import Section
 from app.models.user import User
 from app.services.channels import get_dm_channels, get_server_channels
@@ -10,6 +11,11 @@ async def get_connection_ready_data(current_user: User) -> dict:
     data = {"user": current_user.dump(), "servers": []}
     servers = await get_user_servers(current_user=current_user)
     common_user_ids = set()
+
+    apps = await get_items(filters={}, result_obj=App)
+
+    # TODO: pass only installed apps
+    data["apps"] = [{"id": str(app.id), "name": app.name, "created_at": app.created_at.isoformat()} for app in apps]
 
     for server in servers:
         server_data = {"id": str(server.id), "name": server.name, "owner": str(server.owner.pk)}
