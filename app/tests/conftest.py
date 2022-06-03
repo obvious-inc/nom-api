@@ -17,16 +17,20 @@ from app.helpers.cache_utils import cache
 from app.helpers.connection import get_client, get_db
 from app.helpers.jwt import generate_jwt_token
 from app.main import get_application
+from app.models.app import App
 from app.models.auth import RefreshToken
 from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
+from app.schemas.apps import AppCreateSchema
 from app.schemas.auth import AuthWalletSchema, RefreshTokenCreateSchema
 from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
+from app.schemas.webhooks import WebhookCreateSchema
+from app.services.apps import create_app, create_app_webhook
 from app.services.auth import generate_wallet_token
 from app.services.channels import create_dm_channel, create_server_channel
 from app.services.crud import create_item
@@ -132,6 +136,18 @@ async def channel_message(current_user: User, server: Server, server_channel: Ch
 async def direct_message(current_user: User, server: Server, dm_channel: Channel):
     message = MessageCreateSchema(channel=str(dm_channel.id), content="hey")
     return await create_message(message_model=message, current_user=current_user)
+
+
+@pytest.fixture
+async def integration_app(current_user: User):
+    app_schema = AppCreateSchema(name="github", permissions=["messages.create"])
+    return await create_app(model=app_schema, current_user=current_user)
+
+
+@pytest.fixture
+async def integration_app_webhook(current_user: User, integration_app: App, server_channel: Channel):
+    schema = WebhookCreateSchema(channel=str(server_channel.pk))
+    return await create_app_webhook(app_id=str(integration_app.pk), webhook_data=schema, current_user=current_user)
 
 
 @pytest.fixture

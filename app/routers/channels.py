@@ -13,7 +13,7 @@ from app.schemas.channels import (
     EitherChannel,
     ServerChannelCreateSchema,
 )
-from app.schemas.messages import AppMessageSchema, MessageSchema, WebhookMessageSchema
+from app.schemas.messages import EitherMessage
 from app.services.channels import (
     bulk_mark_channels_as_read,
     create_channel,
@@ -40,11 +40,7 @@ async def post_create_channel(
     return await create_channel(channel, current_user=current_user)
 
 
-@router.get(
-    "/{channel_id}/messages",
-    response_description="Get latest messages",
-    response_model=List[Union[WebhookMessageSchema, AppMessageSchema, MessageSchema]],
-)
+@router.get("/{channel_id}/messages", response_description="Get latest messages", response_model=List[EitherMessage])
 async def get_list_messages(
     channel_id,
     common_params: dict = Depends(common_parameters),
@@ -54,7 +50,7 @@ async def get_list_messages(
     return messages
 
 
-@router.get("/{channel_id}/messages/{message_id}", response_description="Get message", response_model=MessageSchema)
+@router.get("/{channel_id}/messages/{message_id}", response_description="Get message", response_model=EitherMessage)
 async def get_specific_message(channel_id, message_id, current_user: User = Depends(get_current_user)):
     return await get_message(channel_id=channel_id, message_id=message_id, current_user=current_user)
 

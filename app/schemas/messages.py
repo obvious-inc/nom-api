@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import Field, root_validator, validator
+from pydantic import BaseModel, Field, root_validator, validator
 
 from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, APIEmbeddedBaseSchema, PyObjectId
 
@@ -78,3 +78,7 @@ class WebhookMessageCreateSchema(AppMessageCreateSchema):
 class WebhookMessageSchema(AppMessageSchema):
     webhook: PyObjectId = Field()
     type: Optional[int] = 2
+
+
+class EitherMessage(BaseModel):
+    __root__: Union[WebhookMessageSchema, AppMessageSchema, MessageSchema]

@@ -10,17 +10,19 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.models.app import App
 from app.models.channel import Channel
 from app.models.section import Section
 from app.models.server import Server
 from app.models.user import User
+from app.models.webhook import Webhook
 from app.schemas.channels import ServerChannelCreateSchema
-from app.schemas.messages import MessageCreateSchema
+from app.schemas.messages import MessageCreateSchema, WebhookMessageCreateSchema
 from app.schemas.sections import SectionCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.services.channels import create_server_channel, get_dm_channels
 from app.services.crud import create_item, get_item
-from app.services.messages import create_message
+from app.services.messages import create_message, create_webhook_message
 from app.services.servers import create_server, get_user_servers
 from app.services.users import get_user_by_id, get_user_by_wallet_address
 
@@ -641,3 +643,43 @@ class TestChannelsRoutes:
 
         user_servers = await get_user_servers(current_user=guest_user)
         assert len(user_servers) == 1
+
+    @pytest.mark.asyncio
+    async def test_fetch_channel_messages_with_webhooks(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        integration_app: App,
+        integration_app_webhook: Webhook,
+    ):
+        message_model = MessageCreateSchema(server=str(server.id), channel=str(server_channel.pk), content="hey")
+        await create_message(message_model=message_model, current_user=current_user)
+
+        wh_message_model = WebhookMessageCreateSchema(
+            webhook=str(integration_app_webhook.pk),
+            app=str(integration_app.pk),
+            content="webhook message!",
+            channel=str(integration_app_webhook.channel.pk),
+        )
+        await create_webhook_message(message_model=wh_message_model, current_app=integration_app)
+
+        response = await authorized_client.get(f"/channels/{str(server_channel.pk)}/messages")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 2
+
+        wh_message = json_response[0]
+        assert wh_message.get("type") == 2
+        assert wh_message.get("author") is None
+        assert wh_message.get("app") == str(integration_app.pk)
+        assert wh_message.get("webhook") == str(integration_app_webhook.pk)
+
+        normal_message = json_response[1]
+        assert normal_message.get("type") == 0
+        assert normal_message.get("author") == str(current_user.pk)
+        assert "app" not in normal_message
+        assert "webhook" not in normal_message
