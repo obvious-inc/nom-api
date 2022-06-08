@@ -22,6 +22,9 @@ async def is_user_in_channel(user: User, channel: Channel) -> bool:
             return True
     elif channel.kind == "dm":
         return user in channel.members
+    elif channel.kind == "url":
+        # TODO: temporary
+        return user == channel.owner
 
     return False
 

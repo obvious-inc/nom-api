@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sentry_sdk import capture_exception
 from starlette import status
 
+from app.helpers.channels import is_user_in_channel
 from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
@@ -215,3 +216,11 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
     )
 
     return updated_item
+
+
+async def get_channel(channel_id: str, current_user: User):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if not await is_user_in_channel(user=current_user, channel=channel):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    return channel

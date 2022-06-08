@@ -19,6 +19,7 @@ from app.services.channels import (
     create_channel,
     create_typing_indicator,
     delete_channel,
+    get_channel,
     mark_channel_as_read,
     update_channel,
 )
@@ -49,6 +50,11 @@ async def post_create_channel(
 )
 async def get_list_messages(channel_id, common_params: dict = Depends(common_parameters)):
     return await get_messages(channel_id=channel_id, **common_params)
+
+
+@router.get("/{channel_id}", response_description="Get channel info", response_model=EitherChannel)
+async def get_fetch_channel(channel_id, current_user: User = Depends(get_current_user)):
+    return await get_channel(channel_id=channel_id, current_user=current_user)
 
 
 @router.get(
