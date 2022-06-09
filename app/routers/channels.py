@@ -4,7 +4,7 @@ from typing import List, Optional, Union
 
 from fastapi import APIRouter, Body, Depends
 
-from app.dependencies import common_parameters, get_current_user
+from app.dependencies import PermissionsChecker, common_parameters, get_current_user
 from app.models.user import User
 from app.schemas.channels import (
     ChannelBulkReadStateCreateSchema,
@@ -32,6 +32,7 @@ router = APIRouter()
     response_description="Create new channel",
     response_model=EitherChannel,
     status_code=http.HTTPStatus.CREATED,
+    dependencies=[Depends(PermissionsChecker(permissions=["channels.create"]))],
 )
 async def post_create_channel(
     channel: Union[ServerChannelCreateSchema, DMChannelCreateSchema] = Body(...),
@@ -40,19 +41,24 @@ async def post_create_channel(
     return await create_channel(channel, current_user=current_user)
 
 
-@router.get("/{channel_id}/messages", response_description="Get latest messages", response_model=List[EitherMessage])
-async def get_list_messages(
-    channel_id,
-    common_params: dict = Depends(common_parameters),
-    current_user: User = Depends(get_current_user),
-):
-    messages = await get_messages(channel_id=channel_id, current_user=current_user, **common_params)
-    return messages
+@router.get(
+    "/{channel_id}/messages",
+    response_description="Get latest messages",
+    response_model=List[EitherMessage],
+    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["messages.list"]))],
+)
+async def get_list_messages(channel_id, common_params: dict = Depends(common_parameters)):
+    return await get_messages(channel_id=channel_id, **common_params)
 
 
-@router.get("/{channel_id}/messages/{message_id}", response_description="Get message", response_model=EitherMessage)
-async def get_specific_message(channel_id, message_id, current_user: User = Depends(get_current_user)):
-    return await get_message(channel_id=channel_id, message_id=message_id, current_user=current_user)
+@router.get(
+    "/{channel_id}/messages/{message_id}",
+    response_description="Get message",
+    response_model=EitherMessage,
+    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["messages.list"]))],
+)
+async def get_specific_message(channel_id, message_id):
+    return await get_message(channel_id=channel_id, message_id=message_id)
 
 
 @router.delete("/{channel_id}", response_description="Delete channel", response_model=EitherChannel)

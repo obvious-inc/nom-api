@@ -53,7 +53,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=100)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=100)
         assert len(messages) == 1
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
@@ -266,13 +266,13 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 204
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 0
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
@@ -300,14 +300,14 @@ class TestMessagesRoutes:
             user_field="author",
         )
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         guest_2_client = await get_authorized_client(guest_user_2)
         response = await guest_2_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 403
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
@@ -332,13 +332,13 @@ class TestMessagesRoutes:
             user_field="author",
         )
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 204
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 0
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
@@ -859,7 +859,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         data = {"content": "reply!", "server": str(server.id), "channel": str(server_channel.id)}
@@ -872,7 +872,7 @@ class TestMessagesRoutes:
         assert json_response["channel"] == data["channel"] == str(server_channel.id)
         assert json_response["reply_to"] == str(channel_message.id)
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 2
 
     @pytest.mark.asyncio
@@ -1011,7 +1011,7 @@ class TestMessagesRoutes:
             content="webhook message!",
             channel=str(integration_app_webhook.channel.pk),
         )
-        wh_message = await create_webhook_message(message_model=wh_message_model, current_app=integration_app)
+        wh_message = await create_webhook_message(message_model=wh_message_model)
 
         response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(wh_message.id)}")
         assert response.status_code == 200
@@ -1061,7 +1061,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 10
 
         item_pos = 4
         before_id = messages[item_pos].pk
@@ -1098,7 +1098,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 10
 
         item_pos = 4
         before_id = messages[item_pos].pk
@@ -1135,7 +1135,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 3
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 3
 
         item_pos = 2
         before_id = messages[item_pos].pk
@@ -1167,7 +1167,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 3
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 3
 
         item_pos = 0
         before_id = messages[item_pos].pk
@@ -1199,7 +1199,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 10
 
         item_pos = 4
         limit = 5
@@ -1247,7 +1247,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 10
 
         item_pos = 4
         limit = 4

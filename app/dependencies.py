@@ -67,17 +67,17 @@ async def get_current_user_non_error(
 
 
 class PermissionsChecker:
-    def __init__(self, needs_user: bool = True, needs_permissions: List[str] = None):
+    def __init__(self, needs_user: bool = True, permissions: List[str] = None):
         self.needs_user = needs_user
-        self.needs_permissions = needs_permissions
+        self.permissions = permissions
 
     async def __call__(self, request: Request, user: Union[User, Exception] = Depends(get_current_user_non_error)):
         if self.needs_user and isinstance(user, Exception):
             raise user
 
-        if self.needs_permissions:
+        if self.permissions:
             user = cast(User, user)
-            await check_request_permissions(request=request, current_user=user, permissions=self.needs_permissions)
+            await check_request_permissions(request=request, current_user=user, permissions=self.permissions)
 
 
 async def common_parameters(

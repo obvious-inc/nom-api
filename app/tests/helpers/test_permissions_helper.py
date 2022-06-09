@@ -1,8 +1,6 @@
 import pytest
-from bson import ObjectId
 
-from app.helpers.permissions import Permission, _calc_final_permissions, needs, user_belongs_to_server
-from app.models.channel import Channel
+from app.helpers.permissions import _calc_final_permissions, user_belongs_to_server
 from app.models.server import Server
 from app.models.user import User
 from app.services.servers import join_server
@@ -83,56 +81,3 @@ class TestPermissionsHelper:
         u_perms = list(user_permissions)
         calc_result = all([r_perm in u_perms for r_perm in required])
         assert calc_result == expected_result
-
-    @pytest.mark.asyncio
-    async def test_permissions_decorator_no_current_user(self):
-        @needs(permissions=[Permission.MESSAGES_CREATE])
-        async def to_be_decorated():
-            pass
-
-        with pytest.raises(Exception) as exc_info:
-            await to_be_decorated()
-
-        assert "missing current_user" in exc_info.value.args[0]
-
-    @pytest.mark.asyncio
-    async def test_permissions_decorator_missing_channel_and_server(self, current_user: User):
-        @needs(permissions=[Permission.MESSAGES_CREATE])
-        async def to_be_decorated(user):
-            pass
-
-        with pytest.raises(Exception) as exc_info:
-            await to_be_decorated(current_user=current_user)
-
-        assert "no channel and server found" in exc_info.value.args[0]
-
-    @pytest.mark.asyncio
-    async def test_permissions_decorator_non_existing_channel(self, current_user: User):
-        @needs(permissions=[Permission.MESSAGES_CREATE])
-        async def to_be_decorated(user):
-            pass
-
-        with pytest.raises(Exception) as exc_info:
-            await to_be_decorated(current_user=current_user, channel_id=str(ObjectId()))
-
-        assert "need a server_id" in exc_info.value.args[0]
-
-    @pytest.mark.asyncio
-    async def test_permissions_decorator_ok(self, current_user: User, server_channel: Channel):
-        @needs(permissions=[Permission.MESSAGES_CREATE])
-        async def to_be_decorated(current_user: User = None, channel_id: str = ""):
-            assert current_user is not None
-            assert channel_id == str(server_channel.pk)
-            server = await server_channel.server.fetch()
-            assert current_user == server.owner
-
-        await to_be_decorated(current_user=current_user, channel_id=str(server_channel.pk))
-
-    @pytest.mark.asyncio
-    async def test_permissions_decorator_unknown_permission(self, current_user: User, server_channel: Channel):
-        @needs(permissions=["stuff.hack"])
-        async def to_be_decorated():
-            pass
-
-        with pytest.raises(AttributeError):
-            await to_be_decorated(current_user=current_user, channel_id=str(server_channel.pk))

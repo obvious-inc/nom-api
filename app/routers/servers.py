@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Body, Depends, HTTPException
 from starlette import status
 
-from app.dependencies import get_current_user
+from app.dependencies import PermissionsChecker, get_current_user
 from app.models.user import User
 from app.schemas.channels import ServerChannelSchema
 from app.schemas.sections import SectionCreateSchema, SectionSchema, SectionServerUpdateSchema
@@ -123,9 +123,14 @@ async def put_update_sections(
     return await update_server_sections(server_id=server_id, sections=section_data, current_user=current_user)
 
 
-@router.get("/{server_id}/roles", summary="List roles", response_model=List[RoleSchema])
-async def get_list_roles(server_id, current_user: User = Depends(get_current_user)):
-    return await get_roles(server_id=server_id, current_user=current_user)
+@router.get(
+    "/{server_id}/roles",
+    summary="List roles",
+    response_model=List[RoleSchema],
+    dependencies=[Depends(PermissionsChecker(permissions=["roles.list"]))],
+)
+async def get_list_roles(server_id):
+    return await get_roles(server_id=server_id)
 
 
 @router.post(
@@ -133,6 +138,7 @@ async def get_list_roles(server_id, current_user: User = Depends(get_current_use
     summary="Create a role",
     response_model=RoleSchema,
     status_code=http.HTTPStatus.CREATED,
+    dependencies=[Depends(PermissionsChecker(permissions=["roles.create"]))],
 )
 async def post_create_role(server_id, role_data: RoleCreateSchema, current_user: User = Depends(get_current_user)):
     return await create_role(server_id=server_id, role_model=role_data, current_user=current_user)

@@ -9,10 +9,8 @@ from fastapi import HTTPException
 
 from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
-from app.helpers.permissions import Permission, needs
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
-from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
 from app.models.message import Message, MessageReaction, WebhookMessage
@@ -36,8 +34,7 @@ from app.services.websockets import broadcast_current_user_event, broadcast_mess
 logger = logging.getLogger(__name__)
 
 
-@needs(permissions=[Permission.MESSAGES_CREATE])
-async def create_webhook_message(message_model: WebhookMessageCreateSchema, current_app: App):
+async def create_webhook_message(message_model: WebhookMessageCreateSchema):
     message = await create_item(item=message_model, result_obj=WebhookMessage, user_field=None)
 
     bg_tasks = [
@@ -52,7 +49,6 @@ async def create_webhook_message(message_model: WebhookMessageCreateSchema, curr
     return message
 
 
-@needs(permissions=[Permission.MESSAGES_CREATE])
 async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
     if message_model.blocks and not message_model.content:
         message_model.content = await stringify_blocks(message_model.blocks)
@@ -129,21 +125,16 @@ async def delete_message(message_id: str, current_user: User):
     await delete_item(item=message)
 
 
-@needs(permissions=[Permission.MESSAGES_LIST])
-async def get_messages(channel_id: str, current_user: User, **common_params) -> List[Message]:
+async def get_messages(channel_id: str, **common_params) -> List[Message]:
     filters = {"channel": ObjectId(channel_id)}
     around_id = common_params.pop("around", None)
     if around_id:
-        return await _get_around_messages(
-            around_message_id=around_id, filters=filters, current_user=current_user, **common_params
-        )
+        return await _get_around_messages(around_message_id=around_id, filters=filters, **common_params)
 
     return await get_items(filters=filters, result_obj=Message, **common_params)
 
 
-async def _get_around_messages(
-    around_message_id: str, filters: dict, current_user: User, **common_params
-) -> List[Message]:
+async def _get_around_messages(around_message_id: str, filters: dict, **common_params) -> List[Message]:
     around_message = await get_item_by_id(id_=around_message_id, result_obj=Message)
 
     limit = common_params.get("limit", 50)
@@ -162,8 +153,7 @@ async def _get_around_messages(
     return messages
 
 
-@needs(permissions=[Permission.MESSAGES_LIST])
-async def get_message(channel_id: str, message_id: str, current_user: User) -> Message:
+async def get_message(channel_id: str, message_id: str) -> Message:
     filters = {"_id": ObjectId(message_id), "channel": ObjectId(channel_id)}
     return await get_item(filters=filters, result_obj=Message)
 

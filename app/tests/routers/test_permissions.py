@@ -46,7 +46,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -86,7 +85,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=current_user,
-            ignore_permissions=True,
             internal=True,
         )
 
@@ -124,7 +122,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -170,7 +167,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -219,7 +215,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -276,7 +271,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -339,7 +333,6 @@ class TestPermissionsRoutes:
                 server_id=str(server.pk),
                 role_model=role_schema,
                 current_user=guest_user,
-                ignore_permissions=True,
                 internal=True,
             )
             roles.append(role)
@@ -411,7 +404,6 @@ class TestPermissionsRoutes:
                 server_id=str(server.pk),
                 role_model=role_schema,
                 current_user=guest_user,
-                ignore_permissions=True,
                 internal=True,
             )
             roles.append(role)
