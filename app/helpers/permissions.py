@@ -247,7 +247,7 @@ async def check_request_permissions(request: Request, permissions: List[str], cu
     user_id = str(current_user.pk) if current_user else None
     user_permissions = await fetch_user_permissions(user_id=user_id, channel_id=channel_id, server_id=server_id)
 
-    if not any([req_permission in user_permissions for req_permission in permissions]):
+    if not all([req_permission in user_permissions for req_permission in permissions]):
         raise APIPermissionError(needed_permissions=permissions, user_permissions=user_permissions)
 
 

@@ -71,12 +71,21 @@ class PermissionsChecker:
         self.needs_user = needs_user
         self.permissions = permissions
 
-    async def __call__(self, request: Request, user: Union[User, Exception] = Depends(get_current_user_non_error)):
-        if self.needs_user and isinstance(user, Exception):
-            raise user
+    async def __call__(
+        self, request: Request, user_or_exception: Union[User, Exception, None] = Depends(get_current_user_non_error)
+    ):
+        if isinstance(user_or_exception, Exception):
+            raise user_or_exception
+
+        if self.needs_user and user_or_exception is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         if self.permissions:
-            user = cast(User, user)
+            user = cast(User, user_or_exception)
             await check_request_permissions(request=request, current_user=user, permissions=self.permissions)
 
 
