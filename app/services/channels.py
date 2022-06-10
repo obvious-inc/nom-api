@@ -2,7 +2,7 @@ import http
 import logging
 import re
 from datetime import datetime, timezone
-from typing import List, Optional, Union
+from typing import List, Optional, Union, cast
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -25,6 +25,7 @@ from app.schemas.channels import (
     ChannelUpdateSchema,
     DMChannelCreateSchema,
     ServerChannelCreateSchema,
+    TopicChannelCreateSchema,
 )
 from app.schemas.users import UserCreateSchema
 from app.services.crud import (
@@ -42,20 +43,24 @@ from app.services.websockets import broadcast_channel_event
 logger = logging.getLogger(__name__)
 
 
-async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
-    dm_users = []
-    for member in channel_model.members:
+async def _validate_model_members(channel_model: Union[TopicChannelCreateSchema, DMChannelCreateSchema]):
+    final_members = []
+    schema_members = channel_model.members or []
+    for member in schema_members:
         if re.match(r"^0x[a-fA-F\d]{40}$", member):
             wallet_addr = checksum_address(member)
             user = await get_user_by_wallet_address(wallet_address=wallet_addr)
             if not user:
                 user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr), fetch_ens=True)
-            dm_users.append(user.pk)
+            final_members.append(user.pk)
         else:
-            dm_users.append(ObjectId(member))
+            final_members.append(ObjectId(member))
 
-    channel_model.members = list(set(dm_users))
+    channel_model.members = list(set(final_members))
 
+
+async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
+    await _validate_model_members(channel_model)
     if current_user.pk not in channel_model.members:
         channel_model.members.insert(0, current_user.pk)
 
@@ -80,16 +85,33 @@ async def create_server_channel(
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
-async def create_channel(
-    channel_model: Union[DMChannelCreateSchema, ServerChannelCreateSchema], current_user: User
+async def create_topic_channel(
+    channel_model: TopicChannelCreateSchema, current_user: User
 ) -> Union[Channel, APIDocument]:
-    kind = channel_model.kind
-    if isinstance(channel_model, DMChannelCreateSchema):
-        return await create_dm_channel(channel_model, current_user)
-    elif isinstance(channel_model, ServerChannelCreateSchema):
-        return await create_server_channel(channel_model=channel_model, current_user=current_user)
+    await _validate_model_members(channel_model)
+    if not channel_model.members:
+        channel_model.members = [current_user.pk]
     else:
-        raise Exception(f"unexpected channel kind: {kind}")
+        if current_user.pk not in channel_model.members:
+            channel_model.members.insert(0, current_user.pk)
+    return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
+
+
+async def create_channel(
+    channel_model: Union[ServerChannelCreateSchema, TopicChannelCreateSchema, DMChannelCreateSchema],
+    current_user: User,
+) -> Union[Channel, APIDocument]:
+    if channel_model.kind == "dm":
+        channel_model = cast(DMChannelCreateSchema, channel_model)
+        return await create_dm_channel(channel_model, current_user)
+    elif channel_model.kind == "server":
+        channel_model = cast(ServerChannelCreateSchema, channel_model)
+        return await create_server_channel(channel_model=channel_model, current_user=current_user)
+    elif channel_model.kind == "topic":
+        channel_model = cast(TopicChannelCreateSchema, channel_model)
+        return await create_topic_channel(channel_model=channel_model, current_user=current_user)
+    else:
+        raise Exception(f"unexpected channel kind: {channel_model.kind}")
 
 
 async def get_server_channels(server_id, current_user: User) -> List[Union[Channel, APIDocument]]:

@@ -683,3 +683,22 @@ class TestChannelsRoutes:
         assert normal_message.get("author") == str(current_user.pk)
         assert "app" not in normal_message
         assert "webhook" not in normal_message
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        data = {"kind": "topic", "name": "my-fav-channel"}
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "kind" in json_response
+        assert json_response["kind"] == data["kind"]
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+        assert "name" in json_response
+        assert json_response["name"] == data["name"]
+        assert "members" in json_response
+        assert len(json_response["members"]) == 1
+        assert json_response["members"][0] == str(current_user.pk)

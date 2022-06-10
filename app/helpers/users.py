@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
 
@@ -28,7 +28,10 @@ async def get_user_roles_permissions(user: Dict[str, Any], server: Dict[str, Any
     return result
 
 
-async def fetch_and_cache_user(user_id: str, server_id: str):
+async def fetch_and_cache_user(user_id: str, server_id: Optional[str]):
+    if not server_id:
+        return {}
+
     member = await get_item(filters={"server": ObjectId(server_id), "user": ObjectId(user_id)}, result_obj=ServerMember)
     if not member:
         logger.warning("user (%s) doesn't belong to server (%s)", user_id, server_id)

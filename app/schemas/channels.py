@@ -42,6 +42,23 @@ class ServerChannelSchema(ChannelSchema):
         }
 
 
+class TopicChannelSchema(ChannelSchema):
+    name: str
+    description: Optional[str]
+    members: List[PyObjectId] = []
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": "61e17018c3ee162141baf5c9",
+                "kind": "topic",
+                "name": "noun-o-clock",
+                "description": "This is a public channel for Noun fans to chat.",
+                "members": ["61e17018c3ee162141baf5c1", "61e17018c3ee162141baf5c2", "61e17018c3ee162141baf5c3"],
+            }
+        }
+
+
 class ChannelCreateSchema(APIBaseCreateSchema):
     kind: str
 
@@ -49,6 +66,13 @@ class ChannelCreateSchema(APIBaseCreateSchema):
 class DMChannelCreateSchema(ChannelCreateSchema):
     kind: str = "dm"
     members: List[str]
+
+
+class TopicChannelCreateSchema(ChannelCreateSchema):
+    kind: str = "topic"
+    name: str
+    members: Optional[List[str]] = []
+    description: Optional[str] = ""
 
 
 class ServerChannelCreateSchema(ChannelCreateSchema):
@@ -80,4 +104,4 @@ class ChannelBulkReadStateCreateSchema(APIBaseCreateSchema):
 
 # Need this EitherChannel class due to mypy and fastapi issue: https://github.com/tiangolo/fastapi/issues/2279
 class EitherChannel(BaseModel):
-    __root__: Union[ServerChannelSchema, DMChannelSchema]
+    __root__: Union[TopicChannelSchema, ServerChannelSchema, DMChannelSchema]

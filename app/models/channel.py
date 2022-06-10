@@ -10,18 +10,19 @@ from app.models.server import Server
 
 @instance.register
 class Channel(APIDocument):
-    kind: str = fields.StrField(validate=validate.OneOf(["dm", "server"]), required=True)  # TODO: make enum?
+    kind: str = fields.StrField(validate=validate.OneOf(["dm", "server", "topic"]), required=True)  # TODO: make enum?
     owner = fields.ReferenceField("User")
 
     last_message_at = fields.AwareDateTimeField()
 
-    # DM fields
+    # DM / Topic field
     members = fields.ListField(fields.ReferenceField("User"))
 
-    # Server fields
+    # Server field
     server = fields.ReferenceField(Server)
 
     name = fields.StrField()
+    description = fields.StrField()
 
     permission_overwrites = fields.ListField(fields.EmbeddedField(PermissionOverwrite), default=[])
 

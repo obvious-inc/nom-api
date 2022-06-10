@@ -20,11 +20,9 @@ async def is_user_in_channel(user: User, channel: Channel) -> bool:
             return False
         else:
             return True
-    elif channel.kind == "dm":
+
+    elif channel.kind == "dm" or channel.kind == "topic":
         return user in channel.members
-    elif channel.kind == "url":
-        # TODO: temporary
-        return user == channel.owner
 
     return False
 
@@ -61,7 +59,7 @@ async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[st
         "kind": channel.kind,
     }
 
-    if channel.kind == "dm":
+    if channel.kind == "dm" or channel.kind == "topic":
         dict_channel["members"] = ",".join([str(member.pk) for member in channel.members])
 
     if channel.kind == "server":

@@ -12,6 +12,7 @@ from app.schemas.channels import (
     DMChannelCreateSchema,
     EitherChannel,
     ServerChannelCreateSchema,
+    TopicChannelCreateSchema,
 )
 from app.schemas.messages import EitherMessage
 from app.services.channels import (
@@ -36,7 +37,7 @@ router = APIRouter()
     dependencies=[Depends(PermissionsChecker(permissions=["channels.create"]))],
 )
 async def post_create_channel(
-    channel: Union[ServerChannelCreateSchema, DMChannelCreateSchema] = Body(...),
+    channel: Union[ServerChannelCreateSchema, TopicChannelCreateSchema, DMChannelCreateSchema] = Body(...),
     current_user: User = Depends(get_current_user),
 ):
     return await create_channel(channel, current_user=current_user)
