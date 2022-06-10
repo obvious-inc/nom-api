@@ -52,9 +52,14 @@ async def get_list_messages(channel_id, common_params: dict = Depends(common_par
     return await get_messages(channel_id=channel_id, **common_params)
 
 
-@router.get("/{channel_id}", response_description="Get channel info", response_model=EitherChannel)
-async def get_fetch_channel(channel_id, current_user: User = Depends(get_current_user)):
-    return await get_channel(channel_id=channel_id, current_user=current_user)
+@router.get(
+    "/{channel_id}",
+    response_description="Get channel info",
+    response_model=EitherChannel,
+    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["channels.view"]))],
+)
+async def get_fetch_channel(channel_id):
+    return await get_channel(channel_id=channel_id)
 
 
 @router.get(

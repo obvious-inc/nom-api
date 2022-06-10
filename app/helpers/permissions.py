@@ -25,6 +25,7 @@ class Permission(Enum):
     MESSAGES_LIST = "messages.list"
 
     CHANNELS_CREATE = "channels.create"
+    CHANNELS_VIEW = "channels.view"
 
     MEMBERS_KICK = "members.kick"
 
@@ -51,7 +52,7 @@ DEFAULT_DM_PERMISSIONS = [
     ]
 ]
 
-DEFAULT_USER_PERMISSIONS = [p.value for p in [Permission.CHANNELS_CREATE]]
+DEFAULT_USER_PERMISSIONS = [p.value for p in [Permission.CHANNELS_CREATE, Permission.CHANNELS_VIEW]]
 
 
 async def _fetch_fields_from_request_body(fields: List[str], request: Request) -> Optional[str]:
@@ -77,7 +78,7 @@ async def _fetch_fields_from_request_body(fields: List[str], request: Request) -
 
 async def _fetch_channel_from_request(request: Request) -> Optional[str]:
     request_path = request.url.path
-    channel_matches = re.findall(r"^/channels/(.{24})/", request_path)
+    channel_matches = re.findall(r"^/channels/(.{24})/?", request_path)
     if channel_matches:
         return channel_matches[0]
 
@@ -191,6 +192,9 @@ async def fetch_user_permissions(
     if not channel and not server_id:
         return DEFAULT_USER_PERMISSIONS
 
+    # Different types of channel will have different permission defaults. On top of that, overwrites should also be
+    # applied to DM, Topic or any other kind of channels.
+    # TODO: improve this logic to account for different channel types
     if channel and channel.get("kind") == "dm":
         members = channel.get("members", []).split(",")
         if not user_id or user_id not in members:
