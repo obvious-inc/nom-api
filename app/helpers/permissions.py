@@ -26,6 +26,8 @@ class Permission(Enum):
 
     CHANNELS_CREATE = "channels.create"
     CHANNELS_VIEW = "channels.view"
+    CHANNELS_INVITE = "channels.invite"
+    CHANNELS_JOIN = "channels.join"
 
     MEMBERS_KICK = "members.kick"
 

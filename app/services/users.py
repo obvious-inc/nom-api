@@ -32,8 +32,7 @@ async def create_user(user_model: UserCreateSchema, fetch_ens: bool = False) -> 
 
 
 async def get_user_by_wallet_address(wallet_address: str) -> Union[User, APIDocument]:
-    user = await get_item(filters={"wallet_address": wallet_address}, result_obj=User)
-    return user
+    return await get_item(filters={"wallet_address": wallet_address}, result_obj=User)
 
 
 async def get_user_by_id(user_id) -> Union[User, APIDocument]:

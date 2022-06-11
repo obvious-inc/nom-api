@@ -43,24 +43,23 @@ from app.services.websockets import broadcast_channel_event
 logger = logging.getLogger(__name__)
 
 
-async def _validate_model_members(channel_model: Union[TopicChannelCreateSchema, DMChannelCreateSchema]):
-    final_members = []
-    schema_members = channel_model.members or []
-    for member in schema_members:
+async def parse_member_list(members: List[str], create_if_not_user: bool = True):
+    final_member_list = []
+    for member in members:
         if re.match(r"^0x[a-fA-F\d]{40}$", member):
             wallet_addr = checksum_address(member)
             user = await get_user_by_wallet_address(wallet_address=wallet_addr)
-            if not user:
+            if not user and create_if_not_user:
                 user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr), fetch_ens=True)
-            final_members.append(user.pk)
+            final_member_list.append(user.pk)
         else:
-            final_members.append(ObjectId(member))
+            final_member_list.append(ObjectId(member))
 
-    channel_model.members = list(set(final_members))
+    return list(set(final_member_list))
 
 
 async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
-    await _validate_model_members(channel_model)
+    channel_model.members = await parse_member_list(members=channel_model.members or [])
     if current_user.pk not in channel_model.members:
         channel_model.members.insert(0, current_user.pk)
 
@@ -88,7 +87,7 @@ async def create_server_channel(
 async def create_topic_channel(
     channel_model: TopicChannelCreateSchema, current_user: User
 ) -> Union[Channel, APIDocument]:
-    await _validate_model_members(channel_model)
+    channel_model.members = await parse_member_list(members=channel_model.members or [])
     if not channel_model.members:
         channel_model.members = [current_user.pk]
     else:
@@ -241,3 +240,19 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
 
 async def get_channel(channel_id: str):
     return await get_item_by_id(id_=channel_id, result_obj=Channel)
+
+
+async def invite_members_to_channel(channel_id: str, members: List[str]):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if channel.kind != "topic":
+        raise Exception(f"cannot change members of channel type: {channel.kind}")
+
+    parsed_member_list = await parse_member_list(members=members)
+
+    final_channel_members = list(channel.members)
+
+    for member in parsed_member_list:
+        if member not in channel.members:
+            final_channel_members.append(member)
+
+    await update_item(item=channel, data={"members": final_channel_members})

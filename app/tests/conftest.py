@@ -25,14 +25,14 @@ from app.models.server import Server
 from app.models.user import User
 from app.schemas.apps import AppCreateSchema
 from app.schemas.auth import AuthWalletSchema, RefreshTokenCreateSchema
-from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
+from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema, TopicChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
 from app.schemas.webhooks import WebhookCreateSchema
 from app.services.apps import create_app, create_app_webhook
 from app.services.auth import generate_wallet_token
-from app.services.channels import create_dm_channel, create_server_channel
+from app.services.channels import create_dm_channel, create_server_channel, create_topic_channel
 from app.services.crud import create_item
 from app.services.messages import create_message
 from app.services.servers import create_server
@@ -118,6 +118,12 @@ async def server(current_user: User) -> Union[Server, APIDocument]:
 async def server_channel(current_user: User, server: Server) -> Union[Channel, APIDocument]:
     server_channel = ServerChannelCreateSchema(kind="server", server=str(server.id), name="testing-channel")
     return await create_server_channel(channel_model=server_channel, current_user=current_user)
+
+
+@pytest.fixture
+async def topic_channel(current_user: User) -> Union[Channel, APIDocument]:
+    new_topic_channel = TopicChannelCreateSchema(kind="topic", name="my-topic", description="what up?")
+    return await create_topic_channel(channel_model=new_topic_channel, current_user=current_user)
 
 
 @pytest.fixture

@@ -21,6 +21,7 @@ from app.services.channels import (
     create_typing_indicator,
     delete_channel,
     get_channel,
+    invite_members_to_channel,
     mark_channel_as_read,
     update_channel,
 )
@@ -104,3 +105,13 @@ async def post_bulk_mark_channels_read(
     ack_data: ChannelBulkReadStateCreateSchema, current_user: User = Depends(get_current_user)
 ):
     await bulk_mark_channels_as_read(ack_data, current_user=current_user)
+
+
+@router.post(
+    "/{channel_id}/invite",
+    summary="Invite user to channel",
+    status_code=http.HTTPStatus.NO_CONTENT,
+    dependencies=[Depends(PermissionsChecker(permissions=["channels.invite"]))],
+)
+async def post_invite_to_channel(channel_id: str, members: List[str] = Body(..., embed=True)):
+    return await invite_members_to_channel(channel_id=channel_id, members=members)

@@ -55,9 +55,7 @@ async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[st
     if not channel:
         return None
 
-    dict_channel = {
-        "kind": channel.kind,
-    }
+    dict_channel = {"kind": channel.kind, "owner": str(channel.owner.pk)}
 
     if channel.kind == "dm" or channel.kind == "topic":
         dict_channel["members"] = ",".join([str(member.pk) for member in channel.members])

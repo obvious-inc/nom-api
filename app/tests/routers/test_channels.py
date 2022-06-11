@@ -21,7 +21,7 @@ from app.schemas.messages import MessageCreateSchema, WebhookMessageCreateSchema
 from app.schemas.sections import SectionCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.services.channels import create_server_channel, get_dm_channels
-from app.services.crud import create_item, get_item
+from app.services.crud import create_item, get_item, get_item_by_id
 from app.services.messages import create_message, create_webhook_message
 from app.services.servers import create_server, get_user_servers
 from app.services.users import get_user_by_id, get_user_by_wallet_address
@@ -702,3 +702,42 @@ class TestChannelsRoutes:
         assert "members" in json_response
         assert len(json_response["members"]) == 1
         assert json_response["members"][0] == str(current_user.pk)
+
+    @pytest.mark.asyncio
+    async def test_invite_member_to_channel(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, topic_channel: Channel
+    ):
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+        test_wallet_add = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+        data = {"members": [test_wallet_add]}
+        response = await authorized_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=data)
+        assert response.status_code == 204
+
+        test_user = await get_item(filters={"wallet_address": test_wallet_add}, result_obj=User)
+        assert test_user is not None
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+        assert tc.members[0] == current_user
+        assert tc.members[1] == test_user
+
+    @pytest.mark.asyncio
+    async def test_invite_multiple_members_to_channel(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, topic_channel: Channel
+    ):
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+        tw1 = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+        tw2 = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96044"
+        tw3 = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96043"
+
+        data = {"members": [tw1, tw2, tw3]}
+        response = await authorized_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=data)
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 4
