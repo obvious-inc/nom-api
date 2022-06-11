@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Sequence, Type, TypeVar
+from typing import List, Optional, Sequence, Type, TypeVar, Union
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -14,6 +14,22 @@ from app.schemas.base import APIBaseCreateSchema
 logger = logging.getLogger(__name__)
 
 APIDocumentType = TypeVar("APIDocumentType", bound=APIDocument)
+
+
+async def parse_object_id(id_: Union[str, ObjectId, Reference]) -> ObjectId:
+    if type(id_) == str:
+        try:
+            id_ = ObjectId(id_)
+        except InvalidId:
+            raise TypeError("id_ must be ObjectId")
+    elif isinstance(id_, ObjectId):
+        pass
+    elif isinstance(id_, Reference):
+        id_ = id_.pk
+    else:
+        raise Exception(f"unexpected id type: {type(id_)}")
+
+    return id_
 
 
 async def create_item(
@@ -54,17 +70,7 @@ async def create_items(
 
 
 async def get_item_by_id(id_: str, result_obj: Type[APIDocumentType]) -> APIDocumentType:
-    if type(id_) == str:
-        try:
-            id_ = ObjectId(id_)
-        except InvalidId:
-            raise TypeError("id_ must be ObjectId")
-    elif isinstance(id_, ObjectId):
-        pass
-    elif isinstance(id_, Reference):
-        id_ = id_.pk
-    else:
-        raise Exception(f"unexpected id type: {type(id_)}")
+    id_ = await parse_object_id(id_)
     item = await result_obj.find_one({"_id": id_})
     return item
 
@@ -83,11 +89,13 @@ async def get_items(
     filters.update(deleted_filter)
 
     if before:
-        before_filter = {"_id": {"$lt": ObjectId(before)}}
+        before_id = await parse_object_id(before)
+        before_filter = {"_id": {"$lt": before_id}}
         filters.update(before_filter)
         sort_filters.append(("_id", sort_by_direction))
     elif after:
-        after_filter = {"_id": {"$gt": ObjectId(after)}}
+        after_id = await parse_object_id(after)
+        after_filter = {"_id": {"$gt": after_id}}
         filters.update(after_filter)
         # "after" should be used only by messages and only sorted by id or created_at
         sort_filters = [("_id", 1)]

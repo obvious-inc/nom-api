@@ -1272,3 +1272,19 @@ class TestMessagesRoutes:
         expected_message_ids = [str(message.pk) for message in expected_messages]
         result_message_ids = [message["id"] for message in json_resp]
         assert expected_message_ids[::-1] == result_message_ids
+
+    @pytest.mark.asyncio
+    async def test_get_messages_before_id_non_object_id(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server_channel: Channel
+    ):
+        before_id = "0"
+        response = await authorized_client.get(f"channels/{str(server_channel.pk)}/messages?before={before_id}&limit=3")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_get_messages_after_id_non_object_id(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server_channel: Channel
+    ):
+        after_id = "0"
+        response = await authorized_client.get(f"channels/{str(server_channel.pk)}/messages?after={after_id}&limit=3")
+        assert response.status_code == 400

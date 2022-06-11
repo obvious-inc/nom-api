@@ -19,7 +19,7 @@ class APIPermissionError(Exception):
 
 
 async def assertion_exception_handler(request: Request, exc: AssertionError):
-    logger.warning(f"marshmallow validation error: {exc}")
+    logger.warning(f"assertion validation error: {exc}")
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "Problem with validating request"})
 
 
@@ -31,7 +31,7 @@ async def marshmallow_validation_error_handler(request: Request, exc: marshmallo
 
 
 async def type_error_handler(request: Request, exc: TypeError):
-    logger.warning(f"marshmallow validation error: {exc}")
+    logger.warning(f"type validation error: {exc}")
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "Problem with request data"})
 
 
