@@ -74,7 +74,6 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
                 {"channel": (await message.channel.fetch()).dump(), "read_at": message.created_at.isoformat()},
             ),
         ),
-        (post_process_message_creation, (str(message.id),)),
         (process_message_mentions, (str(message.id),)),
     ]
 
@@ -247,6 +246,7 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
 
 
 async def post_process_message_creation(message_id: str):
+    # not in use yet
     message = await get_item_by_id(id_=message_id, result_obj=Message)
     data = {}
 
