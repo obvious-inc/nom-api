@@ -11,6 +11,7 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 CLOUDFLARE_IMAGES_URL = "https://api.cloudflare.com/client/v4/accounts/%s/images/v1"
+CLOUDFLARE_IMAGES_SUPPORTED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
 
 
 async def upload_image_url(image_url, prefix: Optional[str] = "", metadata: Optional[dict] = None):
@@ -50,6 +51,10 @@ async def upload_content(
     account_id = settings.cloudflare_account_id
     url = CLOUDFLARE_IMAGES_URL % account_id
     headers = {"Authorization": f"Bearer {settings.cloudflare_images_api_token}"}
+
+    if content_type not in CLOUDFLARE_IMAGES_SUPPORTED_TYPES:
+        logger.error(f"content type not supported: {content_type}")
+        raise Exception(f"content type not supported: {content_type}")
 
     if settings.testing:
         if not metadata:
