@@ -1,11 +1,11 @@
-import functools
 import json
 import logging
+import re
 from enum import Enum
 from typing import Dict, List, Optional, Set
 
 from bson import ObjectId
-from sentry_sdk import capture_exception
+from starlette.requests import Request
 
 from app.exceptions import APIPermissionError
 from app.helpers.cache_utils import cache, convert_redis_list_to_dict
@@ -13,7 +13,6 @@ from app.helpers.channels import fetch_and_cache_channel
 from app.helpers.sections import fetch_and_cache_section
 from app.helpers.servers import fetch_and_cache_server
 from app.helpers.users import fetch_and_cache_user, get_user_roles_permissions
-from app.models.app import App
 from app.models.server import ServerMember
 from app.models.user import User
 from app.services.crud import get_item
@@ -51,6 +50,55 @@ DEFAULT_DM_PERMISSIONS = [
         Permission.MESSAGES_CREATE,
     ]
 ]
+
+DEFAULT_USER_PERMISSIONS = [p.value for p in [Permission.CHANNELS_CREATE]]
+
+
+async def _fetch_fields_from_request_body(fields: List[str], request: Request) -> Optional[str]:
+    try:
+        body = await request.json()
+    except Exception as e:
+        body = await request.body()
+        if body == b"":
+            return None
+        logger.warning(f"issue decoding json body: {e}")
+        return None
+
+    if not body:
+        return None
+
+    for field in fields:
+        value = body.get(field)
+        if value:
+            return value
+
+    return None
+
+
+async def _fetch_channel_from_request(request: Request) -> Optional[str]:
+    request_path = request.url.path
+    channel_matches = re.findall(r"^/channels/(.{24})/", request_path)
+    if channel_matches:
+        return channel_matches[0]
+
+    value = await _fetch_fields_from_request_body(fields=["channel", "channel_id"], request=request)
+    if value:
+        return value
+
+    return None
+
+
+async def _fetch_server_from_request(request: Request) -> Optional[str]:
+    request_path = request.url.path
+    server_matches = re.findall(r"^/servers/(.{24})/", request_path)
+    if server_matches:
+        return server_matches[0]
+
+    value = await _fetch_fields_from_request_body(fields=["server", "server_id"], request=request)
+    if value:
+        return value
+
+    return None
 
 
 async def _fetch_channel_from_kwargs(kwargs: dict) -> Optional[str]:
@@ -90,13 +138,20 @@ async def _calc_final_permissions(
 
         permissions |= set(role_permissions)
 
+    permissions |= set(channel_overwrites.get("@public", []))
+
     return permissions
 
 
 async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str):
     lua_script = """
         local channel_data = redis.call('HGETALL', KEYS[1])
-        local user_data = redis.call('HGETALL', KEYS[2])
+        local user_data
+        if KEYS[2] then
+            user_data = redis.call('HGETALL', KEYS[2])
+        else
+            user_data = {}
+        end
         local server_id = redis.call('HGET', KEYS[1], 'server')
         local server_data
         if server_id then
@@ -115,7 +170,9 @@ async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str)
         return { channel_data, user_data, server_data, section_data }
         """
     fetch_cached_data = cache.client.register_script(lua_script)
-    channel, user, server, section = await fetch_cached_data(keys=[f"channel:{channel_id}", f"user:{user_id}"])
+    channel, user, server, section = await fetch_cached_data(
+        keys=[f"channel:{channel_id}", f"user:{user_id}" if user_id != "" else user_id]
+    )
     channel_data = await convert_redis_list_to_dict(channel)
     user_data = await convert_redis_list_to_dict(user)
     server_data = await convert_redis_list_to_dict(server)
@@ -123,15 +180,20 @@ async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str)
     return channel_data, user_data, server_data, section_data
 
 
-async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[str], user_id: str) -> List[str]:
-    channel, user, server, section = await fetch_cached_permissions_data(channel_id=channel_id, user_id=user_id)
+async def fetch_user_permissions(
+    channel_id: Optional[str], server_id: Optional[str], user_id: Optional[str]
+) -> List[str]:
+    channel, user, server, section = await fetch_cached_permissions_data(channel_id=channel_id, user_id=user_id or "")
 
     if not channel:
         channel = await fetch_and_cache_channel(channel_id=channel_id)
 
+    if not channel and not server_id:
+        return DEFAULT_USER_PERMISSIONS
+
     if channel and channel.get("kind") == "dm":
         members = channel.get("members", []).split(",")
-        if user_id not in members:
+        if not user_id or user_id not in members:
             raise APIPermissionError("user is not a member of DM channel")
         return DEFAULT_DM_PERMISSIONS
 
@@ -144,15 +206,18 @@ async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[
     if not server:
         server = await fetch_and_cache_server(server_id=server_id)
 
-    if server.get("owner") == user_id:
+    if user_id and server.get("owner") == user_id:
         return ALL_PERMISSIONS
 
     # TODO: add admin flag with specific permission overwrite
 
-    if not user or not user.get(f"{server_id}.roles", None):
-        user = await fetch_and_cache_user(user_id=user_id, server_id=server_id)
+    user_roles = {}
+    if user_id:
+        if not user or not user.get(f"{server_id}.roles", None):
+            user = await fetch_and_cache_user(user_id=user_id, server_id=server_id)
 
-    user_roles = await get_user_roles_permissions(user=user, server=server)
+        user_roles = await get_user_roles_permissions(user=user, server=server)
+
     channel_overwrites = {}
     section_overwrites = {}
 
@@ -175,52 +240,15 @@ async def fetch_user_permissions(channel_id: Optional[str], server_id: Optional[
     return list(user_permissions)
 
 
-def needs(permissions):
-    def decorator_needs(func):
-        @functools.wraps(func)
-        async def wrapper_needs(*args, **kwargs):
-            if kwargs.pop("ignore_permissions", False):
-                return await func(*args, **kwargs)
+async def check_request_permissions(request: Request, permissions: List[str], current_user: Optional[User] = None):
+    channel_id = await _fetch_channel_from_request(request=request)
+    server_id = await _fetch_server_from_request(request=request)
 
-            if len(permissions) == 0:
-                return await func(*args, **kwargs)
+    user_id = str(current_user.pk) if current_user else None
+    user_permissions = await fetch_user_permissions(user_id=user_id, channel_id=channel_id, server_id=server_id)
 
-            try:
-                str_permissions = [p.value for p in permissions]
-            except AttributeError as e:
-                logger.error("unrecognized permission in list: %s", permissions)
-                capture_exception(e)
-                raise e
-
-            current_user: User = kwargs.get("current_user", None)
-            current_app: App = kwargs.get("current_app", None)
-
-            if current_user:
-                channel_id = await _fetch_channel_from_kwargs(kwargs)
-                server_id = await _fetch_server_from_kwargs(kwargs)
-
-                if not channel_id and not server_id:
-                    logger.error("no channel and server found. kwargs: %s", kwargs)
-                    raise Exception(f"no channel and server found in kwargs: {kwargs}")
-
-                user_permissions = await fetch_user_permissions(
-                    user_id=str(current_user.pk), channel_id=channel_id, server_id=server_id
-                )
-            elif current_app:
-                user_permissions = current_app.permissions
-            else:
-                logger.error("no current user or app found. args: %s | kwargs: %s", args, kwargs)
-                raise Exception(f"missing current_user or app from method. args: {args} | kwargs: {kwargs}")
-
-            if not all([req_permission in user_permissions for req_permission in str_permissions]):
-                raise APIPermissionError(needed_permissions=str_permissions, user_permissions=user_permissions)
-
-            value = await func(*args, **kwargs)
-            return value
-
-        return wrapper_needs
-
-    return decorator_needs
+    if not all([req_permission in user_permissions for req_permission in permissions]):
+        raise APIPermissionError(needed_permissions=permissions, user_permissions=user_permissions)
 
 
 # TODO: Deprecate this and use the @needs decorator instead

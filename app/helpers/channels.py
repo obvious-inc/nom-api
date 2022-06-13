@@ -64,7 +64,13 @@ async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[st
     if channel.kind == "server":
         dict_channel["server"] = str(channel.server.pk)
 
-    channel_overwrites = {str(overwrite.role.pk): overwrite.permissions for overwrite in channel.permission_overwrites}
+    channel_overwrites = {}
+    for overwrite in channel.permission_overwrites:
+        if overwrite.role:
+            channel_overwrites[str(overwrite.role.pk)] = overwrite.permissions
+        elif overwrite.group:
+            channel_overwrites[str(overwrite.group)] = overwrite.permissions
+
     dict_channel["permissions"] = json.dumps(channel_overwrites)
 
     await cache.client.hset(f"channel:{channel_id}", mapping=dict_channel)

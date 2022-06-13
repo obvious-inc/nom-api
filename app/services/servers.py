@@ -109,7 +109,7 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
 
     if server.owner != current_user:
         message = MessageCreateSchema(server=str(server.id), channel=str(server.system_channel.pk), type=1)
-        await create_message(message_model=message, current_user=current_user, ignore_permissions=True)
+        await create_message(message_model=message, current_user=current_user)
 
     return member
 

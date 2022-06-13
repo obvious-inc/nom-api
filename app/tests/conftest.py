@@ -54,9 +54,9 @@ async def client(app: FastAPI):
 
 @pytest.fixture(autouse=True)
 async def redis(client):
-    await cache.client.flushall()
+    await cache.client.flushdb()
     yield cache.client
-    await cache.client.flushall()
+    await cache.client.flushdb()
 
 
 @pytest.fixture

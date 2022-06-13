@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from sentry_sdk import capture_exception
 from starlette import status
 
-from app.helpers.permissions import Permission, needs, user_belongs_to_server
+from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
 from app.helpers.ws_events import WebSocketServerEvent
@@ -74,7 +74,6 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
-@needs(permissions=[Permission.CHANNELS_CREATE])
 async def create_server_channel(
     channel_model: ServerChannelCreateSchema, current_user: User
 ) -> Union[Channel, APIDocument]:

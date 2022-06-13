@@ -2,7 +2,7 @@ import http
 
 from fastapi import APIRouter, Body, Depends
 
-from app.dependencies import get_current_user
+from app.dependencies import PermissionsChecker, get_current_user
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema, MessageSchema, MessageUpdateSchema
 from app.services.messages import (
@@ -22,6 +22,7 @@ router = APIRouter()
     response_description="Create new message",
     response_model=MessageSchema,
     status_code=http.HTTPStatus.CREATED,
+    dependencies=[Depends(PermissionsChecker(permissions=["messages.create"]))],
 )
 async def post_create_message(
     message: MessageCreateSchema = Body(...),
