@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sentry_sdk import capture_exception
 from starlette import status
 
+from app.helpers.cache_utils import cache
 from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
@@ -249,10 +250,10 @@ async def invite_members_to_channel(channel_id: str, members: List[str]):
 
     parsed_member_list = await parse_member_list(members=members)
 
-    final_channel_members = list(channel.members)
-
+    final_channel_members = [m.pk for m in channel.members]
     for member in parsed_member_list:
         if member not in channel.members:
             final_channel_members.append(member)
 
     await update_item(item=channel, data={"members": final_channel_members})
+    await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
