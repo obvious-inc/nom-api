@@ -52,11 +52,13 @@ async def parse_member_list(members: List[str], create_if_not_user: bool = True)
             user = await get_user_by_wallet_address(wallet_address=wallet_addr)
             if not user and create_if_not_user:
                 user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr), fetch_ens=True)
-            final_member_list.append(user.pk)
         else:
-            final_member_list.append(ObjectId(member))
+            user = await get_item_by_id(id_=member, result_obj=User)
 
-    return list(set(final_member_list))
+        if user not in final_member_list:
+            final_member_list.append(user)
+
+    return final_member_list
 
 
 async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
@@ -253,7 +255,7 @@ async def invite_members_to_channel(channel_id: str, members: List[str]):
     final_channel_members = [m.pk for m in channel.members]
     for member in parsed_member_list:
         if member not in channel.members:
-            final_channel_members.append(member)
+            final_channel_members.append(member.pk)
 
     await update_item(item=channel, data={"members": final_channel_members})
     await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
