@@ -843,3 +843,35 @@ class TestChannelsRoutes:
         json_response = response.json()
         assert json_response["name"] == data["name"]
         assert json_response["avatar"] == data["avatar"]
+
+    @pytest.mark.asyncio
+    async def test_make_channel_public(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+        member: User = await create_new_user()
+        member_client = await get_authorized_client(member)
+
+        response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 403
+
+        user_client = await get_authorized_client(current_user)
+        data = [
+            {"group": "@public", "permissions": ["channels.view"]},
+        ]
+        response = await user_client.put(f"/channels/{str(topic_channel.pk)}/permissions", json=data)
+        assert response.status_code == 204
+
+        member_client = await get_authorized_client(member)
+        response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200

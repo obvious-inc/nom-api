@@ -15,6 +15,7 @@ from app.schemas.channels import (
     TopicChannelCreateSchema,
 )
 from app.schemas.messages import EitherMessage
+from app.schemas.permissions import PermissionUpdateSchema
 from app.services.channels import (
     bulk_mark_channels_as_read,
     create_channel,
@@ -24,6 +25,7 @@ from app.services.channels import (
     invite_members_to_channel,
     mark_channel_as_read,
     update_channel,
+    update_channel_permissions,
 )
 from app.services.messages import get_message, get_messages
 
@@ -115,3 +117,13 @@ async def post_bulk_mark_channels_read(
 )
 async def post_invite_to_channel(channel_id: str, members: List[str] = Body(..., embed=True)):
     return await invite_members_to_channel(channel_id=channel_id, members=members)
+
+
+@router.put(
+    "/{channel_id}/permissions",
+    summary="Update channel permissions",
+    status_code=http.HTTPStatus.NO_CONTENT,
+    dependencies=[Depends(PermissionsChecker(permissions=["channels.permissions.manage"]))],
+)
+async def put_update_channel_permissions(channel_id: str, update_data: List[PermissionUpdateSchema] = Body(...)):
+    return await update_channel_permissions(channel_id=channel_id, update_data=update_data)

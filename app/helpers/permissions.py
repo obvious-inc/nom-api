@@ -28,6 +28,7 @@ class Permission(Enum):
     CHANNELS_VIEW = "channels.view"
     CHANNELS_INVITE = "channels.invite"
     CHANNELS_JOIN = "channels.join"
+    CHANNELS_PERMISSIONS_MANAGE = "channels.permissions.manage"
 
     MEMBERS_KICK = "members.kick"
 
@@ -81,10 +82,11 @@ async def _fetch_fields_from_request_body(fields: List[str], request: Request) -
     if not body:
         return None
 
-    for field in fields:
-        value = body.get(field)
-        if value:
-            return value
+    if isinstance(body, dict):
+        for field in fields:
+            value = body.get(field)
+            if value:
+                return value
 
     return None
 

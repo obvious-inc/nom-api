@@ -47,6 +47,17 @@ async def get_channel_users(channel: Channel) -> List[User]:
     return users
 
 
+async def convert_permission_object_to_cached(channel: Channel) -> str:
+    channel_overwrites = {}
+    for overwrite in channel.permission_overwrites:
+        if overwrite.role:
+            channel_overwrites[str(overwrite.role.pk)] = overwrite.permissions
+        elif overwrite.group:
+            channel_overwrites[str(overwrite.group)] = overwrite.permissions
+
+    return json.dumps(channel_overwrites)
+
+
 async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[str, Any]]:
     if not channel_id:
         return None
@@ -63,14 +74,7 @@ async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[st
     if channel.kind == "server":
         dict_channel["server"] = str(channel.server.pk)
 
-    channel_overwrites = {}
-    for overwrite in channel.permission_overwrites:
-        if overwrite.role:
-            channel_overwrites[str(overwrite.role.pk)] = overwrite.permissions
-        elif overwrite.group:
-            channel_overwrites[str(overwrite.group)] = overwrite.permissions
-
-    dict_channel["permissions"] = json.dumps(channel_overwrites)
+    dict_channel["permissions"] = await convert_permission_object_to_cached(channel)
 
     await cache.client.hset(f"channel:{channel_id}", mapping=dict_channel)
     return dict_channel
