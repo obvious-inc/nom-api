@@ -824,3 +824,22 @@ class TestChannelsRoutes:
         assert response.status_code == 201
         json_resp = response.json()
         assert json_resp["id"] != str(topic_channel.pk)
+
+    @pytest.mark.asyncio
+    async def test_update_topic_channel_avatar(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        topic_channel: Channel,
+    ):
+        data = {
+            "name": "kool & the gang",
+            "avatar": "https://i.picsum.photos/id/234/536/354.jpg?hmac=xwmMcTiZqMLkn5gOMUyoMQTnrYfX8RrhBpyOpOrIFCE",
+        }
+        response = await authorized_client.patch(f"/channels/{str(topic_channel.pk)}", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response["name"] == data["name"]
+        assert json_response["avatar"] == data["avatar"]

@@ -46,6 +46,7 @@ class TopicChannelSchema(ChannelSchema):
     name: str
     description: Optional[str]
     members: List[PyObjectId] = []
+    avatar: Optional[str]
 
     class Config:
         schema_extra = {
@@ -54,6 +55,7 @@ class TopicChannelSchema(ChannelSchema):
                 "kind": "topic",
                 "name": "noun-o-clock",
                 "description": "This is a public channel for Noun fans to chat.",
+                "avatar": "https://pbs.twimg.com/profile_images/1467601380567359498/oKcnQo_S_400x400.jpg",
                 "members": ["61e17018c3ee162141baf5c1", "61e17018c3ee162141baf5c2", "61e17018c3ee162141baf5c3"],
             }
         }
@@ -73,6 +75,7 @@ class TopicChannelCreateSchema(ChannelCreateSchema):
     name: str
     members: Optional[List[str]] = []
     description: Optional[str] = ""
+    avatar: Optional[str] = ""
 
 
 class ServerChannelCreateSchema(ChannelCreateSchema):
@@ -95,6 +98,8 @@ class ChannelReadStateCreateSchema(APIBaseCreateSchema):
 
 class ChannelUpdateSchema(APIBaseUpdateSchema):
     name: Optional[str]
+    description: Optional[str]
+    avatar: Optional[str]
 
 
 class ChannelBulkReadStateCreateSchema(APIBaseCreateSchema):
