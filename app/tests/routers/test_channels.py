@@ -804,3 +804,23 @@ class TestChannelsRoutes:
         assert len(tc.members) == 2
         assert tc.members[0] == current_user
         assert tc.members[1] == test_user
+
+    @pytest.mark.asyncio
+    async def test_create_dm_channel_with_same_members_as_topic_channel(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, topic_channel: Channel
+    ):
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+        test_wallet_add = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+        data = {"members": [test_wallet_add]}
+        response = await authorized_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=data)
+        assert response.status_code == 204
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+
+        dm_data = {"kind": "dm", "members": [str(member.pk) for member in tc.members]}
+        response = await authorized_client.post("/channels", json=dm_data)
+        assert response.status_code == 201
+        json_resp = response.json()
+        assert json_resp["id"] != str(topic_channel.pk)

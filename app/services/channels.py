@@ -63,11 +63,12 @@ async def parse_member_list(members: List[str], create_if_not_user: bool = True)
 
 async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
     channel_model.members = await parse_member_list(members=channel_model.members or [])
-    if current_user.pk not in channel_model.members:
-        channel_model.members.insert(0, current_user.pk)
+    if current_user not in channel_model.members:
+        channel_model.members.insert(0, current_user)
 
     # if same exact dm channel already exists, ignore
     filters = {
+        "kind": "dm",
         "members": {
             "$size": len(channel_model.members),
             "$all": channel_model.members,
