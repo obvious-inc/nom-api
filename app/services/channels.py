@@ -138,7 +138,7 @@ async def delete_channel(channel_id, current_user: User):
         server_owner = server.owner
         if not is_channel_owner and not current_user == server_owner:
             raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
-    elif channel.kind == "dm":
+    elif channel.kind == "dm" or channel.kind == "topic":
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
     else:
         raise Exception(f"unexpected kind of channel: {channel.kind}")
@@ -201,7 +201,7 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
             result_obj=ServerMember,
         )
         notify = True if user_member else False
-    elif channel.kind == "dm":
+    elif channel.kind == "dm" or channel.kind == "topic":
         notify = current_user in channel.members
 
     if notify:
@@ -223,8 +223,8 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
         server = await channel.server.fetch()
         if channel.owner != current_user and server.owner != current_user:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot change this channel")
-    elif channel.kind == "dm":
-        if current_user not in channel.members:
+    elif channel.kind == "dm" or channel.kind == "topic":
+        if current_user not in channel.members or channel.owner != current_user:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot change this channel")
     else:
         raise Exception(f"unknown channel kind: {channel.kind}")
