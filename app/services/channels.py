@@ -10,12 +10,14 @@ from sentry_sdk import capture_exception
 from starlette import status
 
 from app.helpers.cache_utils import cache
+from app.helpers.channels import convert_permission_object_to_cached
 from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
+from app.models.common import PermissionOverwrite
 from app.models.message import Message
 from app.models.section import Section
 from app.models.server import ServerMember
@@ -28,6 +30,7 @@ from app.schemas.channels import (
     ServerChannelCreateSchema,
     TopicChannelCreateSchema,
 )
+from app.schemas.permissions import PermissionUpdateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.crud import (
     create_item,
@@ -260,3 +263,17 @@ async def invite_members_to_channel(channel_id: str, members: List[str]):
 
     await update_item(item=channel, data={"members": final_channel_members})
     await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
+
+
+async def update_channel_permissions(channel_id: str, update_data: List[PermissionUpdateSchema]):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+
+    ows = []
+    for permission in update_data:
+        ow = PermissionOverwrite(**permission.dict(exclude_none=True))
+        ows.append(ow)
+
+    updated = await update_item(item=channel, data={"permission_overwrites": ows})
+
+    cache_ps = await convert_permission_object_to_cached(updated)
+    await cache.client.hset(f"channel:{channel_id}", "permissions", cache_ps)
