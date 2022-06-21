@@ -10,9 +10,7 @@ class PermissionUpdateSchema(APIBaseUpdateSchema):
 
     class Config:
         schema_extra = {
-            "example": {
-                [
-                    {"group": "@public", "permissions": ["messages.list"]},
-                ]
-            }
+            "example": [
+                {"group": "@public", "permissions": ["messages.list"]},
+            ]
         }
