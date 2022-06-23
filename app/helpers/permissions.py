@@ -210,7 +210,7 @@ async def fetch_user_permissions(
     user_roles = {}
 
     if channel_id:
-        if not channel:
+        if not channel or "kind" not in channel:
             channel = await fetch_and_cache_channel(channel_id=channel_id)
 
         if channel.get("kind") == "dm":

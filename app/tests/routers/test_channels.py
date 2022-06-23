@@ -1035,3 +1035,27 @@ class TestChannelsRoutes:
 
         response = await authorized_client.delete(f"/channels/{str(topic_channel.pk)}")
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_create_server_channel_with_description(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    ):
+        data = {
+            "kind": "server",
+            "name": "my-fav-channel",
+            "server": str(server.pk),
+            "description": "my new channel description!",
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "kind" in json_response
+        assert json_response["kind"] == data["kind"]
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+        assert "name" in json_response
+        assert json_response["name"] == data["name"]
+        assert "members" not in json_response
+        assert "description" in json_response
+        assert json_response["description"] == data["description"]

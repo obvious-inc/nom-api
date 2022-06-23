@@ -29,6 +29,7 @@ class DMChannelSchema(ChannelSchema):
 class ServerChannelSchema(ChannelSchema):
     server: PyObjectId = Field()
     name: str = Field()
+    description: Optional[str]
 
     class Config:
         schema_extra = {
@@ -36,6 +37,7 @@ class ServerChannelSchema(ChannelSchema):
                 "id": "61e17018c3ee162141baf5c9",
                 "kind": "server",
                 "name": "🔥-shilling",
+                "description": "Just a good ol' shilling channel",
                 "server": "61e17018c3ee162141baf5c1",
                 "owner": "61e17018c3ee162141baf5c1",
             }
@@ -82,6 +84,7 @@ class ServerChannelCreateSchema(ChannelCreateSchema):
     kind: str = "server"
     server: str
     name: str
+    description: Optional[str] = ""
 
 
 class ChannelReadStateSchema(APIBaseSchema):
