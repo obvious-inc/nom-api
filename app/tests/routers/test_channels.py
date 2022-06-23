@@ -1000,3 +1000,38 @@ class TestChannelsRoutes:
         tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
         assert len(tc.members) == 1
         assert tc.members[0] == current_user
+
+    @pytest.mark.asyncio
+    async def test_delete_topic_channel_ok(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server, topic_channel: Channel
+    ):
+        response = await authorized_client.delete(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response["id"] == str(topic_channel.pk)
+        assert json_response["name"] == topic_channel.name
+        assert json_response["deleted"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_topic_channel_with_multiple_members_nok(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        topic_channel: Channel,
+        create_new_user: Callable,
+    ):
+        member = await create_new_user()
+        data = {"members": [member.wallet_address]}
+        response = await authorized_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=data)
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+        assert tc.members[0] == current_user
+        assert tc.members[1] == member
+
+        response = await authorized_client.delete(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 403

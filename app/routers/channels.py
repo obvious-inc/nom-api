@@ -77,7 +77,12 @@ async def get_specific_message(channel_id, message_id):
     return await get_message(channel_id=channel_id, message_id=message_id)
 
 
-@router.delete("/{channel_id}", response_description="Delete channel", response_model=EitherChannel)
+@router.delete(
+    "/{channel_id}",
+    response_description="Delete channel",
+    response_model=EitherChannel,
+    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["channels.delete"]))],
+)
 async def delete_remove_channel(channel_id, current_user: User = Depends(get_current_user)):
     return await delete_channel(channel_id=channel_id, current_user=current_user)
 
