@@ -980,3 +980,23 @@ class TestChannelsRoutes:
         assert len(tc.members) == 2
         assert tc.members[0] == current_user
         assert tc.members[1] == member
+
+    @pytest.mark.asyncio
+    async def test_kick_channel_owner_from_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+    ):
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+        response = await authorized_client.delete(f"/channels/{str(topic_channel.pk)}/members/me")
+        assert response.status_code == 400
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user

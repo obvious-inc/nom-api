@@ -268,7 +268,12 @@ async def invite_members_to_channel(channel_id: str, members: List[str]):
 async def kick_member_from_channel(channel_id: str, member_id: str):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
     if channel.kind != "topic":
-        raise Exception(f"cannot change members of channel type: {channel.kind}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"cannot kick members from channel type: {channel.kind}"
+        )
+
+    if str(channel.owner.pk) == member_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot kick owner from channel")
 
     current_channel_members = [str(m.pk) for m in channel.members]
 
