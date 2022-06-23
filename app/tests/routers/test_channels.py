@@ -875,3 +875,108 @@ class TestChannelsRoutes:
         member_client = await get_authorized_client(member)
         response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
         assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_kick_myself_from_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        member: User = await create_new_user()
+
+        user_client = await get_authorized_client(current_user)
+        data = {"members": [member.wallet_address]}
+        response = await user_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=data)
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+        assert tc.members[0] == current_user
+        assert tc.members[1] == member
+
+        member_client = await get_authorized_client(member)
+        response = await member_client.delete(f"/channels/{str(topic_channel.pk)}/members/me")
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+        response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_kick_member_from_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        member: User = await create_new_user()
+
+        user_client = await get_authorized_client(current_user)
+        data = {"members": [member.wallet_address]}
+        response = await user_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=data)
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+        assert tc.members[0] == current_user
+        assert tc.members[1] == member
+
+        member_client = await get_authorized_client(member)
+        response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200
+
+        user_client = await get_authorized_client(current_user)
+        response = await user_client.delete(f"/channels/{str(topic_channel.pk)}/members/{str(member.pk)}")
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+        member_client = await get_authorized_client(member)
+        response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_kick_member_from_channel_as_guest_nok(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        member: User = await create_new_user()
+
+        user_client = await get_authorized_client(current_user)
+        data = {"members": [member.wallet_address]}
+        response = await user_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=data)
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+        assert tc.members[0] == current_user
+        assert tc.members[1] == member
+
+        member_client = await get_authorized_client(member)
+        response = await member_client.delete(f"/channels/{str(topic_channel.pk)}/members/{str(current_user.pk)}")
+        assert response.status_code == 403
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+        assert tc.members[0] == current_user
+        assert tc.members[1] == member

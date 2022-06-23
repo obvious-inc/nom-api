@@ -23,6 +23,7 @@ from app.services.channels import (
     delete_channel,
     get_channel,
     invite_members_to_channel,
+    kick_member_from_channel,
     mark_channel_as_read,
     update_channel,
     update_channel_permissions,
@@ -117,6 +118,23 @@ async def post_bulk_mark_channels_read(
 )
 async def post_invite_to_channel(channel_id: str, members: List[str] = Body(..., embed=True)):
     return await invite_members_to_channel(channel_id=channel_id, members=members)
+
+
+@router.delete(
+    "/{channel_id}/members/me", response_description="Remove me from channel", status_code=http.HTTPStatus.NO_CONTENT
+)
+async def delete_remove_me_from_channel(channel_id: str, current_user: User = Depends(get_current_user)):
+    return await kick_member_from_channel(channel_id=channel_id, member_id=str(current_user.pk))
+
+
+@router.delete(
+    "/{channel_id}/members/{member_id}",
+    response_description="Remove member from channel",
+    status_code=http.HTTPStatus.NO_CONTENT,
+    dependencies=[Depends(PermissionsChecker(permissions=["channels.kick"]))],
+)
+async def delete_remove_member_from_channel(channel_id: str, member_id: str):
+    return await kick_member_from_channel(channel_id=channel_id, member_id=member_id)
 
 
 @router.put(

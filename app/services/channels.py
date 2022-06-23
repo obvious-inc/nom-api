@@ -265,6 +265,21 @@ async def invite_members_to_channel(channel_id: str, members: List[str]):
     await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
 
 
+async def kick_member_from_channel(channel_id: str, member_id: str):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if channel.kind != "topic":
+        raise Exception(f"cannot change members of channel type: {channel.kind}")
+
+    current_channel_members = [str(m.pk) for m in channel.members]
+
+    if member_id not in current_channel_members:
+        raise Exception(f"member {member_id} is not in channel {channel_id}")
+
+    final_channel_members = [m for m in current_channel_members if m != member_id]
+    await update_item(item=channel, data={"members": final_channel_members})
+    await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
+
+
 async def update_channel_permissions(channel_id: str, update_data: List[PermissionUpdateSchema]):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
 
