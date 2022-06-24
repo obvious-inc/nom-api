@@ -241,12 +241,6 @@ async def fetch_user_permissions(
 
         user_roles = await get_user_roles_permissions(user=user, server=server)
 
-    logger.debug(f"user: {user}")
-    logger.debug(f"channel: {channel}")
-    logger.debug(f"server: {server}")
-    logger.debug(f"section: {section}")
-    logger.debug(f"current roles: {user_roles}")
-
     section_overwrites = {}
     channel_overwrites = json.loads(channel.get("permissions", "{}"))
     if not section and channel_id:
