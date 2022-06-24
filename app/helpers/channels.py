@@ -20,7 +20,8 @@ async def is_user_in_channel(user: User, channel: Channel) -> bool:
             return False
         else:
             return True
-    elif channel.kind == "dm":
+
+    elif channel.kind == "dm" or channel.kind == "topic":
         return user in channel.members
 
     return False
@@ -46,6 +47,17 @@ async def get_channel_users(channel: Channel) -> List[User]:
     return users
 
 
+async def convert_permission_object_to_cached(channel: Channel) -> str:
+    channel_overwrites = {}
+    for overwrite in channel.permission_overwrites:
+        if overwrite.role:
+            channel_overwrites[str(overwrite.role.pk)] = overwrite.permissions
+        elif overwrite.group:
+            channel_overwrites[str(overwrite.group)] = overwrite.permissions
+
+    return json.dumps(channel_overwrites)
+
+
 async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[str, Any]]:
     if not channel_id:
         return None
@@ -54,24 +66,15 @@ async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[st
     if not channel:
         return None
 
-    dict_channel = {
-        "kind": channel.kind,
-    }
+    dict_channel = {"kind": channel.kind, "owner": str(channel.owner.pk)}
 
-    if channel.kind == "dm":
+    if channel.kind == "dm" or channel.kind == "topic":
         dict_channel["members"] = ",".join([str(member.pk) for member in channel.members])
 
     if channel.kind == "server":
         dict_channel["server"] = str(channel.server.pk)
 
-    channel_overwrites = {}
-    for overwrite in channel.permission_overwrites:
-        if overwrite.role:
-            channel_overwrites[str(overwrite.role.pk)] = overwrite.permissions
-        elif overwrite.group:
-            channel_overwrites[str(overwrite.group)] = overwrite.permissions
-
-    dict_channel["permissions"] = json.dumps(channel_overwrites)
+    dict_channel["permissions"] = await convert_permission_object_to_cached(channel)
 
     await cache.client.hset(f"channel:{channel_id}", mapping=dict_channel)
     return dict_channel

@@ -35,7 +35,7 @@ async def get_server_online_channels(server: Server, current_user: Optional[User
 
 async def get_channel_online_channels(channel: Channel, current_user: Optional[User]):
     user_ids = set()
-    if channel.kind == "dm":
+    if channel.kind == "dm" or channel.kind == "topic":
         for member in channel.members:
             user_ids.add(member.pk)
     elif channel.kind == "server":

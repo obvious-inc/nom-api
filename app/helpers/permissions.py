@@ -25,6 +25,12 @@ class Permission(Enum):
     MESSAGES_LIST = "messages.list"
 
     CHANNELS_CREATE = "channels.create"
+    CHANNELS_VIEW = "channels.view"
+    CHANNELS_INVITE = "channels.invite"
+    CHANNELS_JOIN = "channels.join"
+    CHANNELS_PERMISSIONS_MANAGE = "channels.permissions.manage"
+    CHANNELS_KICK = "channels.kick"
+    CHANNELS_DELETE = "channels.delete"
 
     MEMBERS_KICK = "members.kick"
 
@@ -33,7 +39,8 @@ class Permission(Enum):
 
 
 # TODO: Move all of this to a constants file?
-ALL_PERMISSIONS = [p.value for p in Permission]
+SERVER_OWNER_PERMISSIONS = [p.value for p in Permission]
+CHANNEL_OWNER_PERMISSIONS = [p.value for p in Permission]
 
 DEFAULT_ROLE_PERMISSIONS = [
     p.value
@@ -43,9 +50,19 @@ DEFAULT_ROLE_PERMISSIONS = [
     ]
 ]
 
-DEFAULT_DM_PERMISSIONS = [
+DEFAULT_DM_MEMBER_PERMISSIONS = [
     p.value
     for p in [
+        Permission.CHANNELS_VIEW,
+        Permission.MESSAGES_LIST,
+        Permission.MESSAGES_CREATE,
+    ]
+]
+
+DEFAULT_TOPIC_MEMBER_PERMISSIONS = [
+    p.value
+    for p in [
+        Permission.CHANNELS_VIEW,
         Permission.MESSAGES_LIST,
         Permission.MESSAGES_CREATE,
     ]
@@ -67,17 +84,18 @@ async def _fetch_fields_from_request_body(fields: List[str], request: Request) -
     if not body:
         return None
 
-    for field in fields:
-        value = body.get(field)
-        if value:
-            return value
+    if isinstance(body, dict):
+        for field in fields:
+            value = body.get(field)
+            if value:
+                return value
 
     return None
 
 
 async def _fetch_channel_from_request(request: Request) -> Optional[str]:
     request_path = request.url.path
-    channel_matches = re.findall(r"^/channels/(.{24})/", request_path)
+    channel_matches = re.findall(r"^/channels/(.{24})/?", request_path)
     if channel_matches:
         return channel_matches[0]
 
@@ -90,7 +108,7 @@ async def _fetch_channel_from_request(request: Request) -> Optional[str]:
 
 async def _fetch_server_from_request(request: Request) -> Optional[str]:
     request_path = request.url.path
-    server_matches = re.findall(r"^/servers/(.{24})/", request_path)
+    server_matches = re.findall(r"^/servers/(.{24})/?", request_path)
     if server_matches:
         return server_matches[0]
 
@@ -183,53 +201,55 @@ async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str)
 async def fetch_user_permissions(
     channel_id: Optional[str], server_id: Optional[str], user_id: Optional[str]
 ) -> List[str]:
-    channel, user, server, section = await fetch_cached_permissions_data(channel_id=channel_id, user_id=user_id or "")
-
-    if not channel:
-        channel = await fetch_and_cache_channel(channel_id=channel_id)
-
-    if not channel and not server_id:
+    logger.debug(f"fetching permissions. user: {user_id} | channel: {channel_id} | server: {server_id}")
+    if not channel_id and not server_id:
         return DEFAULT_USER_PERMISSIONS
 
-    if channel and channel.get("kind") == "dm":
-        members = channel.get("members", []).split(",")
-        if not user_id or user_id not in members:
-            raise APIPermissionError("user is not a member of DM channel")
-        return DEFAULT_DM_PERMISSIONS
-
-    if channel and not server_id:
-        server_id = channel.get("server")
-
-    if not server_id:
-        raise Exception("need a server_id at this stage!")
-
-    if not server:
-        server = await fetch_and_cache_server(server_id=server_id)
-
-    if user_id and server.get("owner") == user_id:
-        return ALL_PERMISSIONS
-
-    # TODO: add admin flag with specific permission overwrite
+    channel, user, server, section = await fetch_cached_permissions_data(channel_id=channel_id, user_id=user_id or "")
 
     user_roles = {}
-    if user_id:
+
+    if channel_id:
+        if not channel or "kind" not in channel:
+            channel = await fetch_and_cache_channel(channel_id=channel_id)
+
+        if channel.get("kind") == "dm":
+            members = channel.get("members", []).split(",")
+            if not user_id or user_id not in members:
+                raise APIPermissionError("user is not a member of DM channel")
+            return DEFAULT_DM_MEMBER_PERMISSIONS
+        elif channel.get("kind") == "topic":
+            if user_id and channel.get("owner") == user_id:
+                return CHANNEL_OWNER_PERMISSIONS
+            members = channel.get("members", []).split(",")
+            if user_id and user_id in members:
+                user_roles = {"@members": DEFAULT_TOPIC_MEMBER_PERMISSIONS}
+        elif channel.get("kind") == "server":
+            server_id = channel.get("server")
+        else:
+            raise APIPermissionError(f"unknown channel type: {channel}")
+
+    if server_id and not server:
+        server = await fetch_and_cache_server(server_id=server_id)
+        if user_id and server.get("owner") == user_id:
+            return SERVER_OWNER_PERMISSIONS
+        # TODO: add admin flag with specific permission overwrite
+
+    if server and user_id:
         if not user or not user.get(f"{server_id}.roles", None):
             user = await fetch_and_cache_user(user_id=user_id, server_id=server_id)
 
         user_roles = await get_user_roles_permissions(user=user, server=server)
 
-    channel_overwrites = {}
     section_overwrites = {}
+    channel_overwrites = json.loads(channel.get("permissions", "{}"))
+    if not section and channel_id:
+        section_id = channel.get("section")
+        if section_id != "":
+            section = await fetch_and_cache_section(section_id=section_id, channel_id=channel_id)
 
-    if channel_id:
-        channel_overwrites = json.loads(channel.get("permissions", {}))
-        if not section:
-            section_id = channel.get("section")
-            if section_id != "":
-                section = await fetch_and_cache_section(section_id=section_id, channel_id=channel_id)
-
-        if section:
-            section_overwrites = json.loads(section.get("permissions", {}))
+    if section:
+        section_overwrites = json.loads(section.get("permissions", {}))
 
     user_permissions = await _calc_final_permissions(
         user_roles=user_roles,
@@ -243,8 +263,8 @@ async def fetch_user_permissions(
 async def check_request_permissions(request: Request, permissions: List[str], current_user: Optional[User] = None):
     channel_id = await _fetch_channel_from_request(request=request)
     server_id = await _fetch_server_from_request(request=request)
-
     user_id = str(current_user.pk) if current_user else None
+
     user_permissions = await fetch_user_permissions(user_id=user_id, channel_id=channel_id, server_id=server_id)
 
     if not all([req_permission in user_permissions for req_permission in permissions]):

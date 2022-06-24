@@ -2,19 +2,22 @@ import http
 import logging
 import re
 from datetime import datetime, timezone
-from typing import List, Optional, Union
+from typing import List, Optional, Union, cast
 
 from bson import ObjectId
 from fastapi import HTTPException
 from sentry_sdk import capture_exception
 from starlette import status
 
+from app.helpers.cache_utils import cache
+from app.helpers.channels import convert_permission_object_to_cached
 from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
+from app.models.common import PermissionOverwrite
 from app.models.message import Message
 from app.models.section import Section
 from app.models.server import ServerMember
@@ -25,7 +28,9 @@ from app.schemas.channels import (
     ChannelUpdateSchema,
     DMChannelCreateSchema,
     ServerChannelCreateSchema,
+    TopicChannelCreateSchema,
 )
+from app.schemas.permissions import PermissionUpdateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.crud import (
     create_item,
@@ -42,25 +47,31 @@ from app.services.websockets import broadcast_channel_event
 logger = logging.getLogger(__name__)
 
 
-async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
-    dm_users = []
-    for member in channel_model.members:
+async def parse_member_list(members: List[str], create_if_not_user: bool = True):
+    final_member_list = []
+    for member in members:
         if re.match(r"^0x[a-fA-F\d]{40}$", member):
             wallet_addr = checksum_address(member)
             user = await get_user_by_wallet_address(wallet_address=wallet_addr)
-            if not user:
+            if not user and create_if_not_user:
                 user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr), fetch_ens=True)
-            dm_users.append(user.pk)
         else:
-            dm_users.append(ObjectId(member))
+            user = await get_item_by_id(id_=member, result_obj=User)
 
-    channel_model.members = list(set(dm_users))
+        if user not in final_member_list:
+            final_member_list.append(user)
 
-    if current_user.pk not in channel_model.members:
-        channel_model.members.insert(0, current_user.pk)
+    return final_member_list
+
+
+async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
+    channel_model.members = await parse_member_list(members=channel_model.members or [])
+    if current_user not in channel_model.members:
+        channel_model.members.insert(0, current_user)
 
     # if same exact dm channel already exists, ignore
     filters = {
+        "kind": "dm",
         "members": {
             "$size": len(channel_model.members),
             "$all": channel_model.members,
@@ -80,16 +91,33 @@ async def create_server_channel(
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
-async def create_channel(
-    channel_model: Union[DMChannelCreateSchema, ServerChannelCreateSchema], current_user: User
+async def create_topic_channel(
+    channel_model: TopicChannelCreateSchema, current_user: User
 ) -> Union[Channel, APIDocument]:
-    kind = channel_model.kind
-    if isinstance(channel_model, DMChannelCreateSchema):
-        return await create_dm_channel(channel_model, current_user)
-    elif isinstance(channel_model, ServerChannelCreateSchema):
-        return await create_server_channel(channel_model=channel_model, current_user=current_user)
+    channel_model.members = await parse_member_list(members=channel_model.members or [])
+    if not channel_model.members:
+        channel_model.members = [current_user.pk]
     else:
-        raise Exception(f"unexpected channel kind: {kind}")
+        if current_user.pk not in channel_model.members:
+            channel_model.members.insert(0, current_user.pk)
+    return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
+
+
+async def create_channel(
+    channel_model: Union[ServerChannelCreateSchema, TopicChannelCreateSchema, DMChannelCreateSchema],
+    current_user: User,
+) -> Union[Channel, APIDocument]:
+    if channel_model.kind == "dm":
+        channel_model = cast(DMChannelCreateSchema, channel_model)
+        return await create_dm_channel(channel_model, current_user)
+    elif channel_model.kind == "server":
+        channel_model = cast(ServerChannelCreateSchema, channel_model)
+        return await create_server_channel(channel_model=channel_model, current_user=current_user)
+    elif channel_model.kind == "topic":
+        channel_model = cast(TopicChannelCreateSchema, channel_model)
+        return await create_topic_channel(channel_model=channel_model, current_user=current_user)
+    else:
+        raise Exception(f"unexpected channel kind: {channel_model.kind}")
 
 
 async def get_server_channels(server_id, current_user: User) -> List[Union[Channel, APIDocument]]:
@@ -115,6 +143,9 @@ async def delete_channel(channel_id, current_user: User):
             raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
     elif channel.kind == "dm":
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
+    elif channel.kind == "topic":
+        if len(channel.members) > 1:
+            raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
     else:
         raise Exception(f"unexpected kind of channel: {channel.kind}")
 
@@ -176,7 +207,7 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
             result_obj=ServerMember,
         )
         notify = True if user_member else False
-    elif channel.kind == "dm":
+    elif channel.kind == "dm" or channel.kind == "topic":
         notify = current_user in channel.members
 
     if notify:
@@ -198,8 +229,8 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
         server = await channel.server.fetch()
         if channel.owner != current_user and server.owner != current_user:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot change this channel")
-    elif channel.kind == "dm":
-        if current_user not in channel.members:
+    elif channel.kind == "dm" or channel.kind == "topic":
+        if current_user not in channel.members or channel.owner != current_user:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot change this channel")
     else:
         raise Exception(f"unknown channel kind: {channel.kind}")
@@ -215,3 +246,57 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
     )
 
     return updated_item
+
+
+async def get_channel(channel_id: str):
+    return await get_item_by_id(id_=channel_id, result_obj=Channel)
+
+
+async def invite_members_to_channel(channel_id: str, members: List[str]):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if channel.kind != "topic":
+        raise Exception(f"cannot change members of channel type: {channel.kind}")
+
+    parsed_member_list = await parse_member_list(members=members)
+
+    final_channel_members = [m.pk for m in channel.members]
+    for member in parsed_member_list:
+        if member not in channel.members:
+            final_channel_members.append(member.pk)
+
+    await update_item(item=channel, data={"members": final_channel_members})
+    await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
+
+
+async def kick_member_from_channel(channel_id: str, member_id: str):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if channel.kind != "topic":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"cannot kick members from channel type: {channel.kind}"
+        )
+
+    if str(channel.owner.pk) == member_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="cannot kick owner from channel")
+
+    current_channel_members = [str(m.pk) for m in channel.members]
+
+    if member_id not in current_channel_members:
+        raise Exception(f"member {member_id} is not in channel {channel_id}")
+
+    final_channel_members = [m for m in current_channel_members if m != member_id]
+    await update_item(item=channel, data={"members": final_channel_members})
+    await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
+
+
+async def update_channel_permissions(channel_id: str, update_data: List[PermissionUpdateSchema]):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+
+    ows = []
+    for permission in update_data:
+        ow = PermissionOverwrite(**permission.dict(exclude_none=True))
+        ows.append(ow)
+
+    updated = await update_item(item=channel, data={"permission_overwrites": ows})
+
+    cache_ps = await convert_permission_object_to_cached(updated)
+    await cache.client.hset(f"channel:{channel_id}", "permissions", cache_ps)
