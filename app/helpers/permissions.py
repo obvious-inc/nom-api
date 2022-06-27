@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Dict, List, Optional, Set
 
 from bson import ObjectId
+from fastapi import HTTPException
 from starlette.requests import Request
 
 from app.exceptions import APIPermissionError
@@ -212,6 +213,9 @@ async def fetch_user_permissions(
     if channel_id:
         if not channel or "kind" not in channel:
             channel = await fetch_and_cache_channel(channel_id=channel_id)
+
+        if not channel:
+            raise HTTPException(status_code=404, detail="channel not found")
 
         if channel.get("kind") == "dm":
             members = channel.get("members", []).split(",")
