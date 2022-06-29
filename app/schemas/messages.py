@@ -22,6 +22,7 @@ class MessageSchema(APIBaseSchema):
     edited_at: Optional[datetime]
     embeds: List[dict]
     reply_to: Optional[PyObjectId]
+    inviter: Optional[PyObjectId]
     type: Optional[int] = 0
 
 
@@ -57,6 +58,13 @@ class MessageUpdateSchema(APIBaseUpdateSchema):
         if len(v) == 0:
             raise ValueError("blocks can't be empty list")
         return v
+
+
+class SystemMessageCreateSchema(MessageCreateSchema):
+    channel: Optional[str]
+    server: Optional[str]
+    inviter: Optional[str]
+    type: int = 1
 
 
 class AppMessageCreateSchema(MessageCreateSchema):

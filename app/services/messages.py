@@ -7,17 +7,26 @@ from urllib.parse import urlparse
 from bson import ObjectId
 from fastapi import HTTPException
 
-from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
+from app.helpers.channels import (
+    get_channel_online_users,
+    get_channel_users,
+    is_user_in_channel,
+    update_channel_last_message,
+)
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
-from app.models.message import Message, MessageReaction, WebhookMessage
+from app.models.message import Message, MessageReaction, SystemMessage, WebhookMessage
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
-from app.schemas.messages import MessageCreateSchema, MessageUpdateSchema, WebhookMessageCreateSchema
-from app.services.channels import update_channel_last_message
+from app.schemas.messages import (
+    MessageCreateSchema,
+    MessageUpdateSchema,
+    SystemMessageCreateSchema,
+    WebhookMessageCreateSchema,
+)
 from app.services.crud import (
     create_item,
     delete_item,
@@ -39,7 +48,7 @@ async def create_webhook_message(message_model: WebhookMessageCreateSchema):
 
     bg_tasks = [
         (broadcast_message_event, (str(message.id), None, WebSocketServerEvent.MESSAGE_CREATE)),
-        (update_channel_last_message, (message.channel, message, None)),
+        (update_channel_last_message, (message.channel, message)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -49,7 +58,9 @@ async def create_webhook_message(message_model: WebhookMessageCreateSchema):
     return message
 
 
-async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
+async def create_message(
+    message_model: Union[MessageCreateSchema, SystemMessageCreateSchema], current_user: User
+) -> Union[Message, APIDocument]:
     if message_model.blocks and not message_model.content:
         message_model.content = await stringify_blocks(message_model.blocks)
     elif message_model.content and not message_model.blocks:
@@ -57,11 +68,18 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
     else:
         pass
 
-    message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
+    if isinstance(message_model, SystemMessageCreateSchema):
+        result_obj = SystemMessage
+    else:
+        result_obj = Message
+
+    message = await create_item(
+        item=message_model, result_obj=result_obj, current_user=current_user, user_field="author"
+    )
 
     bg_tasks = [
         (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
-        (update_channel_last_message, (message.channel, message, current_user)),
+        (update_channel_last_message, (message.channel, message)),
         (
             broadcast_current_user_event,
             (

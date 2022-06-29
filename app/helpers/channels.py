@@ -1,11 +1,13 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from app.helpers.cache_utils import cache
+from app.models.base import APIDocument
 from app.models.channel import Channel
+from app.models.message import Message
 from app.models.server import ServerMember
 from app.models.user import User
-from app.services.crud import get_item, get_item_by_id, get_items
+from app.services.crud import get_item, get_item_by_id, get_items, update_item
 
 
 async def is_user_in_channel(user: User, channel: Channel) -> bool:
@@ -78,3 +80,9 @@ async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[st
 
     await cache.client.hset(f"channel:{channel_id}", mapping=dict_channel)
     return dict_channel
+
+
+async def update_channel_last_message(channel_id, message: Union[Message, APIDocument]):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if not channel.last_message_at or message.created_at > channel.last_message_at:
+        await update_item(item=channel, data={"last_message_at": message.created_at})

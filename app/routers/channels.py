@@ -121,8 +121,10 @@ async def post_bulk_mark_channels_read(
     status_code=http.HTTPStatus.NO_CONTENT,
     dependencies=[Depends(PermissionsChecker(permissions=["channels.invite"]))],
 )
-async def post_invite_to_channel(channel_id: str, members: List[str] = Body(..., embed=True)):
-    return await invite_members_to_channel(channel_id=channel_id, members=members)
+async def post_invite_to_channel(
+    channel_id: str, members: List[str] = Body(..., embed=True), current_user: User = Depends(get_current_user)
+):
+    return await invite_members_to_channel(channel_id=channel_id, members=members, current_user=current_user)
 
 
 @router.delete(
