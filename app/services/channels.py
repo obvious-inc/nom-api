@@ -11,7 +11,7 @@ from starlette import status
 
 from app.helpers.cache_utils import cache
 from app.helpers.channels import convert_permission_object_to_cached
-from app.helpers.permissions import user_belongs_to_server
+from app.helpers.permissions import fetch_user_permissions, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
 from app.helpers.ws_events import WebSocketServerEvent
@@ -337,3 +337,11 @@ async def join_channel(channel_id: str, current_user: User):
 
     message = SystemMessageCreateSchema(channel=channel_id, type=1)
     await create_message(message_model=message, current_user=current_user)
+
+
+async def get_channel_permissions(channel_id: str, current_user_or_exception: Union[User, Exception, None]):
+    if isinstance(current_user_or_exception, Exception):
+        raise current_user_or_exception
+
+    user_id = str(current_user_or_exception.pk) if current_user_or_exception else None
+    return await fetch_user_permissions(channel_id=channel_id, server_id=None, user_id=user_id)
