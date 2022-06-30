@@ -23,6 +23,7 @@ from app.services.channels import (
     delete_channel,
     get_channel,
     invite_members_to_channel,
+    join_channel,
     kick_member_from_channel,
     mark_channel_as_read,
     update_channel,
@@ -152,3 +153,13 @@ async def delete_remove_member_from_channel(channel_id: str, member_id: str):
 )
 async def put_update_channel_permissions(channel_id: str, update_data: List[PermissionUpdateSchema] = Body(...)):
     return await update_channel_permissions(channel_id=channel_id, update_data=update_data)
+
+
+@router.post(
+    "/{channel_id}/join",
+    summary="Join channel",
+    status_code=http.HTTPStatus.NO_CONTENT,
+    dependencies=[Depends(PermissionsChecker(permissions=["channels.join"]))],
+)
+async def post_join_server(channel_id: str, current_user: User = Depends(get_current_user)):
+    return await join_channel(channel_id=channel_id, current_user=current_user)

@@ -309,3 +309,31 @@ async def update_channel_permissions(channel_id: str, update_data: List[Permissi
 
     cache_ps = await convert_permission_object_to_cached(updated)
     await cache.client.hset(f"channel:{channel_id}", "permissions", cache_ps)
+
+
+async def join_channel(channel_id: str, current_user: User):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if channel.kind != "topic":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"cannot join channel of type: {channel.kind}"
+        )
+
+    if current_user in channel.members:
+        return
+
+    current_channel_members = [m.pk for m in channel.members]
+    current_channel_members.append(current_user.pk)
+
+    await update_item(item=channel, data={"members": current_channel_members})
+    await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in current_channel_members]))
+
+    await queue_bg_task(
+        broadcast_channel_event,
+        channel_id,
+        str(current_user.pk),
+        WebSocketServerEvent.CHANNEL_USER_JOINED,
+        {"channel": channel_id, "user": await current_user.to_dict(exclude_fields=["pfp"])},
+    )
+
+    message = SystemMessageCreateSchema(channel=channel_id, type=1)
+    await create_message(message_model=message, current_user=current_user)
