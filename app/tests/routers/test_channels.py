@@ -1059,3 +1059,180 @@ class TestChannelsRoutes:
         assert "members" not in json_response
         assert "description" in json_response
         assert json_response["description"] == data["description"]
+
+    @pytest.mark.asyncio
+    async def test_join_channel_default_nok(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.post(f"/channels/{str(topic_channel.pk)}/join")
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_join_channel_public_view_nok(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        user_client = await get_authorized_client(current_user)
+        data = [
+            {"group": "@public", "permissions": ["channels.view"]},
+        ]
+        response = await user_client.put(f"/channels/{str(topic_channel.pk)}/permissions", json=data)
+        assert response.status_code == 204
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200
+
+        response = await guest_client.post(f"/channels/{str(topic_channel.pk)}/join")
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_join_channel_with_permissions_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+        user_client = await get_authorized_client(current_user)
+        data = [
+            {"group": "@public", "permissions": ["channels.view", "channels.join"]},
+        ]
+        response = await user_client.put(f"/channels/{str(topic_channel.pk)}/permissions", json=data)
+        assert response.status_code == 204
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200
+
+        response = await guest_client.post(f"/channels/{str(topic_channel.pk)}/join")
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+        assert tc.members[0] == current_user
+        assert tc.members[1] == guest_user
+
+    @pytest.mark.asyncio
+    async def test_join_channel_twice_ok(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        user_client = await get_authorized_client(current_user)
+        data = [
+            {"group": "@public", "permissions": ["channels.view", "channels.join"]},
+        ]
+        response = await user_client.put(f"/channels/{str(topic_channel.pk)}/permissions", json=data)
+        assert response.status_code == 204
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.post(f"/channels/{str(topic_channel.pk)}/join")
+        assert response.status_code == 204
+
+        response = await guest_client.post(f"/channels/{str(topic_channel.pk)}/join")
+        assert response.status_code == 204
+
+        response = await guest_client.post(f"/channels/{str(topic_channel.pk)}/join")
+        assert response.status_code == 204
+
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 2
+        assert tc.members[0] == current_user
+        assert tc.members[1] == guest_user
+
+    @pytest.mark.asyncio
+    async def test_topic_channel_message_list_before_joining(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+        user_client = await get_authorized_client(current_user)
+        data = [
+            {"group": "@public", "permissions": ["channels.view", "channels.join"]},
+        ]
+        response = await user_client.put(f"/channels/{str(topic_channel.pk)}/permissions", json=data)
+        assert response.status_code == 204
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200
+
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}/messages")
+        assert response.status_code == 403
+
+        response = await guest_client.post(f"/channels/{str(topic_channel.pk)}/join")
+        assert response.status_code == 204
+
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}/messages")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_topic_channel_public_message_list(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        tc = await get_item_by_id(id_=topic_channel.pk, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+        user_client = await get_authorized_client(current_user)
+        data = [
+            {"group": "@public", "permissions": ["channels.view", "messages.list"]},
+        ]
+        response = await user_client.put(f"/channels/{str(topic_channel.pk)}/permissions", json=data)
+        assert response.status_code == 204
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200
+
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}/messages")
+        assert response.status_code == 200

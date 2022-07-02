@@ -11,14 +11,13 @@ from starlette import status
 
 from app.helpers.cache_utils import cache
 from app.helpers.channels import convert_permission_object_to_cached
-from app.helpers.permissions import user_belongs_to_server
+from app.helpers.permissions import fetch_user_permissions, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.common import PermissionOverwrite
-from app.models.message import Message
 from app.models.section import Section
 from app.models.server import ServerMember
 from app.models.user import User
@@ -30,6 +29,7 @@ from app.schemas.channels import (
     ServerChannelCreateSchema,
     TopicChannelCreateSchema,
 )
+from app.schemas.messages import SystemMessageCreateSchema
 from app.schemas.permissions import PermissionUpdateSchema
 from app.schemas.users import UserCreateSchema
 from app.services.crud import (
@@ -41,6 +41,7 @@ from app.services.crud import (
     get_items,
     update_item,
 )
+from app.services.messages import create_message
 from app.services.users import create_user, get_user_by_wallet_address
 from app.services.websockets import broadcast_channel_event
 
@@ -163,12 +164,6 @@ async def delete_channel(channel_id, current_user: User):
     return deleted_channel
 
 
-async def update_channel_last_message(channel_id, message: Union[Message, APIDocument], current_user: User):
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-    if not channel.last_message_at or message.created_at > channel.last_message_at:
-        await update_item(item=channel, data={"last_message_at": message.created_at})
-
-
 async def bulk_mark_channels_as_read(ack_data: ChannelBulkReadStateCreateSchema, current_user: User):
     await update_channels_read_state(
         channel_ids=ack_data.channels, current_user=current_user, last_read_at=ack_data.last_read_at
@@ -252,20 +247,34 @@ async def get_channel(channel_id: str):
     return await get_item_by_id(id_=channel_id, result_obj=Channel)
 
 
-async def invite_members_to_channel(channel_id: str, members: List[str]):
+async def invite_members_to_channel(channel_id: str, members: List[str], current_user: User):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
     if channel.kind != "topic":
         raise Exception(f"cannot change members of channel type: {channel.kind}")
 
     parsed_member_list = await parse_member_list(members=members)
 
+    new_users = []
     final_channel_members = [m.pk for m in channel.members]
     for member in parsed_member_list:
         if member not in channel.members:
             final_channel_members.append(member.pk)
+            new_users.append(member)
 
     await update_item(item=channel, data={"members": final_channel_members})
     await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
+
+    for new_user in new_users:
+        await queue_bg_task(
+            broadcast_channel_event,
+            channel_id,
+            str(new_user.pk),
+            WebSocketServerEvent.CHANNEL_USER_INVITED,
+            {"channel": channel_id, "user": await new_user.to_dict(exclude_fields=["pfp"])},
+        )
+
+        message = SystemMessageCreateSchema(channel=channel_id, type=1, inviter=str(current_user.pk))
+        await create_message(message_model=message, current_user=new_user)
 
 
 async def kick_member_from_channel(channel_id: str, member_id: str):
@@ -300,3 +309,39 @@ async def update_channel_permissions(channel_id: str, update_data: List[Permissi
 
     cache_ps = await convert_permission_object_to_cached(updated)
     await cache.client.hset(f"channel:{channel_id}", "permissions", cache_ps)
+
+
+async def join_channel(channel_id: str, current_user: User):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if channel.kind != "topic":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"cannot join channel of type: {channel.kind}"
+        )
+
+    if current_user in channel.members:
+        return
+
+    current_channel_members = [m.pk for m in channel.members]
+    current_channel_members.append(current_user.pk)
+
+    await update_item(item=channel, data={"members": current_channel_members})
+    await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in current_channel_members]))
+
+    await queue_bg_task(
+        broadcast_channel_event,
+        channel_id,
+        str(current_user.pk),
+        WebSocketServerEvent.CHANNEL_USER_JOINED,
+        {"channel": channel_id, "user": await current_user.to_dict(exclude_fields=["pfp"])},
+    )
+
+    message = SystemMessageCreateSchema(channel=channel_id, type=1)
+    await create_message(message_model=message, current_user=current_user)
+
+
+async def get_channel_permissions(channel_id: str, current_user_or_exception: Union[User, Exception, None]):
+    if isinstance(current_user_or_exception, Exception):
+        raise current_user_or_exception
+
+    user_id = str(current_user_or_exception.pk) if current_user_or_exception else None
+    return await fetch_user_permissions(channel_id=channel_id, server_id=None, user_id=user_id)

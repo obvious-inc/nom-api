@@ -37,6 +37,12 @@ class Message(APIDocument):
 
 
 @instance.register
+class SystemMessage(Message):
+    inviter = fields.ReferenceField("User", required=False, default=None)
+    type = fields.IntField(default=1)
+
+
+@instance.register
 class AppMessage(Message):
     author = fields.ReferenceField("User", required=False)
     app = fields.ReferenceField("App", required=True)
