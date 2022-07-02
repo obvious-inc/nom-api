@@ -261,7 +261,7 @@ async def fetch_user_permissions(
         channel_overwrites=channel_overwrites,
     )
 
-    return list(user_permissions)
+    return sorted(list(user_permissions))
 
 
 async def check_request_permissions(request: Request, permissions: List[str], current_user: Optional[User] = None):

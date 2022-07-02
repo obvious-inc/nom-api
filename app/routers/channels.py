@@ -4,7 +4,7 @@ from typing import List, Optional, Union
 
 from fastapi import APIRouter, Body, Depends
 
-from app.dependencies import PermissionsChecker, common_parameters, get_current_user
+from app.dependencies import PermissionsChecker, common_parameters, get_current_user, get_current_user_non_error
 from app.models.user import User
 from app.schemas.channels import (
     ChannelBulkReadStateCreateSchema,
@@ -22,6 +22,7 @@ from app.services.channels import (
     create_typing_indicator,
     delete_channel,
     get_channel,
+    get_channel_permissions,
     invite_members_to_channel,
     join_channel,
     kick_member_from_channel,
@@ -153,6 +154,17 @@ async def delete_remove_member_from_channel(channel_id: str, member_id: str):
 )
 async def put_update_channel_permissions(channel_id: str, update_data: List[PermissionUpdateSchema] = Body(...)):
     return await update_channel_permissions(channel_id=channel_id, update_data=update_data)
+
+
+@router.get(
+    "/{channel_id}/permissions",
+    summary="Get channel permissions",
+    response_model=List[str],
+)
+async def get_fetch_channel_permissions(
+    channel_id: str, current_user_or_exception: User = Depends(get_current_user_non_error)
+):
+    return await get_channel_permissions(channel_id=channel_id, current_user_or_exception=current_user_or_exception)
 
 
 @router.post(
