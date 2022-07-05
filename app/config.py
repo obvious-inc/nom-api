@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     alchemy_api_key: Optional[str]
     simplehash_api_key: Optional[str]
 
+    auto_join_channel_ids: Optional[str]
+
     class Config:
         env_file = ".env"
 
