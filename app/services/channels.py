@@ -145,7 +145,7 @@ async def delete_channel(channel_id, current_user: User):
     elif channel.kind == "dm":
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
     elif channel.kind == "topic":
-        if len(channel.members) > 1:
+        if not is_channel_owner:
             raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
     else:
         raise Exception(f"unexpected kind of channel: {channel.kind}")
