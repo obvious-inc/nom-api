@@ -161,6 +161,14 @@ async def delete_channel(channel_id, current_user: User):
         logger.warning("trying to delete channel from section failed: %s", e)
         capture_exception(e)
 
+    await queue_bg_task(
+        broadcast_channel_event,
+        channel_id,
+        str(current_user.id),
+        WebSocketServerEvent.CHANNEL_DELETED,
+        {"channel": channel_id},
+    )
+
     return deleted_channel
 
 
