@@ -183,7 +183,7 @@ async def post_join_server(channel_id: str, current_user: User = Depends(get_cur
     "/{channel_id}/members",
     response_description="List channel members",
     response_model=List[PublicUserSchema],
-    dependencies=[Depends(PermissionsChecker(permissions=["channels.view"]))],
+    dependencies=[Depends(PermissionsChecker(permissions=["channels.members.list"]))],
 )
 async def get_fetch_channel_members(channel_id: str):
     return await get_channel_members(channel_id=channel_id)

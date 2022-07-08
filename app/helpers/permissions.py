@@ -32,6 +32,7 @@ class Permission(Enum):
     CHANNELS_PERMISSIONS_MANAGE = "channels.permissions.manage"
     CHANNELS_KICK = "channels.kick"
     CHANNELS_DELETE = "channels.delete"
+    CHANNELS_MEMBERS_LIST = "channels.members.list"
 
     MEMBERS_KICK = "members.kick"
 
@@ -57,6 +58,7 @@ DEFAULT_DM_MEMBER_PERMISSIONS = [
         Permission.CHANNELS_VIEW,
         Permission.MESSAGES_LIST,
         Permission.MESSAGES_CREATE,
+        Permission.CHANNELS_MEMBERS_LIST,
     ]
 ]
 
@@ -66,6 +68,7 @@ DEFAULT_TOPIC_MEMBER_PERMISSIONS = [
         Permission.CHANNELS_VIEW,
         Permission.MESSAGES_LIST,
         Permission.MESSAGES_CREATE,
+        Permission.CHANNELS_MEMBERS_LIST,
     ]
 ]
 
