@@ -16,12 +16,14 @@ from app.schemas.channels import (
 )
 from app.schemas.messages import EitherMessage
 from app.schemas.permissions import PermissionUpdateSchema
+from app.schemas.users import PublicUserSchema
 from app.services.channels import (
     bulk_mark_channels_as_read,
     create_channel,
     create_typing_indicator,
     delete_channel,
     get_channel,
+    get_channel_members,
     get_channel_permissions,
     invite_members_to_channel,
     join_channel,
@@ -175,3 +177,13 @@ async def get_fetch_channel_permissions(
 )
 async def post_join_server(channel_id: str, current_user: User = Depends(get_current_user)):
     return await join_channel(channel_id=channel_id, current_user=current_user)
+
+
+@router.get(
+    "/{channel_id}/members",
+    response_description="List channel members",
+    response_model=List[PublicUserSchema],
+    dependencies=[Depends(PermissionsChecker(permissions=["channels.members.list"]))],
+)
+async def get_fetch_channel_members(channel_id: str):
+    return await get_channel_members(channel_id=channel_id)

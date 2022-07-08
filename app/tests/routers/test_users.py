@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.models.channel import Channel
 from app.models.server import Server
 
 
@@ -93,3 +94,13 @@ class TestUserRoutes:
         assert "display_name" in json_response
         assert json_response["display_name"] != old_display_name
         assert json_response["display_name"] == data["display_name"]
+
+    @pytest.mark.asyncio
+    async def test_list_channels_ok(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, topic_channel: Channel, dm_channel: Channel
+    ):
+        response = await authorized_client.get("/users/me/channels")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response != []
+        assert len(json_response) == 2

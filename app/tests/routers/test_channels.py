@@ -637,13 +637,6 @@ class TestChannelsRoutes:
         user_servers = await get_user_servers(current_user=guest_user)
         assert len(user_servers) == 0
 
-        data = await get_signed_message_data(private_key, new_user_wallet_addr)
-        response = await client.post("/auth/login", json=data)
-        assert response.status_code == 201
-
-        user_servers = await get_user_servers(current_user=guest_user)
-        assert len(user_servers) == 1
-
     @pytest.mark.asyncio
     async def test_fetch_channel_messages_with_webhooks(
         self,
@@ -867,7 +860,7 @@ class TestChannelsRoutes:
 
         user_client = await get_authorized_client(current_user)
         data = [
-            {"group": "@public", "permissions": ["channels.view"]},
+            {"group": "@public", "permissions": ["channels.view", "channels.members.list"]},
         ]
         response = await user_client.put(f"/channels/{str(topic_channel.pk)}/permissions", json=data)
         assert response.status_code == 204
@@ -1034,7 +1027,7 @@ class TestChannelsRoutes:
         assert tc.members[1] == member
 
         response = await authorized_client.delete(f"/channels/{str(topic_channel.pk)}")
-        assert response.status_code == 403
+        assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_create_server_channel_with_description(
@@ -1235,4 +1228,30 @@ class TestChannelsRoutes:
         assert response.status_code == 200
 
         response = await guest_client.get(f"/channels/{str(topic_channel.pk)}/messages")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel_list_members(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}/members")
+        assert response.status_code == 403
+
+        owner_client = await get_authorized_client(current_user)
+        data = [
+            {"group": "@public", "permissions": ["channels.view", "channels.members.list"]},
+        ]
+        response = await owner_client.put(f"/channels/{str(topic_channel.pk)}/permissions", json=data)
+        assert response.status_code == 204
+
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.get(f"/channels/{str(topic_channel.pk)}/members")
         assert response.status_code == 200

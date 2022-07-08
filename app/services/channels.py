@@ -353,3 +353,15 @@ async def get_channel_permissions(channel_id: str, current_user_or_exception: Un
 
     user_id = str(current_user_or_exception.pk) if current_user_or_exception else None
     return await fetch_user_permissions(channel_id=channel_id, server_id=None, user_id=user_id)
+
+
+async def get_channel_members(channel_id: str):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if channel.kind != "topic":
+        raise Exception(f"cannot get members of channel type: {channel.kind}")
+
+    return await get_items(filters={"_id": {"$in": [user.pk for user in channel.members]}}, result_obj=User, limit=None)
+
+
+async def get_user_channels(current_user: User):
+    return await get_items(filters={"members": current_user.pk}, result_obj=Channel, limit=None)
