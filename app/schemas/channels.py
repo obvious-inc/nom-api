@@ -9,6 +9,7 @@ from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSc
 class ChannelSchema(APIBaseSchema):
     kind: str
     owner: PyObjectId = Field()
+    last_message_at: Optional[datetime]
 
 
 class DMChannelSchema(ChannelSchema):
