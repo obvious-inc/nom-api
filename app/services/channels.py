@@ -248,6 +248,11 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
         {"channel": channel_id},
     )
 
+    updated_fields = list(data.keys())
+    if len(updated_fields) == 1:
+        message = SystemMessageCreateSchema(channel=channel_id, type=5, updates=data)
+        await create_message(message_model=message, current_user=current_user)
+
     return updated_item
 
 

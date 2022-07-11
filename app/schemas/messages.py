@@ -23,6 +23,7 @@ class MessageSchema(APIBaseSchema):
     embeds: List[dict]
     reply_to: Optional[PyObjectId]
     inviter: Optional[PyObjectId]
+    updates: Optional[dict]
     type: Optional[int] = 0
 
 
@@ -64,6 +65,7 @@ class SystemMessageCreateSchema(MessageCreateSchema):
     channel: Optional[str]
     server: Optional[str]
     inviter: Optional[str]
+    updates: Optional[dict] = {}
     type: int = 1
 
 
