@@ -129,6 +129,10 @@ async def get_server_channels(server_id, current_user: User) -> List[Union[Chann
 
 
 async def get_dm_channels(current_user: User, limit: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
+    return await get_items(filters={"members": current_user.pk, "kind": "dm"}, result_obj=Channel, limit=limit)
+
+
+async def get_all_member_channels(current_user: User, limit: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
     return await get_items(filters={"members": current_user.pk}, result_obj=Channel, limit=limit)
 
 
