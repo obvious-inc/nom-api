@@ -1,8 +1,9 @@
 import http
 import logging
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import HTTPException
 
 from app.helpers.pfp import extract_contract_and_token_from_string, upload_pfp_url_and_update_profile
@@ -149,3 +150,15 @@ async def update_user_profile(
 
 async def get_user_read_states(current_user: User):
     return await get_items(filters={"user": current_user.pk}, result_obj=ChannelReadState, limit=None)
+
+
+async def get_users_info(data: dict):
+    user_ids: List[str] = data.get("user_ids", [])
+    user_obj_ids = []
+    for user_id in user_ids:
+        try:
+            user_obj_ids.append(ObjectId(user_id))
+        except InvalidId:
+            pass
+
+    return await get_items(filters={"_id": {"$in": user_obj_ids}}, result_obj=User)
