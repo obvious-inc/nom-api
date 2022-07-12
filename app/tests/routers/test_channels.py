@@ -609,12 +609,16 @@ class TestChannelsRoutes:
         create_new_user: Callable,
         get_authorized_client: Callable,
         get_signed_message_data: Callable,
+        topic_channel: Channel,
     ):
         key = secrets.token_bytes(32)
         priv = binascii.hexlify(key).decode("ascii")
         private_key = "0x" + priv
         acct = Account.from_key(private_key)
         new_user_wallet_addr = acct.address
+
+        dm_channels = await get_dm_channels(current_user=current_user)
+        assert len(dm_channels) == 0
 
         members = [str(current_user.pk), new_user_wallet_addr]
         data = {"kind": "dm", "members": members}
