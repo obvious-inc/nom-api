@@ -16,7 +16,7 @@ from app.schemas.channels import (
 )
 from app.schemas.messages import EitherMessage
 from app.schemas.permissions import PermissionUpdateSchema
-from app.schemas.users import PublicUserSchema
+from app.schemas.users import MemberUserSchema
 from app.services.channels import (
     bulk_mark_channels_as_read,
     create_channel,
@@ -182,7 +182,7 @@ async def post_join_server(channel_id: str, current_user: User = Depends(get_cur
 @router.get(
     "/{channel_id}/members",
     response_description="List channel members",
-    response_model=List[PublicUserSchema],
+    response_model=List[MemberUserSchema],
     dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["channels.members.list"]))],
 )
 async def get_fetch_channel_members(channel_id: str):
