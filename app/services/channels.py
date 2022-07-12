@@ -249,7 +249,7 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
         channel_id,
         str(current_user.id),
         WebSocketServerEvent.CHANNEL_UPDATE,
-        {"channel": channel_id},
+        {"channel": updated_item.dump()},
     )
 
     updated_fields = list(data.keys())
