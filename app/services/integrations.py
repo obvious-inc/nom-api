@@ -34,6 +34,7 @@ async def _get_tenor_search(search_term: str, media_filter: Optional[str]):
                 "id": gif.get("id"),
                 "title": gif.get("content_description"),
                 "src": image.get("url"),
+                "tags": image.get("tags"),
             }
         )
     return gifs
