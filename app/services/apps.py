@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.webhook import Webhook
 from app.schemas.apps import AppCreateSchema
 from app.schemas.webhooks import WebhookCreateSchema
-from app.services.crud import create_item, get_item_by_id, get_items
+from app.services.crud import create_item, get_item, get_item_by_id, get_items
 
 
 async def create_app(model: AppCreateSchema, current_user: User):
@@ -30,3 +30,7 @@ async def create_app_webhook(app_id: str, webhook_data: WebhookCreateSchema, cur
 
 async def get_apps():
     return await get_items(filters={}, result_obj=App)
+
+
+async def get_app_by_client_id(client_id):
+    return await get_item(filters={"client_id": client_id}, result_obj=App)

@@ -1,4 +1,31 @@
 [[package]]
+name = "aioauth"
+version = "1.4.0"
+description = "Asynchronous OAuth 2.0 framework for Python 3."
+category = "main"
+optional = false
+python-versions = ">=3.7.0"
+
+[package.dependencies]
+aioauth-fastapi = {version = ">=0.0.1", optional = true, markers = "extra == \"fastapi\""}
+
+[package.extras]
+dev = ["async-asgi-testclient (==1.4.8)", "pre-commit (==2.16.0)", "pytest (==6.2.5)", "pytest-asyncio (==0.16.0)", "pytest-cov (==3.0.0)", "pytest-env (==0.6.2)", "pytest-sugar (==0.9.4)", "testfixtures (==6.18.3)", "bump2version (==1.0.1)", "twine (==3.7.1)", "wheel"]
+docs = ["sphinx", "sphinx-copybutton", "sphinx-autobuild", "m2r2", "sphinx-rtd-theme", "async-asgi-testclient (==1.4.8)", "pre-commit (==2.16.0)", "pytest (==6.2.5)", "pytest-asyncio (==0.16.0)", "pytest-cov (==3.0.0)", "pytest-env (==0.6.2)", "pytest-sugar (==0.9.4)", "testfixtures (==6.18.3)", "bump2version (==1.0.1)", "twine (==3.7.1)", "wheel"]
+fastapi = ["aioauth-fastapi (>=0.0.1)"]
+
+[[package]]
+name = "aioauth-fastapi"
+version = "0.1.1"
+description = "aioauth integration for FastAPI."
+category = "main"
+optional = false
+python-versions = ">=3.6.0"
+
+[package.extras]
+dev = ["fastapi (==0.70.1)", "aioauth (==1.3.0)", "uvicorn (==0.16.0)", "wheel", "twine (==3.7.1)", "pydantic[dotenv] (==1.8.2)", "asyncpg (==0.25.0)", "SQLAlchemy[asyncio] (==1.4.28)", "orjson (==3.6.5)", "python-jose[pycryptodome] (==3.3.0)", "python-multipart (==0.0.5)", "alembic (==1.7.5)", "sqlmodel (==0.0.5)", "async-asgi-testclient (==1.4.9)", "pre-commit (==2.16.0)", "pytest (==6.2.5)", "pytest-asyncio (==0.16.0)", "pytest-cov (==3.0.0)", "pytest-env (==0.6.2)", "pytest-sugar (==0.9.4)", "testfixtures (==6.18.3)", "bump2version (==1.0.1)"]
+
+[[package]]
 name = "aiohttp"
 version = "3.8.1"
 description = "Async http client/server framework (asyncio)"
@@ -1612,9 +1639,17 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "2feb4fa6745d78c8ca661741a81fa74e6a3cc666d445acf115a63b366e8d0a94"
+content-hash = "7ca5f860f701b04ff992ffd8fc98e54a6942839d33d2856665673273ee80dd9d"
 
 [metadata.files]
+aioauth = [
+    {file = "aioauth-1.4.0-py2.py3-none-any.whl", hash = "sha256:fa810bf8383baee9fd986111b143d5af152d90b2c73bf2069b281c7f7a1ce4fd"},
+    {file = "aioauth-1.4.0.tar.gz", hash = "sha256:85de10bf73a82a2298248123cd6a789c2ea16ffdbfa7567fa358af49f46fa6a8"},
+]
+aioauth-fastapi = [
+    {file = "aioauth_fastapi-0.1.1-py2.py3-none-any.whl", hash = "sha256:3951753c3ff193c57b4f83142a27e2b8a8e66298660a14a7565345236e1a5ca3"},
+    {file = "aioauth_fastapi-0.1.1.tar.gz", hash = "sha256:07eecbdd72e2e703dff3a44eb129eeefc96ba5a6d650ba5c921e8dbf8a931e1a"},
+]
 aiohttp = [
     {file = "aiohttp-3.8.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:1ed0b6477896559f17b9eaeb6d38e07f7f9ffe40b9f0f9627ae8b9926ae260a8"},
     {file = "aiohttp-3.8.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7dadf3c307b31e0e61689cbf9e06be7a867c563d5a63ce9dca578f956609abf8"},

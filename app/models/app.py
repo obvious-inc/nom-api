@@ -11,6 +11,7 @@ class App(APIDocument):
     description = fields.StrField(required=False)
     client_id = fields.StrField()
     client_secret = fields.StrField()
+    redirect_uris = fields.ListField(fields.StrField(), default=[])
 
     permissions = fields.ListField(fields.StrField)
 

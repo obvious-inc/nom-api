@@ -31,6 +31,7 @@ from app.routers import (
     integrations,
     media,
     messages,
+    oauth,
     sections,
     servers,
     stars,
@@ -88,6 +89,7 @@ def get_application(testing=False):
 
     app_.include_router(base.router)
     app_.include_router(auth.router, prefix="/auth", tags=["auth"])
+    app_.include_router(oauth.router, prefix="/oauth", tags=["oauth"])
     app_.include_router(users.router, prefix="/users", tags=["users"])
     app_.include_router(servers.router, prefix="/servers", tags=["servers"])
     app_.include_router(channels.router, prefix="/channels", tags=["channels"])
