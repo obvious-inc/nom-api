@@ -18,10 +18,11 @@ from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
-from app.models.message import Message, MessageReaction, SystemMessage, WebhookMessage
+from app.models.message import AppInstallMessage, Message, MessageReaction, SystemMessage, WebhookMessage
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
 from app.schemas.messages import (
+    AppInstallMessageCreateSchema,
     MessageCreateSchema,
     MessageUpdateSchema,
     SystemMessageCreateSchema,
@@ -43,8 +44,15 @@ from app.services.websockets import broadcast_current_user_event, broadcast_mess
 logger = logging.getLogger(__name__)
 
 
-async def create_webhook_message(message_model: WebhookMessageCreateSchema):
-    message = await create_item(item=message_model, result_obj=WebhookMessage, user_field=None)
+async def create_app_message(message_model: Union[WebhookMessageCreateSchema, AppInstallMessageCreateSchema]):
+    if isinstance(message_model, WebhookMessageCreateSchema):
+        result_obj = WebhookMessage
+    elif isinstance(message_model, AppInstallMessageCreateSchema):
+        result_obj = AppInstallMessage
+    else:
+        raise Exception(f"Unknown message type: {message_model}")
+
+    message = await create_item(item=message_model, result_obj=result_obj, user_field=None)
 
     bg_tasks = [
         (broadcast_message_event, (str(message.id), None, WebSocketServerEvent.MESSAGE_CREATE)),

@@ -22,7 +22,7 @@ from app.schemas.sections import SectionCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.services.channels import create_server_channel, get_dm_channels
 from app.services.crud import create_item, get_item, get_item_by_id
-from app.services.messages import create_message, create_webhook_message
+from app.services.messages import create_app_message, create_message
 from app.services.servers import create_server, get_user_servers
 from app.services.users import get_user_by_id, get_user_by_wallet_address
 
@@ -662,7 +662,7 @@ class TestChannelsRoutes:
             content="webhook message!",
             channel=str(integration_app_webhook.channel.pk),
         )
-        await create_webhook_message(message_model=wh_message_model)
+        await create_app_message(message_model=wh_message_model)
 
         response = await authorized_client.get(f"/channels/{str(server_channel.pk)}/messages")
         assert response.status_code == 200

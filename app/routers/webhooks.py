@@ -10,7 +10,7 @@ from app.helpers.websockets import pusher_client
 from app.models.webhook import Webhook
 from app.schemas.messages import WebhookMessageCreateSchema
 from app.services.crud import get_item_by_id
-from app.services.messages import create_webhook_message
+from app.services.messages import create_app_message
 from app.services.webhooks import handle_pusher_event
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ async def post_create_webhook_message_with_secret(
 
     try:
         # TODO queue this
-        await create_webhook_message(message_model=message)
+        await create_app_message(message_model=message)
     except Exception as e:
         logger.exception(e)
         capture_exception(e)

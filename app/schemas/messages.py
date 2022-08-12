@@ -90,5 +90,15 @@ class WebhookMessageSchema(AppMessageSchema):
     type: Optional[int] = 2
 
 
+class AppInstallMessageCreateSchema(AppMessageCreateSchema):
+    installer: Optional[str]
+    type: int = 6
+
+
+class AppInstallMessageSchema(AppMessageSchema):
+    installer: PyObjectId = Field()
+    type: Optional[int] = 6
+
+
 class EitherMessage(BaseModel):
-    __root__: Union[WebhookMessageSchema, AppMessageSchema, MessageSchema]
+    __root__: Union[WebhookMessageSchema, AppInstallMessageSchema, AppMessageSchema, MessageSchema]

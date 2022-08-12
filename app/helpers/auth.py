@@ -24,8 +24,10 @@ from app.models.channel import Channel
 from app.models.user import User
 from app.schemas.apps import AppInstalledCreateSchema
 from app.schemas.auth import AuthorizationCodeCreateSchema
+from app.schemas.messages import AppInstallMessageCreateSchema
 from app.services.apps import get_app_by_client_id
 from app.services.crud import create_item, delete_item, get_item, get_item_by_id, get_items
+from app.services.messages import create_app_message
 
 logger = logging.getLogger(__name__)
 
@@ -205,10 +207,10 @@ class Storage(BaseStorage):
             new_install = await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
 
             logger.debug("New app installed: %s", new_install)
-
-            # # TODO: create app joined channel message
-            # message = AppMessageCreateSchema(channel=channel_id, app=str(app.pk))
-            # await create_app_message(message_model=message)
+            message = AppInstallMessageCreateSchema(
+                channel=channel_id, app=str(app.pk), installer=str(request.user.pk), type=6
+            )
+            await create_app_message(message_model=message)
 
         token = Token(
             client_id=client_id,

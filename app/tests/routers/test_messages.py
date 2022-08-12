@@ -18,7 +18,7 @@ from app.models.user import User
 from app.models.webhook import Webhook
 from app.schemas.messages import MessageCreateSchema, WebhookMessageCreateSchema
 from app.services.crud import create_item, get_item_by_id
-from app.services.messages import create_webhook_message, get_messages
+from app.services.messages import create_app_message, get_messages
 
 
 class TestMessagesRoutes:
@@ -1011,7 +1011,7 @@ class TestMessagesRoutes:
             content="webhook message!",
             channel=str(integration_app_webhook.channel.pk),
         )
-        wh_message = await create_webhook_message(message_model=wh_message_model)
+        wh_message = await create_app_message(message_model=wh_message_model)
 
         response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(wh_message.id)}")
         assert response.status_code == 200
