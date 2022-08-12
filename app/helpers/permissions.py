@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from enum import Enum
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -14,7 +14,8 @@ from app.helpers.channels import fetch_and_cache_channel
 from app.helpers.sections import fetch_and_cache_section
 from app.helpers.servers import fetch_and_cache_server
 from app.helpers.users import fetch_and_cache_user, get_user_roles_permissions
-from app.models.server import ServerMember
+from app.models.channel import Channel
+from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.services.crud import get_item
 
@@ -39,6 +40,8 @@ class Permission(Enum):
     ROLES_LIST = "roles.list"
     ROLES_CREATE = "roles.create"
 
+    APPS_MANAGE = "apps.manage"
+
 
 # TODO: Move all of this to a constants file?
 SERVER_OWNER_PERMISSIONS = [p.value for p in Permission]
@@ -59,6 +62,7 @@ DEFAULT_DM_MEMBER_PERMISSIONS = [
         Permission.MESSAGES_LIST,
         Permission.MESSAGES_CREATE,
         Permission.CHANNELS_MEMBERS_LIST,
+        Permission.APPS_MANAGE,
     ]
 ]
 
@@ -265,6 +269,26 @@ async def fetch_user_permissions(
     )
 
     return sorted(list(user_permissions))
+
+
+async def check_resource_permission(user: User, action: str, resource: Any) -> None:
+    user_id = str(user.pk)
+
+    channel_id = None
+    server_id = None
+
+    resource_id = str(resource.pk)
+    if isinstance(resource, Channel):
+        channel_id = resource_id
+    elif isinstance(resource, Server):
+        server_id = resource_id
+    else:
+        raise Exception("unexpected resource: {}".format(resource))
+
+    user_permissions = await fetch_user_permissions(user_id=user_id, channel_id=channel_id, server_id=server_id)
+
+    if action not in user_permissions:
+        raise APIPermissionError(needed_permissions=[action], user_permissions=user_permissions)
 
 
 async def check_request_permissions(request: Request, permissions: List[str], current_user: Optional[User] = None):
