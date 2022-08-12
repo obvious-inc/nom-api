@@ -15,6 +15,7 @@ class AppCreateSchema(APIBaseCreateSchema):
     client_id: str = ""
     client_secret: str = ""
     permissions: List[str] = []
+    redirect_uris: List[str] = []
 
     class Config:
         schema_extra = {

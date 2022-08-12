@@ -19,6 +19,7 @@ router = APIRouter()
 @router.get("/authorize")
 async def get_app_authorization_page(request: Request):
     query = dict(request.query_params)
+    # TODO: better handle this...
     location = build_uri("http://localhost:8080/oauth/authorize", query, None)
 
     # TODO: still need to validate client id and so on...
@@ -28,13 +29,14 @@ async def get_app_authorization_page(request: Request):
 
 @router.post("/authorize")
 async def post_app_authorization_page(request: Request, current_user: User = Depends(get_current_user)):
-    form = await request.form()
-    consent = bool(int(form.get("consent", 0)))
+    oauth2_request = await to_oauth2_request(request, current_user=current_user)
+    if not oauth2_request.query.channel:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing channel")
 
+    consent = bool(int(oauth2_request.post.consent))
     if not consent:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Consent not granted")
 
-    oauth2_request = await to_oauth2_request(request, current_user=current_user)
     oauth2_response = await authorization_server.create_authorization_response(oauth2_request)
     return await to_fastapi_response(oauth2_response)
 
