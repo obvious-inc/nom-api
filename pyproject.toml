@@ -44,7 +44,7 @@ uvicorn = "^0.16"
 uvloop = "^0.16"
 watchgod = "^0.7"
 web3 = "^5.26"
-aioauth = {extras = ["fastapi"], version = "^1.4.0"}
+aioauth = "^1.4.1"
 aioauth-fastapi = "^0.1.1"
 
 [tool.poetry.dev-dependencies]

@@ -1,18 +1,15 @@
 [[package]]
 name = "aioauth"
-version = "1.4.0"
+version = "1.4.1"
 description = "Asynchronous OAuth 2.0 framework for Python 3."
 category = "main"
 optional = false
 python-versions = ">=3.7.0"
 
-[package.dependencies]
-aioauth-fastapi = {version = ">=0.0.1", optional = true, markers = "extra == \"fastapi\""}
-
 [package.extras]
-dev = ["async-asgi-testclient (==1.4.8)", "pre-commit (==2.16.0)", "pytest (==6.2.5)", "pytest-asyncio (==0.16.0)", "pytest-cov (==3.0.0)", "pytest-env (==0.6.2)", "pytest-sugar (==0.9.4)", "testfixtures (==6.18.3)", "bump2version (==1.0.1)", "twine (==3.7.1)", "wheel"]
-docs = ["sphinx", "sphinx-copybutton", "sphinx-autobuild", "m2r2", "sphinx-rtd-theme", "async-asgi-testclient (==1.4.8)", "pre-commit (==2.16.0)", "pytest (==6.2.5)", "pytest-asyncio (==0.16.0)", "pytest-cov (==3.0.0)", "pytest-env (==0.6.2)", "pytest-sugar (==0.9.4)", "testfixtures (==6.18.3)", "bump2version (==1.0.1)", "twine (==3.7.1)", "wheel"]
 fastapi = ["aioauth-fastapi (>=0.0.1)"]
+docs = ["wheel", "twine (==3.7.1)", "bump2version (==1.0.1)", "testfixtures (==6.18.3)", "pytest-sugar (==0.9.4)", "pytest-env (==0.6.2)", "pytest-cov (==3.0.0)", "pytest-asyncio (==0.16.0)", "pytest (==6.2.5)", "pre-commit (==2.16.0)", "async-asgi-testclient (==1.4.8)", "sphinx-rtd-theme", "m2r2", "sphinx-autobuild", "sphinx-copybutton", "sphinx"]
+dev = ["wheel", "twine (==3.7.1)", "bump2version (==1.0.1)", "testfixtures (==6.18.3)", "pytest-sugar (==0.9.4)", "pytest-env (==0.6.2)", "pytest-cov (==3.0.0)", "pytest-asyncio (==0.16.0)", "pytest (==6.2.5)", "pre-commit (==2.16.0)", "async-asgi-testclient (==1.4.8)"]
 
 [[package]]
 name = "aioauth-fastapi"
@@ -1639,13 +1636,10 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "7ca5f860f701b04ff992ffd8fc98e54a6942839d33d2856665673273ee80dd9d"
+content-hash = "9900a73c2401f2aeedd45e08dfecc722d30b804759babadd1f39b612d2fed2d9"
 
 [metadata.files]
-aioauth = [
-    {file = "aioauth-1.4.0-py2.py3-none-any.whl", hash = "sha256:fa810bf8383baee9fd986111b143d5af152d90b2c73bf2069b281c7f7a1ce4fd"},
-    {file = "aioauth-1.4.0.tar.gz", hash = "sha256:85de10bf73a82a2298248123cd6a789c2ea16ffdbfa7567fa358af49f46fa6a8"},
-]
+aioauth = []
 aioauth-fastapi = [
     {file = "aioauth_fastapi-0.1.1-py2.py3-none-any.whl", hash = "sha256:3951753c3ff193c57b4f83142a27e2b8a8e66298660a14a7565345236e1a5ca3"},
     {file = "aioauth_fastapi-0.1.1.tar.gz", hash = "sha256:07eecbdd72e2e703dff3a44eb129eeefc96ba5a6d650ba5c921e8dbf8a931e1a"},

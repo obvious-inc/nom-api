@@ -24,3 +24,31 @@ class AppCreateSchema(APIBaseCreateSchema):
                 "permissions": ["messages.create"],
             }
         }
+
+
+class AppInstalledSchema(APIBaseSchema):
+    app: PyObjectId
+    user: PyObjectId
+    channel: PyObjectId
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "app": "",
+                "user": "<user_id>",
+                "channel": "5e8f8f8f8f8f8f8f8f8f8f8f",
+            }
+        }
+
+
+class AppInstalledCreateSchema(APIBaseCreateSchema):
+    app: str
+    channel: Optional[str]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "app": "12313123",
+                "channel": "123123123123",
+            }
+        }

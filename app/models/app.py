@@ -17,3 +17,13 @@ class App(APIDocument):
 
     class Meta:
         collection_name = "apps"
+
+
+@instance.register
+class AppInstalled(APIDocument):
+    app = fields.ReferenceField("App")
+    user = fields.ReferenceField("User")
+    channel = fields.ReferenceField("Channel")
+
+    class Meta:
+        collection_name = "apps_installed"

@@ -43,6 +43,7 @@ class AccessTokenSchema(BaseModel):
 
 class RefreshTokenCreateSchema(APIBaseCreateSchema):
     user: Optional[str]
+    app: Optional[str]
     refresh_token: str
 
     class Config:
@@ -52,3 +53,18 @@ class RefreshTokenCreateSchema(APIBaseCreateSchema):
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6Ikpasdfa.....bDZW6RHWpkQpwqkDopjSoiNDc2sHglWQ2TjdkM_1234",
             }
         }
+
+
+class AuthorizationCodeCreateSchema(APIBaseCreateSchema):
+    app: str
+    code: str
+    client_id: str
+    redirect_uri: str
+    response_type: str
+    scope: str
+    auth_time: int
+    expires_in: int
+    nonce: Optional[str] = ""
+
+    class Config:
+        allow_population_by_field_name = True

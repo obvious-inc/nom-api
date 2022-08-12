@@ -1,19 +1,15 @@
 import logging
 
-from aioauth.collections import HTTPHeaderDict
-from aioauth.config import Settings
-from aioauth.requests import Post
-from aioauth.requests import Query as OAuth2Query
-from aioauth.requests import Request as OAuth2Request
-from aioauth.types import RequestMethod
+from aioauth.utils import build_uri
 from aioauth_fastapi.utils import to_fastapi_response
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from starlette import status
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
-from app.helpers.auth import authorization_server
+from app.dependencies import get_current_user
+from app.helpers.auth import authorization_server, to_oauth2_request
 from app.models.user import User
-from app.services.crud import get_item
 
 logger = logging.getLogger(__name__)
 
@@ -21,53 +17,30 @@ router = APIRouter()
 
 
 @router.get("/authorize")
-@router.post("/authorize")
 async def get_app_authorization_page(request: Request):
-    # TODO: only diff between aioauth router and ours is the user. maybe add user to request and use theirs?
+    query = dict(request.query_params)
+    location = build_uri("http://localhost:8080/oauth/authorize", query, None)
 
-    # TODO: sort out redirection between GET and POST
-    # if request.method == "GET":
-    #     url = "http://localhost:8080/oauth/authorize"
-    #     return RedirectResponse(url)
+    # TODO: still need to validate client id and so on...
 
+    return RedirectResponse(location)
+
+
+@router.post("/authorize")
+async def post_app_authorization_page(request: Request, current_user: User = Depends(get_current_user)):
     form = await request.form()
-    post = dict(form)
-    query_params = dict(request.query_params)
-    headers = HTTPHeaderDict(**request.headers)
-    url = str(request.url)
-    settings = Settings(INSECURE_TRANSPORT=True)
-    default_user = await get_item(filters={}, result_obj=User)
-    oauth2_request = OAuth2Request(
-        settings=settings,
-        method=RequestMethod[request.method],
-        headers=headers,
-        post=Post(**post),
-        query=OAuth2Query(**query_params),
-        url=url,
-        user=default_user,
-    )
+    consent = bool(int(form.get("consent", 0)))
 
+    if not consent:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Consent not granted")
+
+    oauth2_request = await to_oauth2_request(request, current_user=current_user)
     oauth2_response = await authorization_server.create_authorization_response(oauth2_request)
     return await to_fastapi_response(oauth2_response)
 
 
 @router.post("/token")
-async def create_access_token(request: Request):
-    form = await request.form()
-    post = dict(form)
-    query_params = dict(request.query_params)
-    headers = HTTPHeaderDict(**request.headers)
-    url = str(request.url)
-    settings = Settings(INSECURE_TRANSPORT=True)
-    default_user = await get_item(filters={}, result_obj=User)
-    oauth2_request = OAuth2Request(
-        settings=settings,
-        method=RequestMethod[request.method],
-        headers=headers,
-        post=Post(**post),
-        query=OAuth2Query(**query_params),
-        url=url,
-        user=default_user,
-    )
+async def create_access_token(request: Request, current_user: User = Depends(get_current_user)):
+    oauth2_request = await to_oauth2_request(request, current_user=current_user)
     oauth2_response = await authorization_server.create_token_response(oauth2_request)
     return await to_fastapi_response(oauth2_response)
