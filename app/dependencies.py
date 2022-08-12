@@ -67,8 +67,8 @@ async def get_current_user_non_error(
 
 
 class PermissionsChecker:
-    def __init__(self, needs_user: bool = True, permissions: List[str] = None):
-        self.needs_user = needs_user
+    def __init__(self, needs_bearer: bool = True, permissions: List[str] = None):
+        self.needs_bearer = needs_bearer
         self.permissions = permissions
 
     async def __call__(
@@ -77,7 +77,7 @@ class PermissionsChecker:
         if isinstance(user_or_exception, Exception):
             raise user_or_exception
 
-        if self.needs_user and user_or_exception is None:
+        if self.needs_bearer and user_or_exception is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate token",
