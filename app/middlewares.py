@@ -64,15 +64,11 @@ async def add_canonical_log_line(request: Request, call_next):
         "http_status": response.status_code,
     }
 
-    try:
-        log_line_data["user_id"] = request.state.user_id
-    except AttributeError:
-        pass
-
-    try:
-        log_line_data["auth_type"] = request.state.auth_type
-    except AttributeError:
-        pass
+    for attr in ["user_id", "auth_type", "auth_source", "actor_type", "app_id"]:
+        try:
+            log_line_data[attr] = getattr(request.state, attr)
+        except AttributeError:
+            pass
 
     sorted_dict = dict(sorted(log_line_data.items(), key=lambda x: x[0].lower()))
 

@@ -17,16 +17,18 @@ from fastapi import Form, Query
 from starlette.requests import Request
 
 from app.config import get_settings
+from app.helpers.cache_utils import cache
 from app.helpers.jwt import generate_jwt_token
+from app.helpers.permissions import validate_oauth_request_scope_str
 from app.models.app import App, AppInstalled
-from app.models.auth import AuthorizationCode
+from app.models.auth import AuthorizationCode, RefreshToken
 from app.models.channel import Channel
 from app.models.user import User
 from app.schemas.apps import AppInstalledCreateSchema
-from app.schemas.auth import AuthorizationCodeCreateSchema
+from app.schemas.auth import AuthorizationCodeCreateSchema, RefreshTokenCreateSchema
 from app.schemas.messages import AppInstallMessageCreateSchema
 from app.services.apps import get_app_by_client_id
-from app.services.crud import create_item, delete_item, get_item, get_item_by_id, get_items
+from app.services.crud import create_item, delete_item, get_item, get_item_by_id, update_item
 from app.services.messages import create_app_message
 
 logger = logging.getLogger(__name__)
@@ -96,6 +98,9 @@ class Storage(BaseStorage):
         if not app:
             raise Exception("App not found")
 
+        if not scope:
+            scope = " ".join(app.scopes)
+
         oauth2_settings = await get_oauth_settings()
         authorization_code = OAuth2Code(
             code=code,
@@ -149,14 +154,17 @@ class Storage(BaseStorage):
         if not app:
             return None
 
-        return Client(
+        client = Client(
             client_id=app.client_id,
             client_secret=app.client_secret,
             redirect_uris=app.redirect_uris,
             grant_types=[GrantType.TYPE_AUTHORIZATION_CODE, GrantType.TYPE_REFRESH_TOKEN],
             response_types=[ResponseType.TYPE_CODE],
             user=app.creator,
+            scope=" ".join(app.scopes),
         )
+
+        return client
 
     async def delete_authorization_code(self, request: OAuth2Request, client_id: str, code: str) -> None:
         app: App = await get_app_by_client_id(client_id=client_id)
@@ -181,36 +189,52 @@ class Storage(BaseStorage):
     async def create_token(self, request: OAuth2Request, client_id: str, scope: str, *args) -> Token:
         app_settings = get_settings()
         app: App = await get_app_by_client_id(client_id=client_id)
-        access_token = generate_jwt_token({"sub": str(app.pk), "client_id": client_id})
-        refresh_token = generate_jwt_token({"sub": str(app.pk), "client_id": client_id}, token_type="refresh")
-
-        # TODO: add caching
-        # await cache.client.sadd(f"refresh_tokens:{str(app.pk)}", refresh_token)
-        # await create_item(
-        #     RefreshTokenCreateSchema(refresh_token=refresh_token, app=str(app.pk)),
-        #     result_obj=RefreshToken,
-        #     user_field="app",
-        #     current_user=app,
-        # )
+        if not app:
+            raise Exception(f"App not found for client id: {client_id}")
 
         channel_id = request.post.channel
         if not channel_id:
             raise Exception("missing channel_id")
 
+        code = request.post.code
+        code_item = await get_item(filters={"code": code, "app": app.pk}, result_obj=AuthorizationCode)
+
+        if scope:
+            logger.warning("ignoring /token endpoint scope definition")
+
+        scopes = await validate_oauth_request_scope_str(scope=code_item.scope)
+
+        access_token = generate_jwt_token({"sub": str(app.pk), "client_id": client_id, "scopes": scopes})
+        refresh_token = generate_jwt_token(
+            {"sub": str(app.pk), "client_id": client_id, "scopes": scopes}, token_type="refresh"
+        )
+
+        await cache.client.sadd(f"refresh_tokens:{str(app.pk)}", refresh_token)
+        await create_item(
+            RefreshTokenCreateSchema(refresh_token=refresh_token, app=str(app.pk)),
+            result_obj=RefreshToken,
+            user_field=None,
+        )
+
         channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+        prev_installed_app = await get_item(filters={"app": app.pk, "channel": channel.pk}, result_obj=AppInstalled)
 
-        prev_installed_apps = await get_items(filters={"app": app.pk, "channel": channel.pk}, result_obj=AppInstalled)
+        if not prev_installed_app:
+            install_model = AppInstalledCreateSchema(app=str(app.pk), channel=str(channel.pk), scopes=scopes)
+            await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
 
-        if not prev_installed_apps:
-            # TODO: at this stage, the app has been verified and will be installed into the channel/server
-            install_model = AppInstalledCreateSchema(app=str(app.pk), channel=str(channel.pk))
-            new_install = await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
+            if not request.user:
+                raise Exception("User not found in request")
 
-            logger.debug("New app installed: %s", new_install)
             message = AppInstallMessageCreateSchema(
                 channel=channel_id, app=str(app.pk), installer=str(request.user.pk), type=6
             )
             await create_app_message(message_model=message)
+        else:
+            existing_scopes = prev_installed_app.scopes
+            final_scopes = list(set(existing_scopes) | set(scopes))
+            await update_item(prev_installed_app, {"scopes": final_scopes})
+            await cache.client.hset(f"app:{str(app.pk)}", f"channel:{channel_id}", " ".join(final_scopes))
 
         token = Token(
             client_id=client_id,
@@ -219,7 +243,7 @@ class Storage(BaseStorage):
             access_token=access_token,
             refresh_token=refresh_token,
             issued_at=int(time.time()),
-            scope=scope,
+            scope=" ".join(scopes),
             revoked=False,
         )
         return token

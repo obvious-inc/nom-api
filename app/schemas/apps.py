@@ -14,7 +14,7 @@ class AppCreateSchema(APIBaseCreateSchema):
     description: Optional[str] = ""
     client_id: str = ""
     client_secret: str = ""
-    permissions: List[str] = []
+    scopes: List[str] = []
     redirect_uris: List[str] = []
 
     class Config:
@@ -22,7 +22,7 @@ class AppCreateSchema(APIBaseCreateSchema):
             "example": {
                 "name": "Github",
                 "description": "Github integration for posting events",
-                "permissions": ["messages.create"],
+                "scopes": ["messages.create"],
             }
         }
 
@@ -45,11 +45,13 @@ class AppInstalledSchema(APIBaseSchema):
 class AppInstalledCreateSchema(APIBaseCreateSchema):
     app: str
     channel: Optional[str]
+    scopes: Optional[List[str]] = []
 
     class Config:
         schema_extra = {
             "example": {
                 "app": "12313123",
                 "channel": "123123123123",
+                "scopes": ["messages.list", "channels.list"],
             }
         }
