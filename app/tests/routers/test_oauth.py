@@ -60,14 +60,14 @@ class TestOAuthRoutes:
 
         data = {
             "code": code,
-            "client_id": integration.client_id,
-            "client_secret": integration.client_secret,
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri,
             "channel": str(topic_channel.pk),
         }
 
-        response = await user_auth_client.post("/oauth/token", data=data)
+        response = await user_auth_client.post(
+            "/oauth/token", data=data, auth=(integration.client_id, integration.client_secret)
+        )
         assert response.status_code == 200
         assert "access_token" in response.json()
         assert "refresh_token" in response.json()
@@ -174,18 +174,6 @@ class TestOAuthRoutes:
         response = await guest_client.post("/oauth/authorize", params=params, data=form_data)
         assert response.status_code == 403
 
-        data = {
-            "code": "123123",
-            "client_id": integration.client_id,
-            "client_secret": integration.client_secret,
-            "grant_type": "authorization_code",
-            "redirect_uri": redirect_uri,
-            "channel": str(topic_channel.pk),
-        }
-
-        response = await guest_client.post("/oauth/token", data=data)
-        assert response.status_code == 403
-
     @pytest.mark.asyncio
     async def test_oauth2_code_flow_unauth_scopes(
         self,
@@ -272,14 +260,14 @@ class TestOAuthRoutes:
 
         data = {
             "code": code,
-            "client_id": integration.client_id,
-            "client_secret": integration.client_secret,
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri,
             "channel": str(topic_channel.pk),
         }
 
-        response = await user_auth_client.post("/oauth/token", data=data)
+        response = await user_auth_client.post(
+            "/oauth/token", data=data, auth=(integration.client_id, integration.client_secret)
+        )
         assert response.status_code == 200
         json_resp = response.json()
         assert "access_token" in json_resp
@@ -336,14 +324,14 @@ class TestOAuthRoutes:
 
         data = {
             "code": code,
-            "client_id": integration.client_id,
-            "client_secret": integration.client_secret,
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri,
             "channel": str(topic_channel.pk),
         }
 
-        response = await user_auth_client.post("/oauth/token", data=data)
+        response = await user_auth_client.post(
+            "/oauth/token", data=data, auth=(integration.client_id, integration.client_secret)
+        )
         assert response.status_code == 200
         json_resp = response.json()
         assert "access_token" in json_resp
@@ -388,3 +376,139 @@ class TestOAuthRoutes:
         user_auth_client = await get_authorized_client(current_user)
         response = await user_auth_client.post("/oauth/authorize", params=params, data=form_data)
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_oauth2_code_flow_missing_code(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+    ):
+        redirect_uri = "https://example.com"
+        app_schema = AppCreateSchema(name="test", redirect_uris=[redirect_uri])
+        integration = await create_app(model=app_schema, current_user=current_user)
+        assert integration is not None
+
+        data = {
+            "code": "random-code",
+            "grant_type": "authorization_code",
+            "redirect_uri": redirect_uri,
+            "channel": str(topic_channel.pk),
+        }
+
+        user_auth_client = await get_authorized_client(current_user)
+        response = await user_auth_client.post(
+            "/oauth/token", data=data, auth=(integration.client_id, integration.client_secret)
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_oauth2_app_requests(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+        get_app_authorized_client: Callable,
+    ):
+        redirect_uri = "https://example.com"
+        app_schema = AppCreateSchema(name="Snapshot", redirect_uris=[redirect_uri], scopes=["messages.list"])
+        integration = await create_app(model=app_schema, current_user=current_user)
+
+        params = {
+            "client_id": integration.client_id,
+            "redirect_uri": redirect_uri,
+            "scope": "messages.list",
+            "response_type": "code",
+            "channel": str(topic_channel.pk),
+        }
+
+        user_auth_client = await get_authorized_client(current_user)
+        response = await user_auth_client.post("/oauth/authorize", params=params, data={"consent": 1})
+        assert response.status_code == 200
+        url: URL = response.url
+        code = url.params.get("code")
+        assert code is not None
+        assert code != ""
+
+        data = {
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": redirect_uri,
+            "channel": str(topic_channel.pk),
+        }
+
+        response = await user_auth_client.post(
+            "/oauth/token", data=data, auth=(integration.client_id, integration.client_secret)
+        )
+        assert response.status_code == 200
+        access_token = response.json().get("access_token")
+        refresh_token = response.json().get("refresh_token")
+
+        app_client = await get_app_authorized_client(
+            integration, access_token=access_token, refresh_token=refresh_token
+        )
+        response = await app_client.get(f"/channels/{str(topic_channel.pk)}/messages")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_oauth2_refresh_token(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        current_user: User,
+        topic_channel: Channel,
+        get_authorized_client: Callable,
+    ):
+        redirect_uri = "https://example.com"
+        app_schema = AppCreateSchema(name="Snapshot", redirect_uris=[redirect_uri], scopes=["messages.list"])
+        integration = await create_app(model=app_schema, current_user=current_user)
+
+        params = {
+            "client_id": integration.client_id,
+            "redirect_uri": redirect_uri,
+            "scope": "messages.list",
+            "response_type": "code",
+            "channel": str(topic_channel.pk),
+        }
+
+        user_auth_client = await get_authorized_client(current_user)
+        response = await user_auth_client.post("/oauth/authorize", params=params, data={"consent": 1})
+        assert response.status_code == 200
+        url: URL = response.url
+        code = url.params.get("code")
+        assert code is not None
+        assert code != ""
+
+        data = {
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": redirect_uri,
+            "channel": str(topic_channel.pk),
+        }
+
+        response = await user_auth_client.post(
+            "/oauth/token", data=data, auth=(integration.client_id, integration.client_secret)
+        )
+        assert response.status_code == 200
+        refresh_token = response.json().get("refresh_token")
+
+        data = {
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+            "redirect_uri": redirect_uri,
+            "channel": str(topic_channel.pk),
+        }
+        response = await user_auth_client.post(
+            "/oauth/token", data=data, auth=(integration.client_id, integration.client_secret)
+        )
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert "access_token" in json_resp
+        assert "refresh_token" in json_resp

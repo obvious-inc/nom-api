@@ -1,6 +1,6 @@
 import binascii
 import secrets
-from typing import Union
+from typing import Optional, Union
 
 import arrow
 import pytest
@@ -203,6 +203,30 @@ async def get_authorized_client(client: AsyncClient, redis: Redis):
         return client
 
     return _get_authorized_client
+
+
+@pytest.fixture
+async def get_app_authorized_client(client: AsyncClient, redis: Redis):
+    async def _get_app_authorized_client(
+        integration: App, access_token: Optional[str] = None, refresh_token: Optional[str] = None
+    ):
+        if not access_token:
+            access_token = generate_jwt_token(data={"sub": str(integration.pk), "client_id": integration.client_id})
+        if not refresh_token:
+            refresh_token = generate_jwt_token(
+                data={"sub": str(integration.pk), "client_id": integration.client_id}, token_type="refresh"
+            )
+
+        await create_item(
+            RefreshTokenCreateSchema(refresh_token=refresh_token, app=str(integration.pk)),
+            result_obj=RefreshToken,
+            user_field=None,
+        )
+        await redis.sadd(f"refresh_tokens:{str(integration.pk)}", refresh_token)
+        client.headers.update({"Authorization": f"Bearer {access_token}"})
+        return client
+
+    return _get_app_authorized_client
 
 
 @pytest.fixture(autouse=True)

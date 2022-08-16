@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional, Union, cast
 
 from fastapi import Depends, HTTPException, Query, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
 from jose import JWTError
 from sentry_sdk import set_user
 from starlette.requests import Request
@@ -17,9 +17,31 @@ from app.services.users import get_user_by_id
 
 oauth2_scheme = HTTPBearer()
 oauth2_no_error_scheme = HTTPBearer(auto_error=False)
-
+basic_scheme = HTTPBasic()
 
 logger = logging.getLogger(__name__)
+
+
+async def get_current_client(request: Request, credentials: HTTPBasicCredentials = Depends(basic_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate client credentials",
+        headers={"WWW-Authenticate": "Basic"},
+    )
+
+    client_id = credentials.username
+    client_secret = credentials.password
+    app: App = await get_app_by_client_id(client_id)
+
+    if not app:
+        logger.warning("Client not found. [client_id=%s]", client_id)
+        raise credentials_exception
+
+    if app.client_secret != client_secret:
+        logger.warning("Client details don't match. [client_id=%s]", client_id)
+        raise credentials_exception
+
+    return app
 
 
 async def get_current_user(request: Request, token: HTTPAuthorizationCredentials = Depends(oauth2_scheme)):

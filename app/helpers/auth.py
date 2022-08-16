@@ -13,7 +13,6 @@ from aioauth.requests import Request as _Request
 from aioauth.server import AuthorizationServer
 from aioauth.storage import BaseStorage
 from aioauth.types import GrantType, RequestMethod, ResponseType, TokenType
-from fastapi import Form, Query
 from starlette.requests import Request
 
 from app.config import get_settings
@@ -62,7 +61,7 @@ async def get_oauth_settings() -> OAuth2Settings:
     return oauth2_settings
 
 
-async def to_oauth2_request(request: Request, current_user: Optional[User]) -> OAuth2Request:
+async def to_oauth2_request(request: Request, current_user: Optional[User] = None) -> OAuth2Request:
     oauth2_settings = await get_oauth_settings()
     form = await request.form()
     post = dict(form)
@@ -95,8 +94,6 @@ class Storage(BaseStorage):
         code: str,
     ) -> OAuth2Code:
         app: App = await get_app_by_client_id(client_id=client_id)
-        if not app:
-            raise Exception("App not found")
 
         if not scope:
             scope = " ".join(app.scopes)
@@ -123,14 +120,7 @@ class Storage(BaseStorage):
 
     async def get_authorization_code(self, request: OAuth2Request, client_id: str, code: str) -> Optional[OAuth2Code]:
         app: App = await get_app_by_client_id(client_id=client_id)
-        if not app:
-            return None
-
-        auth_code_item = await get_item(
-            filters={"code": code, "app": app.pk, "user": request.user},
-            result_obj=AuthorizationCode,
-        )
-
+        auth_code_item = await get_item(filters={"code": code, "app": app.pk}, result_obj=AuthorizationCode)
         if not auth_code_item:
             return None
 
@@ -141,7 +131,7 @@ class Storage(BaseStorage):
             response_type=auth_code_item.response_type,
             auth_time=auth_code_item.auth_time,
             expires_in=auth_code_item.expires_in,
-            user=request.user,
+            user=auth_code_item.user,
             scope=auth_code_item.scope,
         )
 
@@ -152,6 +142,9 @@ class Storage(BaseStorage):
     ) -> Optional[Client]:
         app: App = await get_app_by_client_id(client_id=client_id)
         if not app:
+            return None
+
+        if client_secret and app.client_secret != client_secret:
             return None
 
         client = Client(
@@ -183,8 +176,6 @@ class Storage(BaseStorage):
     ) -> Optional[Token]:
         app_settings = get_settings()
         app: App = await get_app_by_client_id(client_id=client_id)
-        if not app:
-            raise Exception(f"App not found for client id: {client_id}")
 
         r_token = await get_item(filters={"refresh_token": refresh_token, "app": app.pk}, result_obj=RefreshToken)
         if r_token is None:
@@ -209,8 +200,6 @@ class Storage(BaseStorage):
     async def create_token(self, request: OAuth2Request, client_id: str, scope: str, *args) -> Token:
         app_settings = get_settings()
         app: App = await get_app_by_client_id(client_id=client_id)
-        if not app:
-            raise Exception(f"App not found for client id: {client_id}")
 
         channel_id = request.post.channel
         if not channel_id:
@@ -222,6 +211,8 @@ class Storage(BaseStorage):
         code = request.post.code
         if code:
             code_item = await get_item(filters={"code": code, "app": app.pk}, result_obj=AuthorizationCode)
+            if code_item and not request.user:
+                request.user = code_item.user
             scopes = await validate_oauth_request_scope_str(scope=code_item.scope)
         else:
             scopes = await validate_oauth_request_scope_str(scope=scope)
@@ -242,11 +233,11 @@ class Storage(BaseStorage):
         prev_installed_app = await get_item(filters={"app": app.pk, "channel": channel.pk}, result_obj=AppInstalled)
 
         if not prev_installed_app:
-            install_model = AppInstalledCreateSchema(app=str(app.pk), channel=str(channel.pk), scopes=scopes)
-            await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
-
             if not request.user:
                 raise Exception("User not found in request")
+
+            install_model = AppInstalledCreateSchema(app=str(app.pk), channel=str(channel.pk), scopes=scopes)
+            await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
 
             message = AppInstallMessageCreateSchema(
                 channel=channel_id, app=str(app.pk), installer=str(request.user.pk), type=6
@@ -269,38 +260,6 @@ class Storage(BaseStorage):
             revoked=False,
         )
         return token
-
-
-class OAuth2CodeAuthorizationRequestForm:
-    def __init__(
-        self,
-        response_type: str = Query(None, regex="code"),
-        client_id: Optional[str] = Query(None),
-        redirect_uri: Optional[str] = Query(None),
-        scope: str = Query(""),
-        state: Optional[str] = Query(None),
-    ):
-        self.response_type = response_type
-        self.client_id = client_id
-        self.redirect_uri = redirect_uri
-        self.scopes = scope.split()
-        self.state = state
-
-
-class OAuth2CodeTokenRequestForm:
-    def __init__(
-        self,
-        code: str = Form(None),
-        grant_type: str = Form(None, regex="code"),
-        redirect_uri: Optional[str] = Form(None),
-        client_id: Optional[str] = Form(None),
-        client_secret: Optional[str] = Form(None),
-    ):
-        self.code = code
-        self.grant_type = grant_type
-        self.redirect_uri = redirect_uri
-        self.client_id = client_id
-        self.client_secret = client_secret
 
 
 storage = Storage()
