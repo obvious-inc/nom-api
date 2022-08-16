@@ -9,6 +9,7 @@ class RefreshToken(APIDocument):
     user = fields.ReferenceField("User", default=None, required=False)
     app = fields.ReferenceField("App", default=None, required=False)
     refresh_token = fields.StrField()
+    scopes = fields.ListField(fields.StrField(), default=[])
 
     used = fields.BoolField(default=False)
 

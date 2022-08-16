@@ -181,10 +181,30 @@ class Storage(BaseStorage):
         access_token: Optional[str] = None,
         refresh_token: Optional[str] = None,
     ) -> Optional[Token]:
-        pass
+        app_settings = get_settings()
+        app: App = await get_app_by_client_id(client_id=client_id)
+        if not app:
+            raise Exception(f"App not found for client id: {client_id}")
+
+        r_token = await get_item(filters={"refresh_token": refresh_token, "app": app.pk}, result_obj=RefreshToken)
+        if r_token is None:
+            return None
+
+        token = Token(
+            client_id=client_id,
+            expires_in=app_settings.jwt_access_token_expire_minutes,
+            refresh_token_expires_in=app_settings.jwt_refresh_token_expire_minutes,
+            access_token="",
+            refresh_token=r_token.refresh_token,
+            issued_at=int(r_token.created_at.timestamp()),
+            scope=" ".join(r_token.scopes),
+            revoked=r_token.used or r_token.deleted,
+        )
+        return token
 
     async def revoke_token(self, request: OAuth2Request, refresh_token: str) -> None:
-        raise NotImplementedError()
+        r_token = await get_item(filters={"refresh_token": refresh_token}, result_obj=RefreshToken)
+        await delete_item(r_token)
 
     async def create_token(self, request: OAuth2Request, client_id: str, scope: str, *args) -> Token:
         app_settings = get_settings()
@@ -196,13 +216,15 @@ class Storage(BaseStorage):
         if not channel_id:
             raise Exception("missing channel_id")
 
-        code = request.post.code
-        code_item = await get_item(filters={"code": code, "app": app.pk}, result_obj=AuthorizationCode)
-
         if scope:
             logger.warning("ignoring /token endpoint scope definition")
 
-        scopes = await validate_oauth_request_scope_str(scope=code_item.scope)
+        code = request.post.code
+        if code:
+            code_item = await get_item(filters={"code": code, "app": app.pk}, result_obj=AuthorizationCode)
+            scopes = await validate_oauth_request_scope_str(scope=code_item.scope)
+        else:
+            scopes = await validate_oauth_request_scope_str(scope=scope)
 
         access_token = generate_jwt_token({"sub": str(app.pk), "client_id": client_id, "scopes": scopes})
         refresh_token = generate_jwt_token(
@@ -211,7 +233,7 @@ class Storage(BaseStorage):
 
         await cache.client.sadd(f"refresh_tokens:{str(app.pk)}", refresh_token)
         await create_item(
-            RefreshTokenCreateSchema(refresh_token=refresh_token, app=str(app.pk)),
+            RefreshTokenCreateSchema(refresh_token=refresh_token, app=str(app.pk), scopes=scopes),
             result_obj=RefreshToken,
             user_field=None,
         )
@@ -234,7 +256,7 @@ class Storage(BaseStorage):
             existing_scopes = prev_installed_app.scopes
             final_scopes = list(set(existing_scopes) | set(scopes))
             await update_item(prev_installed_app, {"scopes": final_scopes})
-            await cache.client.hset(f"app:{str(app.pk)}", f"channel:{channel_id}", " ".join(final_scopes))
+            await cache.client.hset(f"app:{str(app.pk)}", f"channel:{channel_id}", ",".join(final_scopes))
 
         token = Token(
             client_id=client_id,
