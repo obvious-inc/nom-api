@@ -26,7 +26,7 @@ async def get_app_authorization_page():
 @router.post("/authorize")
 async def post_app_authorization_page(request: Request, current_user: User = Depends(get_current_user)):
     oauth2_request = await to_oauth2_request(request, current_user=current_user)
-    consent = bool(int(oauth2_request.post.consent))
+    consent = bool(int(oauth2_request.post.consent)) if oauth2_request.post.consent else False
     if not consent:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Consent not granted")
 

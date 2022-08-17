@@ -40,7 +40,7 @@ class OAuth2Query(_Query):
 
 @dataclass
 class OAuth2Post(_Post):
-    consent: Optional[int] = 0
+    consent: Optional[str] = "0"
     channel: Optional[str] = None
 
 
