@@ -39,9 +39,6 @@ class TestOAuthRoutes:
             "state": state,
         }
 
-        response = await client.get("/oauth/authorize", params=params, follow_redirects=False)
-        assert response.status_code == 307
-
         form_data = {"consent": 1}
         user_auth_client = await get_authorized_client(current_user)
         response = await user_auth_client.post("/oauth/authorize", params=params, data=form_data)
@@ -95,9 +92,6 @@ class TestOAuthRoutes:
             "response_type": "code",
         }
 
-        response = await client.get("/oauth/authorize", params=params, follow_redirects=False)
-        assert response.status_code == 307
-
         form_data = {"consent": 1}
         user_auth_client = await get_authorized_client(current_user)
         response = await user_auth_client.post("/oauth/authorize", params=params, data=form_data)
@@ -129,9 +123,6 @@ class TestOAuthRoutes:
             "channel": str(topic_channel.pk),
             "state": state,
         }
-
-        response = await client.get("/oauth/authorize", params=params, follow_redirects=False)
-        assert response.status_code == 307
 
         form_data = {"consent": 0}
         user_auth_client = await get_authorized_client(current_user)
@@ -166,9 +157,6 @@ class TestOAuthRoutes:
             "state": state,
         }
 
-        response = await client.get("/oauth/authorize", params=params, follow_redirects=False)
-        assert response.status_code == 307
-
         form_data = {"consent": 1}
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.post("/oauth/authorize", params=params, data=form_data)
@@ -201,9 +189,6 @@ class TestOAuthRoutes:
             "channel": str(topic_channel.pk),
             "state": state,
         }
-
-        response = await client.get("/oauth/authorize", params=params, follow_redirects=False)
-        assert response.status_code == 307
 
         form_data = {"consent": 1}
         user_auth_client = await get_authorized_client(current_user)
@@ -238,9 +223,6 @@ class TestOAuthRoutes:
             "channel": str(topic_channel.pk),
             "state": state,
         }
-
-        response = await client.get("/oauth/authorize", params=params, follow_redirects=False)
-        assert response.status_code == 307
 
         form_data = {"consent": 1}
         user_auth_client = await get_authorized_client(current_user)
@@ -302,9 +284,6 @@ class TestOAuthRoutes:
             "channel": str(topic_channel.pk),
             "state": state,
         }
-
-        response = await client.get("/oauth/authorize", params=params, follow_redirects=False)
-        assert response.status_code == 307
 
         form_data = {"consent": 1}
         user_auth_client = await get_authorized_client(current_user)
@@ -368,9 +347,6 @@ class TestOAuthRoutes:
             "channel": str(topic_channel.pk),
             "state": state,
         }
-
-        response = await client.get("/oauth/authorize", params=params, follow_redirects=False)
-        assert response.status_code == 307
 
         form_data = {"consent": 1}
         user_auth_client = await get_authorized_client(current_user)
