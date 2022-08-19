@@ -678,7 +678,7 @@ class TestChannelsRoutes:
         normal_message = json_response[1]
         assert normal_message.get("type") == 0
         assert normal_message.get("author") == str(current_user.pk)
-        assert "app" not in normal_message
+        assert normal_message.get("app") is None
         assert "webhook" not in normal_message
 
     @pytest.mark.asyncio

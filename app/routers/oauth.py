@@ -36,14 +36,15 @@ async def post_app_authorization_page(request: Request, current_user: User = Dep
     await check_resource_permission(user=current_user, resource=channel, action="apps.manage")
 
     oauth2_response = await authorization_server.create_authorization_response(oauth2_request)
+    if oauth2_response.status_code == status.HTTP_302_FOUND:
+        location = oauth2_response.headers.get("location")
+        return {"location": location}
+
     return await to_fastapi_response(oauth2_response)
 
 
 @router.post("/token", dependencies=[Depends(get_current_client)])
 async def create_access_token(request: Request):
     oauth2_request = await to_oauth2_request(request)
-    if not oauth2_request.post.channel:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing channel")
-
     oauth2_response = await authorization_server.create_token_response(oauth2_request)
     return await to_fastapi_response(oauth2_response)

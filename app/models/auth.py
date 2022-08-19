@@ -30,6 +30,7 @@ class AuthorizationCode(APIDocument):
     expires_in = fields.IntField()
     auth_time = fields.IntField()
     nonce = fields.StrField(required=False, default=None)
+    channel = fields.ReferenceField("Channel", required=False, default=None)
 
     class Meta:
         collection_name = "auth_codes"

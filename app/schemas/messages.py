@@ -13,6 +13,7 @@ class MessageReactionSchema(APIEmbeddedBaseSchema):
 
 
 class MessageSchema(APIBaseSchema):
+    app: Optional[PyObjectId]
     author: Optional[PyObjectId] = Field()
     server: Optional[PyObjectId] = Field()
     channel: PyObjectId = Field()

@@ -21,13 +21,12 @@ from app.helpers.jwt import generate_jwt_token
 from app.helpers.permissions import validate_oauth_request_scope_str
 from app.models.app import App, AppInstalled
 from app.models.auth import AuthorizationCode, RefreshToken
-from app.models.channel import Channel
 from app.models.user import User
 from app.schemas.apps import AppInstalledCreateSchema
 from app.schemas.auth import AuthorizationCodeCreateSchema, RefreshTokenCreateSchema
 from app.schemas.messages import AppInstallMessageCreateSchema
 from app.services.apps import get_app_by_client_id
-from app.services.crud import create_item, delete_item, get_item, get_item_by_id, update_item
+from app.services.crud import create_item, delete_item, get_item, update_item
 from app.services.messages import create_app_message
 
 logger = logging.getLogger(__name__)
@@ -111,7 +110,9 @@ class Storage(BaseStorage):
             expires_in=oauth2_settings.AUTHORIZATION_CODE_EXPIRES_IN,
         )
 
-        auth_code_schema = AuthorizationCodeCreateSchema(**asdict(authorization_code), app=str(app.pk))
+        auth_code_schema = AuthorizationCodeCreateSchema(
+            **asdict(authorization_code), app=str(app.pk), channel=request.query.channel
+        )
         await create_item(
             item=auth_code_schema, result_obj=AuthorizationCode, user_field="user", current_user=request.user
         )
@@ -201,20 +202,47 @@ class Storage(BaseStorage):
         app_settings = get_settings()
         app: App = await get_app_by_client_id(client_id=client_id)
 
-        channel_id = request.post.channel
-        if not channel_id:
-            raise Exception("missing channel_id")
-
         if scope:
             logger.warning("ignoring /token endpoint scope definition")
 
         code = request.post.code
         if code:
+            # generate access token
             code_item = await get_item(filters={"code": code, "app": app.pk}, result_obj=AuthorizationCode)
-            if code_item and not request.user:
-                request.user = code_item.user
-            scopes = await validate_oauth_request_scope_str(scope=code_item.scope)
+            if code_item:
+                channel = await code_item.channel.fetch()
+                channel_id = str(channel.pk)
+                if not channel:
+                    raise Exception("missing channel_id")
+
+                if not request.user:
+                    request.user = code_item.user
+
+                scopes = await validate_oauth_request_scope_str(scope=code_item.scope)
+                prev_installed_app = await get_item(
+                    filters={"app": app.pk, "channel": channel.pk}, result_obj=AppInstalled
+                )
+
+                if not prev_installed_app:
+                    if not request.user:
+                        raise Exception("User not found in request")
+
+                    install_model = AppInstalledCreateSchema(app=str(app.pk), channel=str(channel.pk), scopes=scopes)
+                    await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
+
+                    message = AppInstallMessageCreateSchema(
+                        channel=channel_id, app=str(app.pk), installer=str(request.user.pk), type=6
+                    )
+                    await create_app_message(message_model=message)
+                else:
+                    existing_scopes = prev_installed_app.scopes
+                    final_scopes = list(set(existing_scopes) | set(scopes))
+                    await update_item(prev_installed_app, {"scopes": final_scopes})
+                    await cache.client.hset(f"app:{str(app.pk)}", f"channel:{channel_id}", ",".join(final_scopes))
+            else:
+                raise Exception("code not found")
         else:
+            # generate refresh token
             scopes = await validate_oauth_request_scope_str(scope=scope)
 
         access_token = generate_jwt_token({"sub": str(app.pk), "client_id": client_id, "scopes": scopes})
@@ -228,26 +256,6 @@ class Storage(BaseStorage):
             result_obj=RefreshToken,
             user_field=None,
         )
-
-        channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-        prev_installed_app = await get_item(filters={"app": app.pk, "channel": channel.pk}, result_obj=AppInstalled)
-
-        if not prev_installed_app:
-            if not request.user:
-                raise Exception("User not found in request")
-
-            install_model = AppInstalledCreateSchema(app=str(app.pk), channel=str(channel.pk), scopes=scopes)
-            await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
-
-            message = AppInstallMessageCreateSchema(
-                channel=channel_id, app=str(app.pk), installer=str(request.user.pk), type=6
-            )
-            await create_app_message(message_model=message)
-        else:
-            existing_scopes = prev_installed_app.scopes
-            final_scopes = list(set(existing_scopes) | set(scopes))
-            await update_item(prev_installed_app, {"scopes": final_scopes})
-            await cache.client.hset(f"app:{str(app.pk)}", f"channel:{channel_id}", ",".join(final_scopes))
 
         token = Token(
             client_id=client_id,

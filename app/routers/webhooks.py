@@ -55,12 +55,11 @@ async def post_create_webhook_message_with_secret(
     app = await webhook.app.fetch()
 
     message.channel = webhook.channel
-    message.app = str(app.pk)
     message.webhook = webhook_id
 
     try:
         # TODO queue this
-        await create_app_message(message_model=message)
+        await create_app_message(message_model=message, current_app=app)
     except Exception as e:
         logger.exception(e)
         capture_exception(e)

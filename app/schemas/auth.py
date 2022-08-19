@@ -67,6 +67,7 @@ class AuthorizationCodeCreateSchema(APIBaseCreateSchema):
     auth_time: int
     expires_in: int
     nonce: Optional[str] = ""
+    channel: str
 
     class Config:
         allow_population_by_field_name = True

@@ -24,7 +24,7 @@ async def fetch_and_cache_app(app_id: str):
     for installation in installations:
         channel_id = str(installation.channel.pk)
         channel_ids.append(channel_id)
-        dict_app[f"channel:{channel_id}"] = " ".join(installation.scopes)
+        dict_app[f"channel:{channel_id}"] = ",".join(installation.scopes)
 
     dict_app["channels"] = ",".join(channel_ids)
 

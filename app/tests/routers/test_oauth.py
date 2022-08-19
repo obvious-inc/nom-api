@@ -1,9 +1,10 @@
 import secrets
 from typing import Callable
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi import FastAPI
-from httpx import URL, AsyncClient
+from httpx import AsyncClient
 from pymongo.database import Database
 
 from app.models.channel import Channel
@@ -43,14 +44,17 @@ class TestOAuthRoutes:
         user_auth_client = await get_authorized_client(current_user)
         response = await user_auth_client.post("/oauth/authorize", params=params, data=form_data)
         assert response.status_code == 200
-        url: URL = response.url
-        assert f"{url.scheme}://{url.netloc.decode('ascii')}" == redirect_uri
+        json_resp = response.json()
+        location = json_resp.get("location")
+        url = urlparse(location)
+        assert f"{url.scheme}://{url.netloc}" == redirect_uri
 
-        code = url.params.get("code")
+        params = parse_qs(url.query)
+        code = params.get("code")
         assert code is not None
         assert code != ""
 
-        redirect_state = url.params.get("state")
+        redirect_state = params.get("state")[0]
         assert redirect_state is not None
         assert redirect_state != ""
         assert redirect_state == state
@@ -228,14 +232,17 @@ class TestOAuthRoutes:
         user_auth_client = await get_authorized_client(current_user)
         response = await user_auth_client.post("/oauth/authorize", params=params, data=form_data)
         assert response.status_code == 200
-        url: URL = response.url
-        assert f"{url.scheme}://{url.netloc.decode('ascii')}" == redirect_uri
+        json_resp = response.json()
+        location = json_resp.get("location")
+        url = urlparse(location)
+        assert f"{url.scheme}://{url.netloc}" == redirect_uri
 
-        code = url.params.get("code")
+        params = parse_qs(url.query)
+        code = params.get("code")
         assert code is not None
         assert code != ""
 
-        redirect_state = url.params.get("state")
+        redirect_state = params.get("state")[0]
         assert redirect_state is not None
         assert redirect_state != ""
         assert redirect_state == state
@@ -289,14 +296,17 @@ class TestOAuthRoutes:
         user_auth_client = await get_authorized_client(current_user)
         response = await user_auth_client.post("/oauth/authorize", params=params, data=form_data)
         assert response.status_code == 200
-        url: URL = response.url
-        assert f"{url.scheme}://{url.netloc.decode('ascii')}" == redirect_uri
+        json_resp = response.json()
+        location = json_resp.get("location")
+        url = urlparse(location)
+        assert f"{url.scheme}://{url.netloc}" == redirect_uri
 
-        code = url.params.get("code")
+        params = parse_qs(url.query)
+        code = params.get("code")
         assert code is not None
         assert code != ""
 
-        redirect_state = url.params.get("state")
+        redirect_state = params.get("state")[0]
         assert redirect_state is not None
         assert redirect_state != ""
         assert redirect_state == state
@@ -407,8 +417,13 @@ class TestOAuthRoutes:
         user_auth_client = await get_authorized_client(current_user)
         response = await user_auth_client.post("/oauth/authorize", params=params, data={"consent": 1})
         assert response.status_code == 200
-        url: URL = response.url
-        code = url.params.get("code")
+        json_resp = response.json()
+        location = json_resp.get("location")
+        url = urlparse(location)
+        assert f"{url.scheme}://{url.netloc}" == redirect_uri
+
+        params = parse_qs(url.query)
+        code = params.get("code")
         assert code is not None
         assert code != ""
 
@@ -457,8 +472,13 @@ class TestOAuthRoutes:
         user_auth_client = await get_authorized_client(current_user)
         response = await user_auth_client.post("/oauth/authorize", params=params, data={"consent": 1})
         assert response.status_code == 200
-        url: URL = response.url
-        code = url.params.get("code")
+        json_resp = response.json()
+        location = json_resp.get("location")
+        url = urlparse(location)
+        assert f"{url.scheme}://{url.netloc}" == redirect_uri
+
+        params = parse_qs(url.query)
+        code = params.get("code")
         assert code is not None
         assert code != ""
 

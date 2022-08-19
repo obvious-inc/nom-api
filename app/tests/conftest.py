@@ -1,6 +1,6 @@
 import binascii
 import secrets
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import arrow
 import pytest
@@ -17,13 +17,13 @@ from app.helpers.cache_utils import cache
 from app.helpers.connection import get_client, get_db
 from app.helpers.jwt import generate_jwt_token
 from app.main import get_application
-from app.models.app import App
+from app.models.app import App, AppInstalled
 from app.models.auth import RefreshToken
 from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
-from app.schemas.apps import AppCreateSchema
+from app.schemas.apps import AppCreateSchema, AppInstalledCreateSchema
 from app.schemas.auth import AuthWalletSchema, RefreshTokenCreateSchema
 from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema, TopicChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
@@ -206,16 +206,33 @@ async def get_authorized_client(client: AsyncClient, redis: Redis):
 
 
 @pytest.fixture
-async def get_app_authorized_client(client: AsyncClient, redis: Redis):
+async def get_app_authorized_client(client: AsyncClient, redis: Redis, current_user: User):
     async def _get_app_authorized_client(
-        integration: App, access_token: Optional[str] = None, refresh_token: Optional[str] = None
+        integration: App,
+        access_token: Optional[str] = None,
+        refresh_token: Optional[str] = None,
+        channels: Optional[List[Channel]] = None,
+        scopes: Optional[List[str]] = None,
     ):
+        if not scopes:
+            scopes = ["messages.list", "messages.create"]
+
         if not access_token:
-            access_token = generate_jwt_token(data={"sub": str(integration.pk), "client_id": integration.client_id})
+            access_token = generate_jwt_token(
+                data={"sub": str(integration.pk), "client_id": integration.client_id, "scopes": scopes}
+            )
         if not refresh_token:
             refresh_token = generate_jwt_token(
-                data={"sub": str(integration.pk), "client_id": integration.client_id}, token_type="refresh"
+                data={"sub": str(integration.pk), "client_id": integration.client_id, "scopes": scopes},
+                token_type="refresh",
             )
+
+        if channels:
+            for channel in channels:
+                install_model = AppInstalledCreateSchema(
+                    app=str(integration.pk), channel=str(channel.pk), scopes=scopes
+                )
+                await create_item(item=install_model, current_user=current_user, result_obj=AppInstalled)
 
         await create_item(
             RefreshTokenCreateSchema(refresh_token=refresh_token, app=str(integration.pk)),
