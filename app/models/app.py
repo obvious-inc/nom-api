@@ -14,6 +14,9 @@ class App(APIDocument):
     redirect_uris = fields.ListField(fields.StrField(), default=[])
     scopes = fields.ListField(fields.StrField, default=[])
 
+    online_channels = fields.ListField(fields.StrField(), required=False, default=[])
+    status = fields.StrField(default="offline")
+
     class Meta:
         collection_name = "apps"
 
