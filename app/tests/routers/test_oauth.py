@@ -49,12 +49,12 @@ class TestOAuthRoutes:
         url = urlparse(location)
         assert f"{url.scheme}://{url.netloc}" == redirect_uri
 
-        params = parse_qs(url.query)
-        code = params.get("code")
+        url_params: dict = parse_qs(url.query)
+        code = url_params.get("code")
         assert code is not None
         assert code != ""
 
-        redirect_state = params.get("state")[0]
+        redirect_state = url_params.get("state", [])[0]
         assert redirect_state is not None
         assert redirect_state != ""
         assert redirect_state == state
@@ -237,12 +237,12 @@ class TestOAuthRoutes:
         url = urlparse(location)
         assert f"{url.scheme}://{url.netloc}" == redirect_uri
 
-        params = parse_qs(url.query)
-        code = params.get("code")
+        url_params: dict = parse_qs(url.query)
+        code = url_params.get("code")
         assert code is not None
         assert code != ""
 
-        redirect_state = params.get("state")[0]
+        redirect_state = url_params.get("state", [])[0]
         assert redirect_state is not None
         assert redirect_state != ""
         assert redirect_state == state
@@ -301,12 +301,12 @@ class TestOAuthRoutes:
         url = urlparse(location)
         assert f"{url.scheme}://{url.netloc}" == redirect_uri
 
-        params = parse_qs(url.query)
-        code = params.get("code")
+        url_params: dict = parse_qs(url.query)
+        code = url_params.get("code")
         assert code is not None
         assert code != ""
 
-        redirect_state = params.get("state")[0]
+        redirect_state = url_params.get("state", [])[0]
         assert redirect_state is not None
         assert redirect_state != ""
         assert redirect_state == state
@@ -422,8 +422,8 @@ class TestOAuthRoutes:
         url = urlparse(location)
         assert f"{url.scheme}://{url.netloc}" == redirect_uri
 
-        params = parse_qs(url.query)
-        code = params.get("code")
+        url_params: dict = parse_qs(url.query)
+        code = url_params.get("code")
         assert code is not None
         assert code != ""
 

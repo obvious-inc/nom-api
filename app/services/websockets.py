@@ -60,7 +60,7 @@ async def get_channel_online_channels(channel: Channel, current_user: Optional[U
 
     installed_apps = await get_items(filters={"channel": channel.pk}, result_obj=AppInstalled, limit=None)
     if len(installed_apps) > 0:
-        app_ids = set([install.app.pk for install in installed_apps])
+        app_ids = {install.app.pk for install in installed_apps}
         apps = await get_items(filters={"_id": {"$in": list(app_ids)}}, result_obj=App, limit=None)
         app_channels = await _get_apps_online_channels(apps)
         online_channels.extend(app_channels)

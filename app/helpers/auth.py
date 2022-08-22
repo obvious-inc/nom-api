@@ -1,15 +1,15 @@
 import logging
 import time
 from dataclasses import asdict, dataclass
-from typing import Optional
+from typing import Any, Optional
 
 from aioauth.collections import HTTPHeaderDict
 from aioauth.config import Settings as OAuth2Settings
 from aioauth.models import AuthorizationCode as OAuth2Code
 from aioauth.models import Client, Token
+from aioauth.requests import BaseRequest
 from aioauth.requests import Post as _Post
 from aioauth.requests import Query as _Query
-from aioauth.requests import Request as _Request
 from aioauth.server import AuthorizationServer
 from aioauth.storage import BaseStorage
 from aioauth.types import GrantType, RequestMethod, ResponseType, TokenType
@@ -44,7 +44,7 @@ class OAuth2Post(_Post):
 
 
 @dataclass
-class OAuth2Request(_Request):
+class OAuth2Request(BaseRequest[OAuth2Query, OAuth2Post, Any]):
     query: OAuth2Query = OAuth2Query()
     post: OAuth2Post = OAuth2Post()
 
@@ -63,8 +63,10 @@ async def get_oauth_settings() -> OAuth2Settings:
 async def to_oauth2_request(request: Request, current_user: Optional[User] = None) -> OAuth2Request:
     oauth2_settings = await get_oauth_settings()
     form = await request.form()
-    post = dict(form)
-    query_params = dict(request.query_params)
+    post: OAuth2Post = OAuth2Post(**form)
+
+    query_params = request.query_params
+    query: OAuth2Query = OAuth2Query(**query_params)
     method = request.method
     headers = HTTPHeaderDict(**request.headers)
     url = str(request.url)
@@ -73,8 +75,8 @@ async def to_oauth2_request(request: Request, current_user: Optional[User] = Non
         settings=oauth2_settings,
         method=RequestMethod[method],
         headers=headers,
-        post=OAuth2Post(**post),
-        query=OAuth2Query(**query_params),
+        post=post,
+        query=query,
         url=url,
         user=current_user,
     )
@@ -271,4 +273,4 @@ class Storage(BaseStorage):
 
 
 storage = Storage()
-authorization_server = AuthorizationServer(storage=storage)
+authorization_server: AuthorizationServer = AuthorizationServer(storage=storage)
