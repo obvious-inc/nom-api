@@ -1,9 +1,12 @@
 import logging
 
+from aioauth.utils import build_uri
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from starlette.requests import Request
+from starlette.responses import RedirectResponse
 
+from app.config import get_settings
 from app.dependencies import get_current_client, get_current_user
 from app.helpers.auth import authorization_server, to_fastapi_response, to_oauth2_request
 from app.helpers.permissions import check_resource_permission
@@ -17,9 +20,11 @@ router = APIRouter()
 
 
 @router.get("/authorize")
-async def get_app_authorization_page():
-    # TODO: might want to allow this and instead return a RedirectResponse() to the frontend
-    raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
+async def get_app_authorization_page(request: Request):
+    settings = get_settings()
+    query = dict(request.query_params)
+    location = build_uri(url=f"{settings.frontend_url}/oauth/authorize", query_params=query)
+    return RedirectResponse(location)
 
 
 @router.post("/authorize")
