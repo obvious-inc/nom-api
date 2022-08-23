@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from dataclasses import asdict, dataclass
@@ -10,10 +11,12 @@ from aioauth.models import Client, Token
 from aioauth.requests import BaseRequest
 from aioauth.requests import Post as _Post
 from aioauth.requests import Query as _Query
+from aioauth.responses import Response as OAuth2Response
 from aioauth.server import AuthorizationServer
 from aioauth.storage import BaseStorage
 from aioauth.types import GrantType, RequestMethod, ResponseType, TokenType
 from starlette.requests import Request
+from starlette.responses import Response
 
 from app.config import get_settings
 from app.helpers.cache_utils import cache
@@ -58,6 +61,15 @@ async def get_oauth_settings() -> OAuth2Settings:
     )
 
     return oauth2_settings
+
+
+async def to_fastapi_response(oauth2_response: OAuth2Response) -> Response:
+    response_content = oauth2_response.content
+    headers = dict(oauth2_response.headers)
+    status_code = oauth2_response.status_code
+    content = json.dumps(response_content)
+
+    return Response(content=content, headers=headers, status_code=status_code)
 
 
 async def to_oauth2_request(request: Request, current_user: Optional[User] = None) -> OAuth2Request:

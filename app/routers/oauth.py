@@ -1,12 +1,11 @@
 import logging
 
-from aioauth_fastapi.utils import to_fastapi_response
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from starlette.requests import Request
 
 from app.dependencies import get_current_client, get_current_user
-from app.helpers.auth import authorization_server, to_oauth2_request
+from app.helpers.auth import authorization_server, to_fastapi_response, to_oauth2_request
 from app.helpers.permissions import check_resource_permission
 from app.models.channel import Channel
 from app.models.user import User
