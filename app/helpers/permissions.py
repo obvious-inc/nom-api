@@ -308,7 +308,7 @@ async def fetch_user_permissions(
     return sorted(list(user_permissions))
 
 
-async def check_resource_permission(user: User, action: str, resource: Any) -> None:
+async def validate_resource_permission(user: User, action: str, resource: Any) -> None:
     user_id = str(user.pk)
 
     channel_id = None

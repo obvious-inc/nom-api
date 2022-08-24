@@ -25,7 +25,7 @@ async def _get_users_online_channels(users: List[User]):
 
 async def _get_apps_online_channels(apps: List[App]):
     channels = []
-    user: App
+    app: App
     for app in apps:
         channels.extend(app.online_channels)
     return list(set(channels))
@@ -58,6 +58,8 @@ async def get_channel_online_channels(channel: Channel, current_user: Optional[U
 
     online_channels = await _get_users_online_channels(users)
 
+    # TODO: This might slow down the websocket publishing... in the long run, it's best to dispatch user and app events
+    # in parallel
     installed_apps = await get_items(filters={"channel": channel.pk}, result_obj=AppInstalled, limit=None)
     if len(installed_apps) > 0:
         app_ids = {install.app.pk for install in installed_apps}

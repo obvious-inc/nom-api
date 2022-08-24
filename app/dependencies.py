@@ -33,6 +33,8 @@ async def get_current_client(request: Request, credentials: HTTPBasicCredentials
     client_secret = credentials.password
     app: App = await get_app_by_client_id(client_id)
 
+    request.state.auth_type = "basic"
+
     if not app:
         logger.warning("Client not found. [client_id=%s]", client_id)
         raise credentials_exception
@@ -94,7 +96,8 @@ async def get_current_app(request: Request, token: HTTPAuthorizationCredentials 
         sub: str = payload.get("sub")
         if not sub:
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        logger.debug(f"jwt error: {e}")
         raise credentials_exception
     except Exception:
         logger.exception("Problems decoding JWT. [jwt=%s]", token.credentials)

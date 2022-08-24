@@ -189,7 +189,7 @@ class Storage(BaseStorage):
         access_token: Optional[str] = None,
         refresh_token: Optional[str] = None,
     ) -> Optional[Token]:
-        app_settings = get_settings()
+        oauth_settings = await get_oauth_settings()
         app: App = await get_app_by_client_id(client_id=client_id)
 
         r_token = await get_item(filters={"refresh_token": refresh_token, "app": app.pk}, result_obj=RefreshToken)
@@ -198,8 +198,8 @@ class Storage(BaseStorage):
 
         token = Token(
             client_id=client_id,
-            expires_in=app_settings.jwt_access_token_expire_minutes,
-            refresh_token_expires_in=app_settings.jwt_refresh_token_expire_minutes,
+            expires_in=oauth_settings.TOKEN_EXPIRES_IN,
+            refresh_token_expires_in=oauth_settings.REFRESH_TOKEN_EXPIRES_IN,
             access_token="",
             refresh_token=r_token.refresh_token,
             issued_at=int(r_token.created_at.timestamp()),
@@ -210,6 +210,8 @@ class Storage(BaseStorage):
 
     async def revoke_token(self, request: OAuth2Request, refresh_token: str) -> None:
         r_token = await get_item(filters={"refresh_token": refresh_token}, result_obj=RefreshToken)
+        if not r_token:
+            raise Exception("refresh token not found")
         await delete_item(r_token)
 
     async def create_token(self, request: OAuth2Request, client_id: str, scope: str, *args) -> Token:
