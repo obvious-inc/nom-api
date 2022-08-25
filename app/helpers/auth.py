@@ -6,11 +6,13 @@ from typing import Any, Optional
 
 from aioauth.collections import HTTPHeaderDict
 from aioauth.config import Settings as OAuth2Settings
+from aioauth.errors import InvalidScopeError
 from aioauth.models import AuthorizationCode as OAuth2Code
 from aioauth.models import Client, Token
 from aioauth.requests import BaseRequest
 from aioauth.requests import Post as _Post
 from aioauth.requests import Query as _Query
+from aioauth.requests import TRequest
 from aioauth.responses import Response as OAuth2Response
 from aioauth.server import AuthorizationServer
 from aioauth.storage import BaseStorage
@@ -218,48 +220,51 @@ class Storage(BaseStorage):
         app_settings = get_settings()
         app: App = await get_app_by_client_id(client_id=client_id)
 
-        if scope:
-            logger.warning("ignoring /token endpoint scope definition")
-
-        code = request.post.code
-        if code:
-            # generate access token
+        if request.post.grant_type == GrantType.TYPE_AUTHORIZATION_CODE:
+            code = request.post.code
             code_item = await get_item(filters={"code": code, "app": app.pk}, result_obj=AuthorizationCode)
-            if code_item:
-                channel = await code_item.channel.fetch()
-                channel_id = str(channel.pk)
-                if not channel:
-                    raise Exception("missing channel_id")
-
-                if not request.user:
-                    request.user = code_item.user
-
-                scopes = await validate_oauth_request_scope_str(scope=code_item.scope)
-                prev_installed_app = await get_item(
-                    filters={"app": app.pk, "channel": channel.pk}, result_obj=AppInstalled
-                )
-
-                if not prev_installed_app:
-                    if not request.user:
-                        raise Exception("User not found in request")
-
-                    install_model = AppInstalledCreateSchema(app=str(app.pk), channel=str(channel.pk), scopes=scopes)
-                    await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
-
-                    message = AppInstallMessageCreateSchema(
-                        channel=channel_id, app=str(app.pk), installer=str(request.user.pk), type=6
-                    )
-                    await create_app_message(message_model=message)
-                else:
-                    existing_scopes = prev_installed_app.scopes
-                    final_scopes = list(set(existing_scopes) | set(scopes))
-                    await update_item(prev_installed_app, {"scopes": final_scopes})
-                    await cache.client.hset(f"app:{str(app.pk)}", f"channel:{channel_id}", ",".join(final_scopes))
-            else:
+            if not code_item:
                 raise Exception("code not found")
-        else:
-            # generate refresh token
+
+            # for access tokens, scope should be the same as the issued code
+            code_scope = code_item.scope
+            if scope and scope != code_scope:
+                logger.error(f"upgrading scope not allowed. expected: {code_scope} | request: {scope}")
+                raise InvalidScopeError[TRequest](request=request)
+
+            scopes = await validate_oauth_request_scope_str(scope=code_scope)
+
+            channel = await code_item.channel.fetch()
+            channel_id = str(channel.pk)
+            if not channel:
+                raise Exception("missing channel_id")
+
+            if not request.user:
+                request.user = code_item.user
+
+            prev_installed_app = await get_item(filters={"app": app.pk, "channel": channel.pk}, result_obj=AppInstalled)
+
+            if not prev_installed_app:
+                if not request.user:
+                    raise Exception("User not found in request")
+
+                install_model = AppInstalledCreateSchema(app=str(app.pk), channel=str(channel.pk), scopes=scopes)
+                await create_item(item=install_model, current_user=request.user, result_obj=AppInstalled)
+
+                message = AppInstallMessageCreateSchema(
+                    channel=channel_id, app=str(app.pk), installer=str(request.user.pk), type=6
+                )
+                await create_app_message(message_model=message)
+            else:
+                existing_scopes = prev_installed_app.scopes
+                final_scopes = list(set(existing_scopes) | set(scopes))
+                await update_item(prev_installed_app, {"scopes": final_scopes})
+                await cache.client.hset(f"app:{str(app.pk)}", f"channel:{channel_id}", ",".join(final_scopes))
+
+        elif request.post.grant_type == GrantType.TYPE_REFRESH_TOKEN:
             scopes = await validate_oauth_request_scope_str(scope=scope)
+        else:
+            raise Exception("unexpected grant type", request.post.grant_type)
 
         access_token = generate_jwt_token({"sub": str(app.pk), "client_id": client_id, "scopes": scopes})
         refresh_token = generate_jwt_token(
