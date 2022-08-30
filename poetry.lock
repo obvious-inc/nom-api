@@ -1,10 +1,13 @@
 [[package]]
 name = "aioauth"
-version = "1.4.1"
+version = "1.5.0"
 description = "Asynchronous OAuth 2.0 framework for Python 3."
 category = "main"
 optional = false
 python-versions = ">=3.7.0"
+
+[package.dependencies]
+typing-extensions = "*"
 
 [package.extras]
 fastapi = ["aioauth-fastapi (>=0.0.1)"]
@@ -1625,7 +1628,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "0bf60e362158e37ccb3a12ee0aadcfd046c3c3c02af41eeeabe1f74426224ce8"
+content-hash = "37e061b763360279bfdd8d401ad1256855455d05d1ae9d3487684da3b421bc31"
 
 [metadata.files]
 aioauth = []

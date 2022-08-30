@@ -2,7 +2,7 @@ import json
 import logging
 import time
 from dataclasses import asdict, dataclass
-from typing import Any, Optional
+from typing import Any, Literal, Optional, cast
 
 from aioauth.collections import HTTPHeaderDict
 from aioauth.config import Settings as OAuth2Settings
@@ -16,7 +16,7 @@ from aioauth.requests import TRequest
 from aioauth.responses import Response as OAuth2Response
 from aioauth.server import AuthorizationServer
 from aioauth.storage import BaseStorage
-from aioauth.types import GrantType, RequestMethod, ResponseType, TokenType
+from aioauth.types import CodeChallengeMethod
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -81,13 +81,13 @@ async def to_oauth2_request(request: Request, current_user: Optional[User] = Non
 
     query_params = request.query_params
     query: OAuth2Query = OAuth2Query(**query_params)
-    method = request.method
+    method = cast(Literal["GET", "POST"], request.method)
     headers = HTTPHeaderDict(**request.headers)
     url = str(request.url)
 
     return OAuth2Request(
         settings=oauth2_settings,
-        method=RequestMethod[method],
+        method=method,
         headers=headers,
         post=post,
         query=query,
@@ -104,7 +104,7 @@ class Storage(BaseStorage):
         scope: str,
         response_type: str,
         redirect_uri: str,
-        code_challenge_method: Optional[str],
+        code_challenge_method: Optional[CodeChallengeMethod],
         code_challenge: Optional[str],
         code: str,
     ) -> OAuth2Code:
@@ -168,8 +168,8 @@ class Storage(BaseStorage):
             client_id=app.client_id,
             client_secret=app.client_secret,
             redirect_uris=app.redirect_uris,
-            grant_types=[GrantType.TYPE_AUTHORIZATION_CODE, GrantType.TYPE_REFRESH_TOKEN],
-            response_types=[ResponseType.TYPE_CODE],
+            grant_types=["authorization_code", "refresh_token"],
+            response_types=["code"],
             user=app.creator,
             scope=" ".join(app.scopes),
         )
@@ -187,7 +187,7 @@ class Storage(BaseStorage):
         self,
         request: OAuth2Request,
         client_id: str,
-        token_type: Optional[str] = TokenType.REFRESH,
+        token_type: Optional[str] = "refresh_token",
         access_token: Optional[str] = None,
         refresh_token: Optional[str] = None,
     ) -> Optional[Token]:
@@ -220,7 +220,7 @@ class Storage(BaseStorage):
         app_settings = get_settings()
         app: App = await get_app_by_client_id(client_id=client_id)
 
-        if request.post.grant_type == GrantType.TYPE_AUTHORIZATION_CODE:
+        if request.post.grant_type == "authorization_code":
             code = request.post.code
             code_item = await get_item(filters={"code": code, "app": app.pk}, result_obj=AuthorizationCode)
             if not code_item:
@@ -261,7 +261,7 @@ class Storage(BaseStorage):
                 await update_item(prev_installed_app, {"scopes": final_scopes})
                 await cache.client.hset(f"app:{str(app.pk)}", f"channel:{channel_id}", ",".join(final_scopes))
 
-        elif request.post.grant_type == GrantType.TYPE_REFRESH_TOKEN:
+        elif request.post.grant_type == "refresh_token":
             scopes = await validate_oauth_request_scope_str(scope=scope)
         else:
             raise Exception("unexpected grant type", request.post.grant_type)

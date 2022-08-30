@@ -44,7 +44,7 @@ uvicorn = "^0.16"
 uvloop = "^0.16"
 watchgod = "^0.7"
 web3 = "^5.26"
-aioauth = "^1.4.1"
+aioauth = "^1.5.0"
 
 [tool.poetry.dev-dependencies]
 black = { version = "*", allow-prereleases = true }
