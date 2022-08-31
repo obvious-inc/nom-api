@@ -54,7 +54,7 @@ async def fetch_get_user_channels(current_user: User = Depends(get_current_user)
     "/info",
     response_description="Get users info",
     response_model=List[PublicUserSchema],
-    dependencies=[Depends(PermissionsChecker(needs_user=True))],
+    dependencies=[Depends(PermissionsChecker(needs_bearer=True))],
 )
 async def post_get_users_info(data=Body(...)):
     return await get_users_info(data)

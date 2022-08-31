@@ -18,7 +18,7 @@ from app.models.user import User
 from app.models.webhook import Webhook
 from app.schemas.messages import MessageCreateSchema, WebhookMessageCreateSchema
 from app.services.crud import create_item, get_item_by_id
-from app.services.messages import create_webhook_message, get_messages
+from app.services.messages import create_app_message, get_messages
 
 
 class TestMessagesRoutes:
@@ -1011,7 +1011,7 @@ class TestMessagesRoutes:
             content="webhook message!",
             channel=str(integration_app_webhook.channel.pk),
         )
-        wh_message = await create_webhook_message(message_model=wh_message_model)
+        wh_message = await create_app_message(message_model=wh_message_model)
 
         response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(wh_message.id)}")
         assert response.status_code == 200
@@ -1288,3 +1288,26 @@ class TestMessagesRoutes:
         after_id = "0"
         response = await authorized_client.get(f"channels/{str(server_channel.pk)}/messages?after={after_id}&limit=3")
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_create_message_as_app(
+        self,
+        app: FastAPI,
+        db: Database,
+        topic_channel: Channel,
+        integration_app: App,
+        get_app_authorized_client: Callable,
+    ):
+        data = {"content": "gm!", "channel": str(topic_channel.pk)}
+        app_client = await get_app_authorized_client(integration_app, channels=[topic_channel])
+        response = await app_client.post("/messages", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "content" in json_response
+        assert json_response["content"] == data["content"]
+        assert json_response["channel"] == data["channel"] == str(topic_channel.pk)
+        assert json_response["author"] is None
+        assert json_response["app"] is not None
+        assert json_response["app"] == str(integration_app.pk)
+        assert json_response["type"] == 3

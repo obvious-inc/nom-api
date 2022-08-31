@@ -54,3 +54,9 @@ class AppMessage(Message):
 class WebhookMessage(AppMessage):
     webhook = fields.ReferenceField("Webhook", required=True)
     type = fields.IntField(default=2)
+
+
+@instance.register
+class AppInstallMessage(AppMessage):
+    installer = fields.ReferenceField("User", required=True)
+    type = fields.IntField(default=6)

@@ -1,4 +1,20 @@
 [[package]]
+name = "aioauth"
+version = "1.5.0"
+description = "Asynchronous OAuth 2.0 framework for Python 3."
+category = "main"
+optional = false
+python-versions = ">=3.7.0"
+
+[package.dependencies]
+typing-extensions = "*"
+
+[package.extras]
+fastapi = ["aioauth-fastapi (>=0.0.1)"]
+docs = ["wheel", "twine (==3.7.1)", "bump2version (==1.0.1)", "testfixtures (==6.18.3)", "pytest-sugar (==0.9.4)", "pytest-env (==0.6.2)", "pytest-cov (==3.0.0)", "pytest-asyncio (==0.16.0)", "pytest (==6.2.5)", "pre-commit (==2.16.0)", "async-asgi-testclient (==1.4.8)", "sphinx-rtd-theme", "m2r2", "sphinx-autobuild", "sphinx-copybutton", "sphinx"]
+dev = ["wheel", "twine (==3.7.1)", "bump2version (==1.0.1)", "testfixtures (==6.18.3)", "pytest-sugar (==0.9.4)", "pytest-env (==0.6.2)", "pytest-cov (==3.0.0)", "pytest-asyncio (==0.16.0)", "pytest (==6.2.5)", "pre-commit (==2.16.0)", "async-asgi-testclient (==1.4.8)"]
+
+[[package]]
 name = "aiohttp"
 version = "3.8.1"
 description = "Async http client/server framework (asyncio)"
@@ -1612,9 +1628,10 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "2feb4fa6745d78c8ca661741a81fa74e6a3cc666d445acf115a63b366e8d0a94"
+content-hash = "37e061b763360279bfdd8d401ad1256855455d05d1ae9d3487684da3b421bc31"
 
 [metadata.files]
+aioauth = []
 aiohttp = [
     {file = "aiohttp-3.8.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:1ed0b6477896559f17b9eaeb6d38e07f7f9ffe40b9f0f9627ae8b9926ae260a8"},
     {file = "aiohttp-3.8.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7dadf3c307b31e0e61689cbf9e06be7a867c563d5a63ce9dca578f956609abf8"},

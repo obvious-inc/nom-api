@@ -16,12 +16,15 @@ from app.helpers.channels import (
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
+from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
-from app.models.message import Message, MessageReaction, SystemMessage, WebhookMessage
+from app.models.message import AppInstallMessage, AppMessage, Message, MessageReaction, SystemMessage, WebhookMessage
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
 from app.schemas.messages import (
+    AppInstallMessageCreateSchema,
+    AppMessageCreateSchema,
     MessageCreateSchema,
     MessageUpdateSchema,
     SystemMessageCreateSchema,
@@ -43,8 +46,23 @@ from app.services.websockets import broadcast_current_user_event, broadcast_mess
 logger = logging.getLogger(__name__)
 
 
-async def create_webhook_message(message_model: WebhookMessageCreateSchema):
-    message = await create_item(item=message_model, result_obj=WebhookMessage, user_field=None)
+async def create_app_message(
+    message_model: Union[WebhookMessageCreateSchema, AppInstallMessageCreateSchema, AppMessageCreateSchema],
+    current_app: App = None,
+):
+    if isinstance(message_model, WebhookMessageCreateSchema):
+        result_obj = WebhookMessage
+    elif isinstance(message_model, AppInstallMessageCreateSchema):
+        result_obj = AppInstallMessage
+    elif isinstance(message_model, AppMessageCreateSchema):
+        result_obj = AppMessage
+    else:
+        raise Exception(f"Unknown message type: {message_model.__class__} | {message_model}")
+
+    if current_app:
+        message_model.app = str(current_app.pk)
+
+    message = await create_item(item=message_model, result_obj=result_obj, user_field=None)
 
     bg_tasks = [
         (broadcast_message_event, (str(message.id), None, WebSocketServerEvent.MESSAGE_CREATE)),

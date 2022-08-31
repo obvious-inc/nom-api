@@ -55,7 +55,7 @@ async def post_create_channel(
     "/{channel_id}/messages",
     response_description="Get latest messages",
     response_model=List[EitherMessage],
-    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["messages.list"]))],
+    dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["messages.list"]))],
 )
 async def get_list_messages(channel_id, common_params: dict = Depends(common_parameters)):
     return await get_messages(channel_id=channel_id, **common_params)
@@ -65,7 +65,7 @@ async def get_list_messages(channel_id, common_params: dict = Depends(common_par
     "/{channel_id}",
     response_description="Get channel info",
     response_model=EitherChannel,
-    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["channels.view"]))],
+    dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["channels.view"]))],
 )
 async def get_fetch_channel(channel_id):
     return await get_channel(channel_id=channel_id)
@@ -75,7 +75,7 @@ async def get_fetch_channel(channel_id):
     "/{channel_id}/messages/{message_id}",
     response_description="Get message",
     response_model=EitherMessage,
-    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["messages.list"]))],
+    dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["messages.list"]))],
 )
 async def get_specific_message(channel_id, message_id):
     return await get_message(channel_id=channel_id, message_id=message_id)
@@ -85,7 +85,7 @@ async def get_specific_message(channel_id, message_id):
     "/{channel_id}",
     response_description="Delete channel",
     response_model=EitherChannel,
-    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["channels.delete"]))],
+    dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["channels.delete"]))],
 )
 async def delete_remove_channel(channel_id, current_user: User = Depends(get_current_user)):
     return await delete_channel(channel_id=channel_id, current_user=current_user)
@@ -183,7 +183,7 @@ async def post_join_server(channel_id: str, current_user: User = Depends(get_cur
     "/{channel_id}/members",
     response_description="List channel members",
     response_model=List[MemberUserSchema],
-    dependencies=[Depends(PermissionsChecker(needs_user=False, permissions=["channels.members.list"]))],
+    dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["channels.members.list"]))],
 )
 async def get_fetch_channel_members(channel_id: str):
     return await get_channel_members(channel_id=channel_id)

@@ -11,8 +11,22 @@ class App(APIDocument):
     description = fields.StrField(required=False)
     client_id = fields.StrField()
     client_secret = fields.StrField()
+    redirect_uris = fields.ListField(fields.StrField(), default=[])
+    scopes = fields.ListField(fields.StrField, default=[])
 
-    permissions = fields.ListField(fields.StrField)
+    online_channels = fields.ListField(fields.StrField(), required=False, default=[])
+    status = fields.StrField(default="offline")
 
     class Meta:
         collection_name = "apps"
+
+
+@instance.register
+class AppInstalled(APIDocument):
+    app = fields.ReferenceField("App")
+    user = fields.ReferenceField("User")
+    channel = fields.ReferenceField("Channel")
+    scopes = fields.ListField(fields.StrField(), default=[])
+
+    class Meta:
+        collection_name = "apps_installed"
