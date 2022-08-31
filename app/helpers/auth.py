@@ -215,6 +215,7 @@ class Storage(BaseStorage):
         if not r_token:
             raise Exception("refresh token not found")
         await delete_item(r_token)
+        await cache.client.srem(f"refresh_tokens:{str(r_token.app.pk)}", refresh_token)
 
     async def create_token(self, request: OAuth2Request, client_id: str, scope: str, *args) -> Token:
         app_settings = get_settings()
