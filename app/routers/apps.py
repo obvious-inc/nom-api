@@ -1,5 +1,5 @@
 import http
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Body, Depends
 
@@ -25,5 +25,5 @@ async def post_create_incoming_webhook(
 
 
 @router.get("/", response_description="Get apps", response_model=List[AppSchema])
-async def get_fetch_apps():
-    return await get_apps()
+async def get_fetch_apps(client_id: Optional[str] = None):
+    return await get_apps(client_id=client_id)

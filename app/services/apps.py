@@ -28,8 +28,11 @@ async def create_app_webhook(app_id: str, webhook_data: WebhookCreateSchema, cur
     return await create_item(webhook_data, result_obj=Webhook, user_field="creator", current_user=current_user)
 
 
-async def get_apps():
-    return await get_items(filters={}, result_obj=App)
+async def get_apps(client_id: str = None):
+    filters = {}
+    if client_id:
+        filters["client_id"] = client_id
+    return await get_items(filters=filters, result_obj=App)
 
 
 async def get_app_by_client_id(client_id):

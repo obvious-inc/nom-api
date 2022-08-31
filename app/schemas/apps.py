@@ -6,7 +6,9 @@ from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
 class AppSchema(APIBaseSchema):
     name: str
     creator: PyObjectId
-    description: Optional[str] = ""
+    description: Optional[str]
+    client_id: Optional[str]
+    scopes: Optional[List[str]]
 
 
 class AppCreateSchema(APIBaseCreateSchema):
