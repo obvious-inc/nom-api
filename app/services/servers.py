@@ -4,9 +4,10 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette import status
 
+from app.constants.permissions import DEFAULT_ROLE_PERMISSIONS
 from app.helpers.cache_utils import cache
 from app.helpers.guild_xyz import is_user_eligible_for_guild
-from app.helpers.permissions import DEFAULT_ROLE_PERMISSIONS, user_belongs_to_server
+from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
