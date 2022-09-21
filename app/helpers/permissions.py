@@ -210,7 +210,7 @@ async def fetch_user_permissions(
                 if not app:
                     app = await fetch_and_cache_app(app_id)
 
-                app_channels = app.get("channels").split(",")
+                app_channels = app.get("channels", "").split(",")
                 if channel_id not in app_channels:
                     raise APIPermissionError("app is not authorized to access this channel")
 
