@@ -5,6 +5,7 @@ from pymongo.database import Database
 
 from app.models.channel import Channel
 from app.models.server import Server
+from app.models.user import User
 
 
 class TestUserRoutes:
@@ -104,3 +105,20 @@ class TestUserRoutes:
         json_response = response.json()
         assert json_response != []
         assert len(json_response) == 2
+
+    @pytest.mark.asyncio
+    async def test_update_user_push_tokens(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server, current_user: User
+    ):
+        assert len(current_user.push_tokens) == 0
+
+        push_token_id = "token1"
+        data = {"push_tokens": [push_token_id]}
+        response = await authorized_client.patch("/users/me", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert "push_tokens" not in json_response
+
+        await current_user.reload()
+        assert len(current_user.push_tokens) == 1
+        assert current_user.push_tokens == data["push_tokens"]

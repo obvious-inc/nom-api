@@ -55,6 +55,7 @@ class UserUpdateSchema(APIBaseCreateSchema):
     display_name: Optional[str]
     pfp: Optional[str]
     description: Optional[str]
+    push_tokens: Optional[List[str]]
 
 
 class EitherUserProfile(BaseModel):
