@@ -2,6 +2,7 @@ import binascii
 import datetime
 import secrets
 from typing import Callable
+from uuid import UUID
 
 import arrow
 import pytest
@@ -839,7 +840,9 @@ class TestChannelsRoutes:
         assert response.status_code == 200
         json_response = response.json()
         assert json_response["name"] == data["name"]
-        assert json_response["avatar"] == data["avatar"]
+        assert "avatar" in json_response
+        assert json_response["avatar"] != ""
+        assert isinstance(UUID(json_response["avatar"]), UUID)
 
     @pytest.mark.asyncio
     async def test_make_channel_public(

@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sentry_sdk import capture_exception
 from starlette import status
 
+from app.helpers import cloudflare
 from app.helpers.cache_utils import cache
 from app.helpers.channels import convert_permission_object_to_cached
 from app.helpers.permissions import fetch_user_permissions, user_belongs_to_server
@@ -241,6 +242,13 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User cannot change this channel")
     else:
         raise Exception(f"unknown channel kind: {channel.kind}")
+
+    avatar = data.get("avatar", None)
+    if avatar is not None and avatar != "":
+        if avatar.startswith("http"):
+            cf_response = await cloudflare.upload_image_url(avatar)
+            logger.info(f"uploaded avatar image {avatar} to cloudflare: {cf_response}")
+            data["avatar"] = cf_response.get("id")
 
     updated_item = await update_item(item=channel, data=data)
 
