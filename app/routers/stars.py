@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.post(
     "",
-    response_description="Star message, channel or server",
+    response_description="Star message, channel, server or user",
     response_model=StarSchema,
     status_code=http.HTTPStatus.CREATED,
 )

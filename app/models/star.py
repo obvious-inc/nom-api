@@ -6,12 +6,12 @@ from app.models.base import APIDocument
 
 @instance.register
 class Star(APIDocument):
-    type: str = fields.StrField(validate=validate.OneOf(["message", "channel", "server"]), required=True)
     user = fields.ReferenceField("User", required=True)
 
-    message = fields.ReferenceField("Message", required=False, default=None)
-    channel = fields.ReferenceField("Channel", required=False, default=None)
-    server = fields.ReferenceField("Server", required=False, default=None)
+    type: str = fields.StrField(
+        validate=validate.OneOf(["message", "channel", "user", "wallet_address"]), required=True
+    )
+    reference = fields.StrField(required=True)
 
     class Meta:
         collection_name = "stars"
