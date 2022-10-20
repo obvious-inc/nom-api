@@ -27,9 +27,6 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'poetry'
 
-    - name: Update PATH
-      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
     - name: Install dependencies
       run: poetry install
 
