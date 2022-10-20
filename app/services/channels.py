@@ -55,7 +55,7 @@ async def parse_member_list(members: List[str], create_if_not_user: bool = True)
             wallet_addr = checksum_address(member)
             user = await get_user_by_wallet_address(wallet_address=wallet_addr)
             if not user and create_if_not_user:
-                user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr), fetch_ens=True)
+                user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr))
         else:
             user = await get_item_by_id(id_=member, result_obj=User)
 
