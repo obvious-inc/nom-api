@@ -1259,3 +1259,36 @@ class TestChannelsRoutes:
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.get(f"/channels/{str(topic_channel.pk)}/members")
         assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel_with_permissions(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        data = {
+            "kind": "topic",
+            "name": "my-open-channel",
+            "permission_overwrites": [{"group": "@public", "permissions": ["messages.list", "channels.view"]}],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+
+        channel_id = json_response["id"]
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
