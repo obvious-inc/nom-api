@@ -2,11 +2,13 @@ import http
 
 from fastapi import APIRouter, Body, Depends
 
-from app.dependencies import get_current_user
+from app.dependencies import PermissionsChecker, get_current_app, get_current_user
+from app.models.app import App
 from app.models.user import User
-from app.schemas.messages import MessageCreateSchema, MessageSchema, MessageUpdateSchema
+from app.schemas.messages import AppMessageCreateSchema, MessageCreateSchema, MessageSchema, MessageUpdateSchema
 from app.services.messages import (
     add_reaction_to_message,
+    create_app_message,
     create_message,
     create_reply_message,
     delete_message,
@@ -22,12 +24,19 @@ router = APIRouter()
     response_description="Create new message",
     response_model=MessageSchema,
     status_code=http.HTTPStatus.CREATED,
+    dependencies=[Depends(PermissionsChecker(permissions=["messages.create"]))],
 )
 async def post_create_message(
     message: MessageCreateSchema = Body(...),
     current_user: User = Depends(get_current_user),
+    current_app: App = Depends(get_current_app),
 ):
-    return await create_message(message_model=message, current_user=current_user)
+    if not current_user and current_app:
+        # TODO: in the future we might get an app request impersonating a user and need to improve this logic
+        app_message = AppMessageCreateSchema(**message.dict(exclude_none=True, exclude_defaults=True))
+        return await create_app_message(message_model=app_message, current_app=current_app)
+    else:
+        return await create_message(message_model=message, current_user=current_user)
 
 
 @router.patch(

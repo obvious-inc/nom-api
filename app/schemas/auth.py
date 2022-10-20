@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -43,12 +43,31 @@ class AccessTokenSchema(BaseModel):
 
 class RefreshTokenCreateSchema(APIBaseCreateSchema):
     user: Optional[str]
+    app: Optional[str]
     refresh_token: str
+    scopes: Optional[List[str]] = []
 
     class Config:
         allow_population_by_field_name = True
         schema_extra = {
             "example": {
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6Ikpasdfa.....bDZW6RHWpkQpwqkDopjSoiNDc2sHglWQ2TjdkM_1234",
+                "scopes": ["messages.list", "messages.create"],
             }
         }
+
+
+class AuthorizationCodeCreateSchema(APIBaseCreateSchema):
+    app: str
+    code: str
+    client_id: str
+    redirect_uri: str
+    response_type: str
+    scope: str
+    auth_time: int
+    expires_in: int
+    nonce: Optional[str] = ""
+    channel: str
+
+    class Config:
+        allow_population_by_field_name = True

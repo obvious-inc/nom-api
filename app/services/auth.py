@@ -6,16 +6,17 @@ from fastapi import HTTPException
 from jose import JWTError
 from starlette import status
 
+from app.config import get_settings
 from app.helpers.cache_utils import cache
 from app.helpers.jwt import decode_jwt_token, generate_jwt_token
 from app.helpers.w3 import checksum_address, get_wallet_address_from_signed_message
 from app.models.auth import RefreshToken
-from app.models.server import Server
+from app.models.channel import Channel
 from app.models.user import User
 from app.schemas.auth import AccessTokenSchema, AuthWalletSchema, RefreshTokenCreateSchema
 from app.schemas.users import UserCreateSchema
-from app.services.crud import create_item, delete_items, get_item, get_items, update_item
-from app.services.servers import get_user_servers, join_server
+from app.services.channels import join_channel
+from app.services.crud import create_item, delete_items, get_item, get_item_by_id, update_item
 from app.services.users import create_user, get_user_by_id, get_user_by_wallet_address
 
 logger = logging.getLogger(__name__)
@@ -25,15 +26,21 @@ NONCE_SIGNATURE_REGEX = re.compile(r"nonce:\s?(.+?)\b", flags=re.IGNORECASE)
 SIGNED_AT_SIGNATURE_REGEX = re.compile(r"issued at:\s?(.+?)$", flags=re.IGNORECASE)
 
 
-async def add_user_to_default_server(user_id):
-    user = await get_user_by_id(user_id=user_id)
-    servers = await get_items(filters={}, result_obj=Server, sort_by_direction=1, limit=1)
-    if not len(servers):
-        logger.warning("no servers exist, ignoring default join!")
+async def add_user_to_default_channels(user_id):
+    settings = get_settings()
+
+    if not settings.auto_join_channel_ids:
         return
 
-    server = servers[0]
-    await join_server(server_id=str(server.pk), current_user=user)
+    user = await get_user_by_id(user_id=user_id)
+    for channel_id in settings.auto_join_channel_ids.split(","):
+        channel_id = channel_id.strip()
+        channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+        if not channel:
+            logger.debug("channel not found")
+            return
+
+        await join_channel(channel_id=str(channel.pk), current_user=user)
 
 
 async def generate_wallet_token(data: AuthWalletSchema) -> AccessTokenSchema:
@@ -76,10 +83,7 @@ async def generate_wallet_token(data: AuthWalletSchema) -> AccessTokenSchema:
     if not user:
         user = await create_user(UserCreateSchema(wallet_address=signed_address))
 
-    servers = await get_user_servers(current_user=user)
-    if not servers:
-        # TODO: delete this once things are live
-        await add_user_to_default_server(str(user.id))
+    await add_user_to_default_channels(str(user.pk))
 
     access_token = generate_jwt_token({"sub": str(user.id)})
     refresh_token = generate_jwt_token({"sub": str(user.id)}, token_type="refresh")

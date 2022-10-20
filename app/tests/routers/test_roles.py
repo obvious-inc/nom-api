@@ -3,8 +3,8 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.constants.permissions import Permission
 from app.helpers.cache_utils import cache
-from app.helpers.permissions import Permission
 from app.models.server import Server
 from app.models.user import User
 

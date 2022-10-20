@@ -3,7 +3,9 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.models.channel import Channel
 from app.models.server import Server
+from app.models.user import User
 
 
 class TestUserRoutes:
@@ -110,3 +112,30 @@ class TestUserRoutes:
         assert "display_name" in json_response
         assert json_response["display_name"] != old_display_name
         assert json_response["display_name"] == data["display_name"]
+
+    @pytest.mark.asyncio
+    async def test_list_channels_ok(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, topic_channel: Channel, dm_channel: Channel
+    ):
+        response = await authorized_client.get("/users/me/channels")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response != []
+        assert len(json_response) == 2
+
+    @pytest.mark.asyncio
+    async def test_update_user_push_tokens(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server, current_user: User
+    ):
+        assert len(current_user.push_tokens) == 0
+
+        push_token_id = "token1"
+        data = {"push_tokens": [push_token_id]}
+        response = await authorized_client.patch("/users/me", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert "push_tokens" not in json_response
+
+        await current_user.reload()
+        assert len(current_user.push_tokens) == 1
+        assert current_user.push_tokens == data["push_tokens"]

@@ -15,6 +15,7 @@ class User(APIDocument):
     description = fields.StrField()
     online_channels = fields.ListField(fields.StrField(), required=False, default=[])
     status = fields.StrField(default="offline")
+    push_tokens = fields.ListField(fields.StrField(), required=False, default=[])
 
     class Meta:
         collection_name = "users"

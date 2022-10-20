@@ -24,12 +24,14 @@ from app.helpers.logconf import log_configuration
 from app.helpers.queue_utils import stop_background_tasks
 from app.middlewares import add_canonical_log_line, profile_request
 from app.routers import (
+    apps,
     auth,
     base,
     channels,
     integrations,
     media,
     messages,
+    oauth,
     sections,
     servers,
     stars,
@@ -87,6 +89,7 @@ def get_application(testing=False):
 
     app_.include_router(base.router)
     app_.include_router(auth.router, prefix="/auth", tags=["auth"])
+    app_.include_router(oauth.router, prefix="/oauth", tags=["oauth"])
     app_.include_router(users.router, prefix="/users", tags=["users"])
     app_.include_router(servers.router, prefix="/servers", tags=["servers"])
     app_.include_router(channels.router, prefix="/channels", tags=["channels"])
@@ -97,6 +100,7 @@ def get_application(testing=False):
     app_.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
     app_.include_router(sections.router, prefix="/sections", tags=["sections"])
     app_.include_router(stars.router, prefix="/stars", tags=["stars"])
+    app_.include_router(apps.router, prefix="/apps", tags=["apps"])
 
     return app_
 

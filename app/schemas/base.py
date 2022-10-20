@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from bson import ObjectId
 from pydantic import BaseModel, Field
@@ -27,7 +26,7 @@ class PyObjectId(ObjectId):
 class APIBaseSchema(BaseModel):
     id: PyObjectId = Field()
     created_at: datetime
-    updated_at: Optional[datetime] = None  # TODO: fix this in umongo doc
+    # updated_at: Optional[datetime] = None  # TODO: fix this in umongo doc
     deleted: bool = False
 
     class Config:

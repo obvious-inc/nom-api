@@ -10,13 +10,15 @@ from httpx import AsyncClient
 from pymongo.database import Database
 
 from app.helpers.message_utils import blockify_content, get_message_mentions
+from app.models.app import App
 from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
 from app.models.server import Server
 from app.models.user import User
-from app.schemas.messages import MessageCreateSchema
+from app.models.webhook import Webhook
+from app.schemas.messages import MessageCreateSchema, WebhookMessageCreateSchema
 from app.services.crud import create_item, get_item_by_id
-from app.services.messages import get_messages
+from app.services.messages import create_app_message, get_messages
 
 
 class TestMessagesRoutes:
@@ -51,7 +53,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=100)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=100)
         assert len(messages) == 1
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
@@ -264,13 +266,13 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 204
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 0
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
@@ -298,14 +300,14 @@ class TestMessagesRoutes:
             user_field="author",
         )
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         guest_2_client = await get_authorized_client(guest_user_2)
         response = await guest_2_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 403
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
@@ -330,13 +332,13 @@ class TestMessagesRoutes:
             user_field="author",
         )
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         response = await authorized_client.delete(f"/messages/{str(channel_message.id)}")
         assert response.status_code == 204
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 0
 
         message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
@@ -857,7 +859,7 @@ class TestMessagesRoutes:
         server_channel: Channel,
         channel_message: Message,
     ):
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 1
 
         data = {"content": "reply!", "server": str(server.id), "channel": str(server_channel.id)}
@@ -870,7 +872,7 @@ class TestMessagesRoutes:
         assert json_response["channel"] == data["channel"] == str(server_channel.id)
         assert json_response["reply_to"] == str(channel_message.id)
 
-        messages = await get_messages(channel_id=str(server_channel.id), current_user=current_user, limit=10)
+        messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 2
 
     @pytest.mark.asyncio
@@ -992,6 +994,35 @@ class TestMessagesRoutes:
         assert json_message["content"] == message.content
 
     @pytest.mark.asyncio
+    async def test_get_specific_webhook_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        server_channel: Channel,
+        integration_app: App,
+        integration_app_webhook: Webhook,
+    ):
+        wh_message_model = WebhookMessageCreateSchema(
+            webhook=str(integration_app_webhook.pk),
+            app=str(integration_app.pk),
+            content="webhook message!",
+            channel=str(integration_app_webhook.channel.pk),
+        )
+        wh_message = await create_app_message(message_model=wh_message_model)
+
+        response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(wh_message.id)}")
+        assert response.status_code == 200
+        json_message = response.json()
+        assert json_message["content"] == wh_message.content
+        assert json_message.get("type") == 2
+        assert json_message.get("author") is None
+        assert json_message.get("app") == str(integration_app.pk)
+        assert json_message.get("webhook") == str(integration_app_webhook.pk)
+
+    @pytest.mark.asyncio
     async def test_delete_message_invalid_id(
         self,
         app: FastAPI,
@@ -1030,7 +1061,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 10
 
         item_pos = 4
         before_id = messages[item_pos].pk
@@ -1067,7 +1098,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 10
 
         item_pos = 4
         before_id = messages[item_pos].pk
@@ -1104,7 +1135,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 3
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 3
 
         item_pos = 2
         before_id = messages[item_pos].pk
@@ -1136,7 +1167,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 3
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 3
 
         item_pos = 0
         before_id = messages[item_pos].pk
@@ -1168,7 +1199,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 10
 
         item_pos = 4
         limit = 5
@@ -1216,7 +1247,7 @@ class TestMessagesRoutes:
             )
             messages.append(msg)
 
-        assert len(await get_messages(channel_id=str(server_channel.id), current_user=current_user)) == 10
+        assert len(await get_messages(channel_id=str(server_channel.id))) == 10
 
         item_pos = 4
         limit = 4
@@ -1241,3 +1272,42 @@ class TestMessagesRoutes:
         expected_message_ids = [str(message.pk) for message in expected_messages]
         result_message_ids = [message["id"] for message in json_resp]
         assert expected_message_ids[::-1] == result_message_ids
+
+    @pytest.mark.asyncio
+    async def test_get_messages_before_id_non_object_id(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server_channel: Channel
+    ):
+        before_id = "0"
+        response = await authorized_client.get(f"channels/{str(server_channel.pk)}/messages?before={before_id}&limit=3")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_get_messages_after_id_non_object_id(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server_channel: Channel
+    ):
+        after_id = "0"
+        response = await authorized_client.get(f"channels/{str(server_channel.pk)}/messages?after={after_id}&limit=3")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_create_message_as_app(
+        self,
+        app: FastAPI,
+        db: Database,
+        topic_channel: Channel,
+        integration_app: App,
+        get_app_authorized_client: Callable,
+    ):
+        data = {"content": "gm!", "channel": str(topic_channel.pk)}
+        app_client = await get_app_authorized_client(integration_app, channels=[topic_channel])
+        response = await app_client.post("/messages", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "content" in json_response
+        assert json_response["content"] == data["content"]
+        assert json_response["channel"] == data["channel"] == str(topic_channel.pk)
+        assert json_response["author"] is None
+        assert json_response["app"] is not None
+        assert json_response["app"] == str(integration_app.pk)
+        assert json_response["type"] == 3

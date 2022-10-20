@@ -8,9 +8,11 @@ class Settings(BaseSettings):
     testing: bool = True
     profiling: bool = False
     profiling_json: bool = False
+    environment: str = "development"
+
+    frontend_url: str = "http://localhost:8080"
     cdn_url: str = "https://cdn.newshades.xyz"
     cdn_media_folder: str = "media"
-    environment: str = "development"
 
     mongodb_url: str = "localhost:27017"
     mongodb_db: str = "newshades"
@@ -48,6 +50,8 @@ class Settings(BaseSettings):
 
     alchemy_api_key: Optional[str]
     simplehash_api_key: Optional[str]
+
+    auto_join_channel_ids: Optional[str]
 
     class Config:
         env_file = ".env"

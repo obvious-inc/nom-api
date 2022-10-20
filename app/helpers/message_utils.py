@@ -112,7 +112,7 @@ async def stringify_element(element: dict) -> str:
     children = "".join([await stringify_node(child) for child in element.get("children", [])])
     el_type = element.get("type")
 
-    if el_type == "paragraph":
+    if el_type == "paragraph" or el_type == "attachments":
         return children
     elif el_type == "link":
         return f"[{children}]({element.get('url')})"
@@ -120,6 +120,8 @@ async def stringify_element(element: dict) -> str:
         return f"@<u:{element.get('ref')}>"
     elif el_type == "broadcast":
         return f"@<b:{element.get('ref')}>"
+    elif el_type == "image-attachment":
+        return element.get("url", "")
     else:
         logger.warning(f"unknown element type: {el_type}")
         return ""

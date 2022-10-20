@@ -1,11 +1,13 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from app.helpers.cache_utils import cache
+from app.models.base import APIDocument
 from app.models.channel import Channel
+from app.models.message import Message
 from app.models.server import ServerMember
 from app.models.user import User
-from app.services.crud import get_item, get_item_by_id, get_items
+from app.services.crud import get_item, get_item_by_id, get_items, update_item
 
 
 async def is_user_in_channel(user: User, channel: Channel) -> bool:
@@ -20,7 +22,8 @@ async def is_user_in_channel(user: User, channel: Channel) -> bool:
             return False
         else:
             return True
-    elif channel.kind == "dm":
+
+    elif channel.kind == "dm" or channel.kind == "topic":
         return user in channel.members
 
     return False
@@ -46,6 +49,17 @@ async def get_channel_users(channel: Channel) -> List[User]:
     return users
 
 
+async def convert_permission_object_to_cached(channel: Channel) -> str:
+    channel_overwrites = {}
+    for overwrite in channel.permission_overwrites:
+        if overwrite.role:
+            channel_overwrites[str(overwrite.role.pk)] = overwrite.permissions
+        elif overwrite.group:
+            channel_overwrites[str(overwrite.group)] = overwrite.permissions
+
+    return json.dumps(channel_overwrites)
+
+
 async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[str, Any]]:
     if not channel_id:
         return None
@@ -54,18 +68,21 @@ async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[st
     if not channel:
         return None
 
-    dict_channel = {
-        "kind": channel.kind,
-    }
+    dict_channel = {"kind": channel.kind, "owner": str(channel.owner.pk)}
 
-    if channel.kind == "dm":
+    if channel.kind == "dm" or channel.kind == "topic":
         dict_channel["members"] = ",".join([str(member.pk) for member in channel.members])
 
     if channel.kind == "server":
         dict_channel["server"] = str(channel.server.pk)
 
-    channel_overwrites = {str(overwrite.role.pk): overwrite.permissions for overwrite in channel.permission_overwrites}
-    dict_channel["permissions"] = json.dumps(channel_overwrites)
+    dict_channel["permissions"] = await convert_permission_object_to_cached(channel)
 
     await cache.client.hset(f"channel:{channel_id}", mapping=dict_channel)
     return dict_channel
+
+
+async def update_channel_last_message(channel_id, message: Union[Message, APIDocument]):
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if not channel.last_message_at or message.created_at > channel.last_message_at:
+        await update_item(item=channel, data={"last_message_at": message.created_at})

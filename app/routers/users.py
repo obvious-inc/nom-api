@@ -2,13 +2,14 @@ from typing import List, Optional, Union
 
 from fastapi import APIRouter, Body, Depends
 
-from app.dependencies import get_current_user
+from app.dependencies import PermissionsChecker, get_current_user
 from app.models.user import User
-from app.schemas.channels import ChannelReadStateSchema
+from app.schemas.channels import ChannelReadStateSchema, EitherChannel
 from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
-from app.schemas.users import EitherUserProfile, UserUpdateSchema
+from app.schemas.users import EitherUserProfile, PublicUserSchema, UserUpdateSchema
+from app.services.channels import get_user_channels
 from app.services.servers import get_user_servers
-from app.services.users import get_user_profile_by_server_id, get_user_read_states, update_user_profile
+from app.services.users import get_user_profile_by_server_id, get_user_read_states, get_users_info, update_user_profile
 
 router = APIRouter()
 
@@ -42,3 +43,18 @@ async def patch_update_user_profile(
 @router.get("/me/read_states", summary="List user's read states", response_model=List[ChannelReadStateSchema])
 async def list_read_states(current_user: User = Depends(get_current_user)):
     return await get_user_read_states(current_user)
+
+
+@router.get("/me/channels", summary="List channels user belongs to", response_model=List[EitherChannel])
+async def fetch_get_user_channels(current_user: User = Depends(get_current_user)):
+    return await get_user_channels(current_user)
+
+
+@router.post(
+    "/info",
+    response_description="Get users info",
+    response_model=List[PublicUserSchema],
+    dependencies=[Depends(PermissionsChecker(needs_bearer=True))],
+)
+async def post_get_users_info(data=Body(...)):
+    return await get_users_info(data)

@@ -5,6 +5,7 @@ from app.schemas.users import UserCreateSchema
 from app.services.users import create_user
 
 
+@pytest.mark.skip("not using guild for now")
 class TestGuildXYZUtils:
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

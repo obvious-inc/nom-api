@@ -46,7 +46,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -86,7 +85,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=current_user,
-            ignore_permissions=True,
             internal=True,
         )
 
@@ -124,7 +122,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -170,7 +167,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -219,7 +215,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -276,7 +271,6 @@ class TestPermissionsRoutes:
             server_id=str(server.pk),
             role_model=role_schema,
             current_user=guest_user,
-            ignore_permissions=True,
             internal=True,
         )
         guest_client = await get_authorized_client(guest_user)
@@ -339,7 +333,6 @@ class TestPermissionsRoutes:
                 server_id=str(server.pk),
                 role_model=role_schema,
                 current_user=guest_user,
-                ignore_permissions=True,
                 internal=True,
             )
             roles.append(role)
@@ -411,7 +404,6 @@ class TestPermissionsRoutes:
                 server_id=str(server.pk),
                 role_model=role_schema,
                 current_user=guest_user,
-                ignore_permissions=True,
                 internal=True,
             )
             roles.append(role)
@@ -497,3 +489,30 @@ class TestPermissionsRoutes:
 
         response = await guest_client.get(f"/channels/{str(channel2.id)}/messages")
         assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_public_channel_default_not_read(
+        self, app: FastAPI, db: Database, client: AsyncClient, current_user: User, server_channel: Channel
+    ):
+        response = await client.get(f"/channels/{str(server_channel.id)}/messages")
+        assert response.status_code == 403
+
+        data = {"content": "gm!", "server": str(server_channel.server.pk), "channel": str(server_channel.id)}
+        response = await client.post("/messages", json=data)
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_public_channel_read_not_write(
+        self, app: FastAPI, db: Database, client: AsyncClient, current_user: User, server_channel: Channel
+    ):
+        await update_item(
+            item=server_channel,
+            data={"permission_overwrites": [{"group": "@public", "permissions": ["messages.list"]}]},
+        )
+
+        response = await client.get(f"/channels/{str(server_channel.id)}/messages")
+        assert response.status_code == 200
+
+        data = {"content": "gm!", "server": str(server_channel.server.pk), "channel": str(server_channel.id)}
+        response = await client.post("/messages", json=data)
+        assert response.status_code == 401

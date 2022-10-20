@@ -7,18 +7,29 @@ from urllib.parse import urlparse
 from bson import ObjectId
 from fastapi import HTTPException
 
-from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
+from app.helpers.channels import (
+    get_channel_online_users,
+    get_channel_users,
+    is_user_in_channel,
+    update_channel_last_message,
+)
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
-from app.helpers.permissions import Permission, needs
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.ws_events import WebSocketServerEvent
+from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
-from app.models.message import Message, MessageReaction
+from app.models.message import AppInstallMessage, AppMessage, Message, MessageReaction, SystemMessage, WebhookMessage
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
-from app.schemas.messages import MessageCreateSchema, MessageUpdateSchema
-from app.services.channels import update_channel_last_message
+from app.schemas.messages import (
+    AppInstallMessageCreateSchema,
+    AppMessageCreateSchema,
+    MessageCreateSchema,
+    MessageUpdateSchema,
+    SystemMessageCreateSchema,
+    WebhookMessageCreateSchema,
+)
 from app.services.crud import (
     create_item,
     delete_item,
@@ -35,8 +46,39 @@ from app.services.websockets import broadcast_current_user_event, broadcast_mess
 logger = logging.getLogger(__name__)
 
 
-@needs(permissions=[Permission.MESSAGES_CREATE])
-async def create_message(message_model: MessageCreateSchema, current_user: User) -> Union[Message, APIDocument]:
+async def create_app_message(
+    message_model: Union[WebhookMessageCreateSchema, AppInstallMessageCreateSchema, AppMessageCreateSchema],
+    current_app: App = None,
+):
+    if isinstance(message_model, WebhookMessageCreateSchema):
+        result_obj = WebhookMessage
+    elif isinstance(message_model, AppInstallMessageCreateSchema):
+        result_obj = AppInstallMessage
+    elif isinstance(message_model, AppMessageCreateSchema):
+        result_obj = AppMessage
+    else:
+        raise Exception(f"Unknown message type: {message_model.__class__} | {message_model}")
+
+    if current_app:
+        message_model.app = str(current_app.pk)
+
+    message = await create_item(item=message_model, result_obj=result_obj, user_field=None)
+
+    bg_tasks = [
+        (broadcast_message_event, (str(message.id), None, WebSocketServerEvent.MESSAGE_CREATE)),
+        (update_channel_last_message, (message.channel, message)),
+    ]
+
+    # mypy has some issues with changing Callable signatures so we have to exclude that type check:
+    # https://github.com/python/mypy/issues/10740
+    await queue_bg_tasks(bg_tasks)  # type: ignore[arg-type]
+
+    return message
+
+
+async def create_message(
+    message_model: Union[MessageCreateSchema, SystemMessageCreateSchema], current_user: User
+) -> Union[Message, APIDocument]:
     if message_model.blocks and not message_model.content:
         message_model.content = await stringify_blocks(message_model.blocks)
     elif message_model.content and not message_model.blocks:
@@ -44,11 +86,18 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
     else:
         pass
 
-    message = await create_item(item=message_model, result_obj=Message, current_user=current_user, user_field="author")
+    if isinstance(message_model, SystemMessageCreateSchema):
+        result_obj = SystemMessage
+    else:
+        result_obj = Message
+
+    message = await create_item(
+        item=message_model, result_obj=result_obj, current_user=current_user, user_field="author"
+    )
 
     bg_tasks = [
         (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
-        (update_channel_last_message, (message.channel, message, current_user)),
+        (update_channel_last_message, (message.channel, message)),
         (
             broadcast_current_user_event,
             (
@@ -57,7 +106,6 @@ async def create_message(message_model: MessageCreateSchema, current_user: User)
                 {"channel": (await message.channel.fetch()).dump(), "read_at": message.created_at.isoformat()},
             ),
         ),
-        (post_process_message_creation, (str(message.id),)),
         (process_message_mentions, (str(message.id),)),
     ]
 
@@ -112,21 +160,16 @@ async def delete_message(message_id: str, current_user: User):
     await delete_item(item=message)
 
 
-@needs(permissions=[Permission.MESSAGES_LIST])
-async def get_messages(channel_id: str, current_user: User, **common_params) -> List[Message]:
+async def get_messages(channel_id: str, **common_params) -> List[Message]:
     filters = {"channel": ObjectId(channel_id)}
     around_id = common_params.pop("around", None)
     if around_id:
-        return await _get_around_messages(
-            around_message_id=around_id, filters=filters, current_user=current_user, **common_params
-        )
+        return await _get_around_messages(around_message_id=around_id, filters=filters, **common_params)
 
     return await get_items(filters=filters, result_obj=Message, **common_params)
 
 
-async def _get_around_messages(
-    around_message_id: str, filters: dict, current_user: User, **common_params
-) -> List[Message]:
+async def _get_around_messages(around_message_id: str, filters: dict, **common_params) -> List[Message]:
     around_message = await get_item_by_id(id_=around_message_id, result_obj=Message)
 
     limit = common_params.get("limit", 50)
@@ -145,8 +188,7 @@ async def _get_around_messages(
     return messages
 
 
-@needs(permissions=[Permission.MESSAGES_LIST])
-async def get_message(channel_id: str, message_id: str, current_user: User) -> Message:
+async def get_message(channel_id: str, message_id: str) -> Message:
     filters = {"_id": ObjectId(message_id), "channel": ObjectId(channel_id)}
     return await get_item(filters=filters, result_obj=Message)
 
@@ -230,6 +272,7 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
 
 
 async def post_process_message_creation(message_id: str):
+    # not in use yet
     message = await get_item_by_id(id_=message_id, result_obj=Message)
     data = {}
 

@@ -1,6 +1,6 @@
 import binascii
 import secrets
-from typing import Union
+from typing import List, Optional, Union
 
 import arrow
 import pytest
@@ -17,18 +17,22 @@ from app.helpers.cache_utils import cache
 from app.helpers.connection import get_client, get_db
 from app.helpers.jwt import generate_jwt_token
 from app.main import get_application
+from app.models.app import App, AppInstalled
 from app.models.auth import RefreshToken
 from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
+from app.schemas.apps import AppCreateSchema, AppInstalledCreateSchema
 from app.schemas.auth import AuthWalletSchema, RefreshTokenCreateSchema
-from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema
+from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema, TopicChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
 from app.schemas.users import UserCreateSchema
+from app.schemas.webhooks import WebhookCreateSchema
+from app.services.apps import create_app, create_app_webhook
 from app.services.auth import generate_wallet_token
-from app.services.channels import create_dm_channel, create_server_channel
+from app.services.channels import create_dm_channel, create_server_channel, create_topic_channel
 from app.services.crud import create_item
 from app.services.messages import create_message
 from app.services.servers import create_server
@@ -50,9 +54,9 @@ async def client(app: FastAPI):
 
 @pytest.fixture(autouse=True)
 async def redis(client):
-    await cache.client.flushall()
+    await cache.client.flushdb()
     yield cache.client
-    await cache.client.flushall()
+    await cache.client.flushdb()
 
 
 @pytest.fixture
@@ -117,6 +121,12 @@ async def server_channel(current_user: User, server: Server) -> Union[Channel, A
 
 
 @pytest.fixture
+async def topic_channel(current_user: User) -> Union[Channel, APIDocument]:
+    new_topic_channel = TopicChannelCreateSchema(kind="topic", name="my-topic", description="what up?")
+    return await create_topic_channel(channel_model=new_topic_channel, current_user=current_user)
+
+
+@pytest.fixture
 async def dm_channel(current_user: User, server: Server) -> Union[Channel, APIDocument]:
     dm_channel = DMChannelCreateSchema(kind="dm", members=[str(current_user.id)])
     return await create_dm_channel(channel_model=dm_channel, current_user=current_user)
@@ -132,6 +142,18 @@ async def channel_message(current_user: User, server: Server, server_channel: Ch
 async def direct_message(current_user: User, server: Server, dm_channel: Channel):
     message = MessageCreateSchema(channel=str(dm_channel.id), content="hey")
     return await create_message(message_model=message, current_user=current_user)
+
+
+@pytest.fixture
+async def integration_app(current_user: User):
+    app_schema = AppCreateSchema(name="github", permissions=["messages.create"])
+    return await create_app(model=app_schema, current_user=current_user)
+
+
+@pytest.fixture
+async def integration_app_webhook(current_user: User, integration_app: App, server_channel: Channel):
+    schema = WebhookCreateSchema(channel=str(server_channel.pk))
+    return await create_app_webhook(app_id=str(integration_app.pk), webhook_data=schema, current_user=current_user)
 
 
 @pytest.fixture
@@ -181,6 +203,47 @@ async def get_authorized_client(client: AsyncClient, redis: Redis):
         return client
 
     return _get_authorized_client
+
+
+@pytest.fixture
+async def get_app_authorized_client(client: AsyncClient, redis: Redis, current_user: User):
+    async def _get_app_authorized_client(
+        integration: App,
+        access_token: Optional[str] = None,
+        refresh_token: Optional[str] = None,
+        channels: Optional[List[Channel]] = None,
+        scopes: Optional[List[str]] = None,
+    ):
+        if not scopes:
+            scopes = ["messages.list", "messages.create"]
+
+        if not access_token:
+            access_token = generate_jwt_token(
+                data={"sub": str(integration.pk), "client_id": integration.client_id, "scopes": scopes}
+            )
+        if not refresh_token:
+            refresh_token = generate_jwt_token(
+                data={"sub": str(integration.pk), "client_id": integration.client_id, "scopes": scopes},
+                token_type="refresh",
+            )
+
+        if channels:
+            for channel in channels:
+                install_model = AppInstalledCreateSchema(
+                    app=str(integration.pk), channel=str(channel.pk), scopes=scopes
+                )
+                await create_item(item=install_model, current_user=current_user, result_obj=AppInstalled)
+
+        await create_item(
+            RefreshTokenCreateSchema(refresh_token=refresh_token, app=str(integration.pk)),
+            result_obj=RefreshToken,
+            user_field=None,
+        )
+        await redis.sadd(f"refresh_tokens:{str(integration.pk)}", refresh_token)
+        client.headers.update({"Authorization": f"Bearer {access_token}"})
+        return client
+
+    return _get_app_authorized_client
 
 
 @pytest.fixture(autouse=True)

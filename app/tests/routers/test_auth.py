@@ -139,7 +139,7 @@ class TestAuthRoutes:
         assert response.status_code == 201
 
     @pytest.mark.asyncio
-    async def test_create_token_wallet_default_server(
+    async def test_create_token_wallet_not_join_default_server(
         self,
         app: FastAPI,
         db: Database,
@@ -191,7 +191,7 @@ class TestAuthRoutes:
 
         await asyncio.sleep(random.random())
         members = await get_items({"server": server.id}, result_obj=ServerMember, limit=None)
-        assert len(members) == 2
+        assert len(members) == 1
 
     @pytest.mark.asyncio
     async def test_login_wallet_with_assertion_error(

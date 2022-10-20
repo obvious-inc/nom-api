@@ -5,6 +5,7 @@ from sentry_sdk import capture_exception
 
 from app.helpers.websockets import pusher_client
 from app.helpers.ws_events import WebSocketServerEvent
+from app.models.app import App, AppInstalled
 from app.models.channel import Channel
 from app.models.message import Message
 from app.models.server import Server, ServerMember
@@ -22,6 +23,14 @@ async def _get_users_online_channels(users: List[User]):
     return list(set(channels))
 
 
+async def _get_apps_online_channels(apps: List[App]):
+    channels = []
+    app: App
+    for app in apps:
+        channels.extend(app.online_channels)
+    return list(set(channels))
+
+
 async def get_server_online_channels(server: Server, current_user: Optional[User]):
     user_ids = set()
     members = await get_items(filters={"server": server.pk}, result_obj=ServerMember, limit=None)
@@ -35,17 +44,30 @@ async def get_server_online_channels(server: Server, current_user: Optional[User
 
 async def get_channel_online_channels(channel: Channel, current_user: Optional[User]):
     user_ids = set()
-    if channel.kind == "dm":
+    if channel.kind == "dm" or channel.kind == "topic":
         for member in channel.members:
             user_ids.add(member.pk)
     elif channel.kind == "server":
         members = await get_items(filters={"server": channel.server.pk}, result_obj=ServerMember, limit=None)
+        # TODO: further permission check to see if user can actually read message in server channel.
+        # As long as we're not using Servers, this is not needed.
         for member in members:
             user_ids.add(member.user.pk)
 
     users = await get_items(filters={"_id": {"$in": list(user_ids)}}, result_obj=User, limit=None)
 
-    return await _get_users_online_channels(users)
+    online_channels = await _get_users_online_channels(users)
+
+    # TODO: This might slow down the websocket publishing... in the long run, it's best to dispatch user and app events
+    # in parallel
+    installed_apps = await get_items(filters={"channel": channel.pk}, result_obj=AppInstalled, limit=None)
+    if len(installed_apps) > 0:
+        app_ids = {install.app.pk for install in installed_apps}
+        apps = await get_items(filters={"_id": {"$in": list(app_ids)}}, result_obj=App, limit=None)
+        app_channels = await _get_apps_online_channels(apps)
+        online_channels.extend(app_channels)
+
+    return online_channels
 
 
 async def get_servers_online_channels(servers: List[Server], current_user: Optional[User]):
@@ -99,6 +121,7 @@ async def pusher_broadcast_messages(
 
     if not pusher_channels:
         logger.debug("no online pusher channels. [scope=%s, event=%s]", scope, event)
+        return
 
     event_name: str = event.value
     has_errors = False
@@ -118,9 +141,12 @@ async def pusher_broadcast_messages(
 
 
 async def broadcast_message_event(
-    message_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+    message_id: str, current_user_id: Optional[str], event: WebSocketServerEvent, custom_data: Optional[dict] = None
 ):
-    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
+    if current_user_id:
+        current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
+    else:
+        current_user = None
     message = await get_item_by_id(id_=message_id, result_obj=Message)
 
     event_data = {"message": message.dump()}
