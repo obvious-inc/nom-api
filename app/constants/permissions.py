@@ -56,3 +56,7 @@ DEFAULT_TOPIC_MEMBER_PERMISSIONS = [
 ]
 
 DEFAULT_USER_PERMISSIONS = [p.value for p in [Permission.CHANNELS_CREATE]]
+
+MEMBERS_GROUP = "@members"
+OWNERS_GROUP = "@owners"
+PUBLIC_GROUP = "@public"

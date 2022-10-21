@@ -13,6 +13,9 @@ from app.constants.permissions import (
     DEFAULT_DM_MEMBER_PERMISSIONS,
     DEFAULT_TOPIC_MEMBER_PERMISSIONS,
     DEFAULT_USER_PERMISSIONS,
+    MEMBERS_GROUP,
+    OWNERS_GROUP,
+    PUBLIC_GROUP,
     SERVER_OWNER_PERMISSIONS,
 )
 from app.exceptions import APIPermissionError
@@ -116,7 +119,7 @@ async def _calc_final_permissions(
 
         permissions |= set(role_permissions)
 
-    permissions |= set(channel_overwrites.get("@public", []))
+    permissions |= set(channel_overwrites.get(PUBLIC_GROUP, []))
 
     return permissions
 
@@ -199,12 +202,21 @@ async def fetch_user_permissions(
                 raise APIPermissionError("user is not a member of DM channel")
             return DEFAULT_DM_MEMBER_PERMISSIONS
         elif channel.get("kind") == "topic":
+            channel_perms = json.loads(channel.get("permissions", ""))
             if user_id and channel.get("owner") == user_id:
-                return CHANNEL_OWNER_PERMISSIONS
+                owner_perms = channel_perms.get(OWNERS_GROUP, [])
+                if not owner_perms:
+                    return CHANNEL_OWNER_PERMISSIONS
+
+                user_roles[OWNERS_GROUP] = owner_perms
 
             members = channel.get("members", []).split(",")
             if user_id and user_id in members:
-                user_roles = {"@members": DEFAULT_TOPIC_MEMBER_PERMISSIONS}
+                member_perms = channel_perms.get(MEMBERS_GROUP, [])
+                if member_perms:
+                    user_roles[MEMBERS_GROUP] = member_perms
+                else:
+                    user_roles[MEMBERS_GROUP] = DEFAULT_TOPIC_MEMBER_PERMISSIONS
 
             if app_id:
                 if not app:
