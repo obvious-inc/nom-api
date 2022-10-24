@@ -1,4 +1,5 @@
 import http
+import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -374,3 +375,25 @@ async def get_channel_members(channel_id: str):
 
 async def get_user_channels(current_user: User):
     return await get_items(filters={"members": current_user.pk}, result_obj=Channel, limit=None)
+
+
+async def get_public_channels():
+    cache_key = "discovery:channels:@public"
+
+    cached_channel_ids = await cache.client.get(cache_key)
+    if cached_channel_ids:
+        channel_ids = json.loads(cached_channel_ids)
+        channel_pks = [ObjectId(channel_id) for channel_id in channel_ids]
+        channels = await get_items(filters={"_id": {"$in": channel_pks}}, result_obj=Channel, limit=None)
+    else:
+        filters = {
+            "kind": "topic",
+            "permission_overwrites": {
+                "$elemMatch": {"group": "@public", "permissions": {"$all": ["channels.view", "messages.list"]}}
+            },
+        }
+        channels = await get_items(filters=filters, result_obj=Channel, limit=None)
+        channel_ids = [str(channel.pk) for channel in channels]
+        await cache.client.set(cache_key, json.dumps(channel_ids), ex=3600)
+
+    return channels

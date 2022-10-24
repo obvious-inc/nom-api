@@ -1544,3 +1544,36 @@ class TestChannelsRoutes:
         tc = await get_item_by_id(id_=channel_id, result_obj=Channel)
         assert len(tc.members) == 1
         assert tc.members[0] == current_user
+
+    @pytest.mark.asyncio
+    async def test_fetch_public_channels(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, client
+    ):
+        data = {
+            "kind": "topic",
+            "name": "my-open-channel",
+            "permission_overwrites": [
+                {"group": "@public", "permissions": ["channels.view", "messages.list"]},
+            ],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        public_channel_id = json_response["id"]
+
+        data = {
+            "kind": "topic",
+            "name": "my-open-channel",
+            "permission_overwrites": [
+                {"group": "@public", "permissions": ["channels.view"]},
+                {"group": "@members", "permissions": ["channels.view", "messages.list"]},
+            ],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+
+        response = await client.get("/channels/@public")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert json_response[0]["id"] == public_channel_id
