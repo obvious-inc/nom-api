@@ -386,13 +386,25 @@ async def get_public_channels():
         channel_pks = [ObjectId(channel_id) for channel_id in channel_ids]
         channels = await get_items(filters={"_id": {"$in": channel_pks}}, result_obj=Channel, limit=None)
     else:
-        filters = {
-            "kind": "topic",
-            "permission_overwrites": {
-                "$elemMatch": {"group": "@public", "permissions": {"$all": ["channels.view", "messages.list"]}}
-            },
-        }
-        channels = await get_items(filters=filters, result_obj=Channel, limit=None)
+        channel_docs = await Channel.collection.aggregate(
+            [
+                {
+                    "$match": {
+                        "deleted": False,
+                        "kind": "topic",
+                        "permission_overwrites": {
+                            "$elemMatch": {
+                                "group": "@public",
+                                "permissions": {"$all": ["messages.list", "channels.view"]},
+                            }
+                        },
+                    }
+                },
+                {"$sort": {"members": -1}},
+                {"$limit": 20},
+            ]
+        ).to_list(length=None)
+        channels = [Channel.build_from_mongo(channel) for channel in channel_docs]
         channel_ids = [str(channel.pk) for channel in channels]
         await cache.client.set(cache_key, json.dumps(channel_ids), ex=3600)
 
