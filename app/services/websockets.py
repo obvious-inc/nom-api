@@ -3,8 +3,8 @@ from typing import List, Optional
 
 from sentry_sdk import capture_exception
 
+from app.helpers.events import EventType
 from app.helpers.websockets import pusher_client
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.app import App, AppInstalled
 from app.models.channel import Channel
 from app.models.message import Message
@@ -42,17 +42,18 @@ async def get_server_online_channels(server: Server, current_user: Optional[User
     return await _get_users_online_channels(users)
 
 
-async def get_channel_online_channels(channel: Channel, current_user: Optional[User]):
+async def get_channel_online_channels(channel: Channel, current_user: Optional[User]) -> List[str]:
     user_ids = set()
     if channel.kind == "dm" or channel.kind == "topic":
         for member in channel.members:
             user_ids.add(member.pk)
     elif channel.kind == "server":
-        members = await get_items(filters={"server": channel.server.pk}, result_obj=ServerMember, limit=None)
-        # TODO: further permission check to see if user can actually read message in server channel.
-        # As long as we're not using Servers, this is not needed.
-        for member in members:
-            user_ids.add(member.user.pk)
+        # members = await get_items(filters={"server": channel.server.pk}, result_obj=ServerMember, limit=None)
+        # # DEPRECATED: further permission check to see if user can actually read message in server channel.
+        # # As long as we're not using Servers, this is not needed.
+        # for member in members:
+        #     user_ids.add(member.user.pk)
+        raise NotImplementedError("no longer using servers")
 
     users = await get_items(filters={"_id": {"$in": list(user_ids)}}, result_obj=User, limit=None)
 
@@ -85,7 +86,7 @@ async def get_servers_online_channels(servers: List[Server], current_user: Optio
 
 
 async def pusher_broadcast_messages(
-    event: WebSocketServerEvent,
+    event: EventType,
     current_user: Optional[User],
     data: dict,
     user: Optional[User] = None,
@@ -119,43 +120,29 @@ async def pusher_broadcast_messages(
     elif scope == "pusher_channel" and pusher_channel:
         pusher_channels = [pusher_channel]
 
-    if not pusher_channels:
-        logger.debug("no online pusher channels. [scope=%s, event=%s]", scope, event)
+    await broadcast_ws_event(event=event, data=data, ws_channels=pusher_channels)
+
+
+async def broadcast_ws_event(event: EventType, data: dict, ws_channels: Optional[List[str]] = None):
+    if not ws_channels:
+        logger.debug("no online websocket channels. [event=%s]", event)
         return
 
-    event_name: str = event.value
     has_errors = False
+    event_name = event.value
 
-    while len(pusher_channels) > 0:
-        push_channels = pusher_channels[:90]
+    while len(ws_channels) > 0:
+        push_channels = ws_channels[:90]
         try:
             await pusher_client.trigger(push_channels, event_name, data)
         except Exception as e:
             logger.exception("Problem broadcasting event to Pusher channel. [event_name=%s]", event_name)
             capture_exception(e)
             has_errors = True
-        pusher_channels = pusher_channels[90:]
+        ws_channels = ws_channels[90:]
 
     if not has_errors:
         logger.info("Event broadcast successful. [event_name=%s]", event_name)
-
-
-async def broadcast_message_event(
-    message_id: str, current_user_id: Optional[str], event: WebSocketServerEvent, custom_data: Optional[dict] = None
-):
-    if current_user_id:
-        current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
-    else:
-        current_user = None
-    message = await get_item_by_id(id_=message_id, result_obj=Message)
-
-    event_data = {"message": message.dump()}
-    if custom_data:
-        event_data.update(custom_data)
-
-    await pusher_broadcast_messages(
-        event=event, data=event_data, current_user=current_user, scope="message", message=message
-    )
 
 
 async def broadcast_connection_ready(current_user: User, channel: str):
@@ -163,7 +150,7 @@ async def broadcast_connection_ready(current_user: User, channel: str):
 
 
 async def broadcast_channel_event(
-    channel_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+    channel_id: str, current_user_id: str, event: EventType, custom_data: Optional[dict] = None
 ):
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
@@ -178,7 +165,7 @@ async def broadcast_channel_event(
 
 
 async def broadcast_server_event(
-    server_id: str, current_user_id: str, event: WebSocketServerEvent, custom_data: Optional[dict] = None
+    server_id: str, current_user_id: str, event: EventType, custom_data: Optional[dict] = None
 ):
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
     server = await get_item_by_id(id_=server_id, result_obj=Server)
@@ -194,7 +181,7 @@ async def broadcast_server_event(
 
 async def broadcast_current_user_event(
     current_user_id,
-    event: WebSocketServerEvent,
+    event: EventType,
     custom_data: Optional[dict] = None,
 ):
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
@@ -206,7 +193,7 @@ async def broadcast_current_user_event(
     await pusher_broadcast_messages(event=event, data=event_data, current_user=current_user, scope="current_user")
 
 
-async def broadcast_user_servers_event(current_user_id: str, event: WebSocketServerEvent, custom_data: dict) -> None:
+async def broadcast_user_servers_event(current_user_id: str, event: EventType, custom_data: dict) -> None:
     current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
 
     event_data = {"user": await current_user.to_dict(exclude_fields=["pfp"])}
@@ -221,7 +208,7 @@ async def broadcast_user_servers_event(current_user_id: str, event: WebSocketSer
     )
 
 
-async def broadcast_users_event(users: List[User], event: WebSocketServerEvent, custom_data: dict) -> None:
+async def broadcast_users_event(users: List[User], event: EventType, custom_data: dict) -> None:
     event_data = {}
     if custom_data:
         event_data.update(custom_data)

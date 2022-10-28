@@ -5,10 +5,9 @@ from pymongo.database import Database
 
 from app.models.channel import Channel
 from app.models.message import Message
-from app.models.server import Server, ServerMember
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema
-from app.services.crud import create_item, get_items
+from app.services.crud import create_item
 from app.services.websockets import get_channel_online_channels
 
 
@@ -76,19 +75,12 @@ class TestWebsocketRoutes:
         db: Database,
         current_user: User,
         authorized_client: AsyncClient,
-        server: Server,
-        server_channel: Channel,
+        topic_channel: Channel,
     ):
-        message_model = MessageCreateSchema(content="hey", server=str(server.id), channel=str(server_channel.id))
+        message_model = MessageCreateSchema(content="hey", channel=str(topic_channel.id))
         message = await create_item(
             item=message_model, result_obj=Message, current_user=current_user, user_field="author"
         )
-
-        members = await get_items(filters={}, result_obj=ServerMember, limit=None)
-        assert len(members) == 1
-        member = members[0]
-        assert member.server == server
-        assert member.user == current_user
 
         current_user.online_channels = [f"private-{str(current_user.id)}"]
         await current_user.commit()

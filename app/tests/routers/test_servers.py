@@ -242,6 +242,7 @@ class TestServerRoutes:
         assert member is not None
         assert member.user == guest_user
 
+    @pytest.mark.skip("Not using guild.xyz at the moment")
     @pytest.mark.asyncio
     async def test_join_server_allowlist_nok_and_guild_ok(
         self,

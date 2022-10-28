@@ -13,8 +13,9 @@ class User(APIDocument):
     email = fields.StrField()
     pfp = fields.DictField()
     description = fields.StrField()
-    online_channels = fields.ListField(fields.StrField(), required=False, default=[])
     status = fields.StrField(default="offline")
+
+    online_channels = fields.ListField(fields.StrField(), required=False, default=[])
     push_tokens = fields.ListField(fields.StrField(), required=False, default=[])
 
     class Meta:

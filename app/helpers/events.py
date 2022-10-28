@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class WebSocketServerEvent(Enum):
+class EventType(Enum):
     CONNECTION_READY = "CONNECTION_READY"
 
     MESSAGE_CREATE = "MESSAGE_CREATE"

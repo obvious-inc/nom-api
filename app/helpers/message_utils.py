@@ -3,6 +3,8 @@ import re
 from typing import List, Optional, Tuple
 
 from app.models.message import Message
+from app.models.user import User
+from app.services.crud import get_item_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +133,43 @@ async def stringify_blocks(blocks: List[dict]) -> str:
     elements = []
     for block in blocks:
         elements.append(await stringify_element(block))
+
+    text = "\n".join(elements)
+    return text
+
+
+async def get_raw_node(node: dict) -> str:
+    text = node.get("text", "")
+    if text:
+        return text
+    else:
+        return await get_raw_element(node)
+
+
+async def get_raw_element(element: dict) -> str:
+    children = "".join([await get_raw_node(child) for child in element.get("children", [])])
+    el_type = element.get("type")
+
+    if el_type == "paragraph" or el_type == "attachments":
+        return children
+    elif el_type == "link":
+        return element.get("url", "")
+    elif el_type == "user":
+        user = await get_item_by_id(id_=element.get("ref"), result_obj=User)
+        return f"@{user.display_name or user.wallet_address}"
+    elif el_type == "broadcast":
+        return f"@{element.get('ref')}"
+    elif el_type == "image-attachment":
+        return element.get("url", "")
+    else:
+        logger.warning(f"unknown element type: {el_type}")
+        return ""
+
+
+async def get_raw_blocks(blocks: List[dict]):
+    elements = []
+    for block in blocks:
+        elements.append(await get_raw_element(block))
 
     text = "\n".join(elements)
     return text

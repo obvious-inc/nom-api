@@ -12,10 +12,10 @@ from starlette import status
 
 from app.helpers.cache_utils import cache
 from app.helpers.channels import convert_permission_object_to_cached
+from app.helpers.events import EventType
 from app.helpers.permissions import fetch_user_permissions, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.common import PermissionOverwrite
@@ -170,7 +170,7 @@ async def delete_channel(channel_id, current_user: User):
         broadcast_channel_event,
         channel_id,
         str(current_user.id),
-        WebSocketServerEvent.CHANNEL_DELETED,
+        EventType.CHANNEL_DELETED,
         {"channel": channel_id},
     )
 
@@ -223,7 +223,7 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
             broadcast_channel_event,
             channel_id,
             str(current_user.id),
-            WebSocketServerEvent.USER_TYPING,
+            EventType.USER_TYPING,
             {"user": await current_user.to_dict(exclude_fields=["pfp"])},
         )
 
@@ -249,7 +249,7 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
         broadcast_channel_event,
         channel_id,
         str(current_user.id),
-        WebSocketServerEvent.CHANNEL_UPDATE,
+        EventType.CHANNEL_UPDATE,
         {"channel": updated_item.dump()},
     )
 
@@ -287,7 +287,7 @@ async def invite_members_to_channel(channel_id: str, members: List[str], current
             broadcast_channel_event,
             channel_id,
             str(new_user.pk),
-            WebSocketServerEvent.CHANNEL_USER_INVITED,
+            EventType.CHANNEL_USER_INVITED,
             {"channel": channel_id, "user": await new_user.to_dict(exclude_fields=["pfp"])},
         )
 
@@ -349,7 +349,7 @@ async def join_channel(channel_id: str, current_user: User):
         broadcast_channel_event,
         channel_id,
         str(current_user.pk),
-        WebSocketServerEvent.CHANNEL_USER_JOINED,
+        EventType.CHANNEL_USER_JOINED,
         {"channel": channel_id, "user": await current_user.to_dict(exclude_fields=["pfp"])},
     )
 

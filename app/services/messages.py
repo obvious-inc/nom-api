@@ -13,9 +13,9 @@ from app.helpers.channels import (
     is_user_in_channel,
     update_channel_last_message,
 )
+from app.helpers.events import EventType
 from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
@@ -39,9 +39,11 @@ from app.services.crud import (
     get_items,
     update_item,
 )
+from app.services.events import broadcast_event
 from app.services.integrations import get_gif_by_url
+from app.services.notifications import broadcast_message_notifications
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_current_user_event, broadcast_message_event, broadcast_users_event
+from app.services.websockets import broadcast_current_user_event, broadcast_users_event
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +67,8 @@ async def create_app_message(
     message = await create_item(item=message_model, result_obj=result_obj, user_field=None)
 
     bg_tasks = [
-        (broadcast_message_event, (str(message.id), None, WebSocketServerEvent.MESSAGE_CREATE)),
-        (update_channel_last_message, (message.channel, message)),
+        (broadcast_message_notifications, (str(message.pk), None, EventType.MESSAGE_CREATE)),
+        (update_channel_last_message, (message.channel, message.created_at)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -96,17 +98,17 @@ async def create_message(
     )
 
     bg_tasks = [
-        (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
-        (update_channel_last_message, (message.channel, message)),
+        (broadcast_event, (EventType.MESSAGE_CREATE, {"message": message.dump()})),
+        (update_channel_last_message, (message.channel, message.created_at)),
         (
             broadcast_current_user_event,
             (
                 str(current_user.id),
-                WebSocketServerEvent.CHANNEL_READ,
+                EventType.CHANNEL_READ,
                 {"channel": (await message.channel.fetch()).dump(), "read_at": message.created_at.isoformat()},
             ),
         ),
-        (process_message_mentions, (str(message.id),)),
+        (process_message_mentions, (str(message.pk),)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -136,7 +138,7 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
     updated_item = await update_item(item=message, data=data)
 
     await queue_bg_task(
-        broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_UPDATE
+        broadcast_message_notifications, str(message.id), str(current_user.id), EventType.MESSAGE_UPDATE
     )
 
     return updated_item
@@ -154,7 +156,7 @@ async def delete_message(message_id: str, current_user: User):
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
     await queue_bg_task(
-        broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_REMOVE
+        broadcast_message_notifications, str(message.id), str(current_user.id), EventType.MESSAGE_REMOVE
     )
 
     await delete_item(item=message)
@@ -219,10 +221,10 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
     if added:
         await message.commit()
         await queue_bg_task(
-            broadcast_message_event,
+            broadcast_message_notifications,
             str(message.id),
             str(current_user.id),
-            WebSocketServerEvent.MESSAGE_REACTION_ADD,
+            EventType.MESSAGE_REACTION_ADD,
             {"reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
@@ -261,10 +263,10 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
     if removed:
         await message.commit()
         await queue_bg_task(
-            broadcast_message_event,
+            broadcast_message_notifications,
             str(message.id),
             str(current_user.id),
-            WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
+            EventType.MESSAGE_REACTION_REMOVE,
             {"reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
@@ -346,7 +348,7 @@ async def process_message_mentions(message_id: str):
 
     await broadcast_users_event(
         users=users_to_notify,
-        event=WebSocketServerEvent.NOTIFY_USER_MENTION,
+        event=EventType.NOTIFY_USER_MENTION,
         custom_data={"message": message.dump()},
     )
 

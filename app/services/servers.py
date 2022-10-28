@@ -6,10 +6,10 @@ from starlette import status
 
 from app.constants.permissions import DEFAULT_ROLE_PERMISSIONS
 from app.helpers.cache_utils import cache
+from app.helpers.events import EventType
 from app.helpers.guild_xyz import is_user_eligible_for_guild
 from app.helpers.permissions import user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel
 from app.models.server import Server, ServerJoinRule, ServerMember
@@ -104,7 +104,7 @@ async def join_server(server_id: str, current_user: User, ignore_joining_rules: 
         broadcast_server_event,
         str(server.id),
         str(current_user.id),
-        WebSocketServerEvent.SERVER_USER_JOINED,
+        EventType.SERVER_USER_JOINED,
         {"user": current_user.dump(), "member": member.dump()},
     )
 
@@ -191,7 +191,7 @@ async def update_server(server_id: str, update_data: ServerUpdateSchema, current
         broadcast_server_event,
         server_id,
         str(current_user.id),
-        WebSocketServerEvent.SERVER_UPDATE,
+        EventType.SERVER_UPDATE,
         {"server": server_id},
     )
 

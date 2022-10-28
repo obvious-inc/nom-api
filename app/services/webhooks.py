@@ -2,8 +2,8 @@ import json
 import logging
 from typing import Optional, Union
 
+from app.helpers.events import EventType
 from app.helpers.queue_utils import queue_bg_task
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.app import App
 from app.models.user import User
 from app.schemas.ws_events import CreateMarkChannelReadEvent
@@ -86,7 +86,7 @@ async def process_channel_occupied_event(channel_name: str, actor: Union[User, A
         await queue_bg_task(
             broadcast_user_servers_event,
             str(actor.id),
-            WebSocketServerEvent.USER_PRESENCE_UPDATE,
+            EventType.USER_PRESENCE_UPDATE,
             {"status": "online"},
         )
 
@@ -101,7 +101,7 @@ async def process_channel_vacated_event(channel_name: str, actor: Union[User, Ap
             await queue_bg_task(
                 broadcast_user_servers_event,
                 str(actor.id),
-                WebSocketServerEvent.USER_PRESENCE_UPDATE,
+                EventType.USER_PRESENCE_UPDATE,
                 {"status": "offline"},
             )
 
