@@ -36,11 +36,7 @@ async def broadcast_message_notifications(
     push_title = f"{author.display_name or author.wallet_address} (#{channel.name})"
     push_body = (await get_raw_blocks(message.blocks))[:100]
 
-    push_data = {
-        "title": push_title,
-        "body": push_body,
-        "metadata": dumped_message,
-    }
+    push_data = {"title": push_title, "body": push_body, "metadata": dumped_message, "author": str(author.pk)}
 
     async for batch_members in _batch_channel_members(channel.members):
         await broadcast_message_to_channel_members(
@@ -59,7 +55,9 @@ async def broadcast_message_to_channel_members(channel_members, event: EventType
         if user.online_channels:
             ws_online_channels.update(user.online_channels)
         else:
-            push_offline_tokens.update(user.push_tokens)
+            # todo: improve this
+            if str(user.pk) != push_data.get("author"):
+                push_offline_tokens.update(user.push_tokens)
 
     await broadcast_ws_event(event, data=ws_data, ws_channels=list(ws_online_channels))
     if event == EventType.MESSAGE_CREATE:
