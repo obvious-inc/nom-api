@@ -111,7 +111,8 @@ async def broadcast_push_notification(event: EventType, data: dict):
             )
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=user)
 
-        push_messages.append({**push_data, "to": user.push_tokens, "badge": mention_count})
+        if user.push_tokens and len(user.push_tokens) > 0:
+            push_messages.append({**push_data, "to": user.push_tokens, "badge": mention_count})
 
     async for batched_messages in _batch_list(push_messages):
         await broadcast_push_event(push_messages=batched_messages)
