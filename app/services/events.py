@@ -60,18 +60,25 @@ async def dispatch_websocket_event(event: EventType, data: dict):
 
 async def broadcast_push_notification(event: EventType, data: dict):
     message_dict = data.get("message", {})
+    app_dict = data.get("app", {})
     message_id = message_dict.get("id")
     message = await get_item_by_id(id_=message_id, result_obj=Message)
     channel = await message.channel.fetch()
     if not channel:
         raise Exception("expected message to have a channel")
 
-    author: User = await message.author.fetch()
+    if message.author:
+        author: User = await message.author.fetch()
+        author_name = author.display_name or author.wallet_address
+    elif app_dict:
+        author_name = app_dict.get("name")
+    else:
+        author_name = "New message"
 
-    push_title = f"{author.display_name or author.wallet_address} (#{channel.name})"
+    push_title = f"{author_name} (#{channel.name})"
     push_body = (await get_raw_blocks(message.blocks))[:100]
     push_metadata = {**data, "event": event.name}
-    push_data = {"title": push_title, "body": push_body, "metadata": push_metadata, "author": str(author.pk)}
+    push_data = {"title": push_title, "body": push_body, "metadata": push_metadata}
 
     users_to_notify = []
     mentions = await get_message_mentions(message)

@@ -255,7 +255,7 @@ class Storage(BaseStorage):
                 message = AppInstallMessageCreateSchema(
                     channel=channel_id, app=str(app.pk), installer=str(request.user.pk), type=6
                 )
-                await create_app_message(message_model=message)
+                await create_app_message(message_model=message, current_app=app)
             else:
                 existing_scopes = prev_installed_app.scopes
                 final_scopes = list(set(existing_scopes) | set(scopes))

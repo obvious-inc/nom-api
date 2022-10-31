@@ -1011,7 +1011,7 @@ class TestMessagesRoutes:
             content="webhook message!",
             channel=str(integration_app_webhook.channel.pk),
         )
-        wh_message = await create_app_message(message_model=wh_message_model)
+        wh_message = await create_app_message(message_model=wh_message_model, current_app=integration_app)
 
         response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(wh_message.id)}")
         assert response.status_code == 200

@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 async def create_app_message(
     message_model: Union[WebhookMessageCreateSchema, AppInstallMessageCreateSchema, AppMessageCreateSchema],
-    current_app: App = None,
+    current_app: App,
 ):
     if isinstance(message_model, WebhookMessageCreateSchema):
         result_obj = WebhookMessage
@@ -66,7 +66,16 @@ async def create_app_message(
     message = await create_item(item=message_model, result_obj=result_obj, user_field=None)
 
     bg_tasks = [
-        (broadcast_event, (EventType.MESSAGE_CREATE, {"message": message.dump()})),
+        (
+            broadcast_event,
+            (
+                EventType.MESSAGE_CREATE,
+                {
+                    "message": await message.to_dict(),
+                    "app": await current_app.to_dict(exclude_fields=["client_secret"]),
+                },
+            ),
+        ),
         (update_channel_last_message, (message.channel, message.created_at)),
     ]
 
