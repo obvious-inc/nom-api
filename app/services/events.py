@@ -4,7 +4,7 @@ from typing import List
 
 from umongo import Reference
 
-from app.helpers.channels import is_user_in_channel
+from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
 from app.helpers.events import EventType
 from app.helpers.message_utils import get_message_mentions, get_raw_blocks
 from app.helpers.push_notifications import broadcast_push_event
@@ -52,6 +52,9 @@ async def dispatch_websocket_event(event: EventType, data: dict):
     if not channel:
         raise Exception("expected message to have a channel")
 
+    if not channel.members:
+        return
+
     all_user_ids = [member.pk for member in channel.members]
 
     async for batch_user_ids in _batch_user_ids(all_user_ids):
@@ -89,6 +92,17 @@ async def broadcast_push_notification(event: EventType, data: dict):
             user_id = mention_ref
             user = await get_user_by_id(user_id)
             users_to_notify.append(user)
+
+        if mention_type == "broadcast":
+            if mention_ref == "here":
+                online_users = await get_channel_online_users(channel=channel)
+                users_to_notify.extend(online_users)
+            elif mention_ref == "channel" or mention_ref == "everyone":
+                channel_users = await get_channel_users(channel=channel)
+                users_to_notify.extend(channel_users)
+            else:
+                logger.warning(f"unknown mention reference: {mention_ref}")
+                continue
 
     if len(users_to_notify) == 0:
         logger.debug("no users to notify")
