@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional
 
 from sentry_sdk import capture_exception
+from umongo import Reference
 
 from app.helpers.events import EventType
 from app.helpers.websockets import pusher_client
@@ -214,3 +215,12 @@ async def broadcast_users_event(users: List[User], event: EventType, custom_data
         event_data.update(custom_data)
 
     await pusher_broadcast_messages(event=event, data=event_data, users=users, scope="users", current_user=None)
+
+
+async def broadcast_websocket_event(user_ids: List[Reference], event: EventType, ws_data: dict):
+    listening_users = await get_items(filters={"_id": {"$in": user_ids}}, result_obj=User, limit=None)
+    online_channels = set()
+    for user in listening_users:
+        online_channels.update(user.online_channels)
+
+    await broadcast_ws_event(event, data=ws_data, ws_channels=list(online_channels))

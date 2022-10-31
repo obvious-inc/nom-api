@@ -5,15 +5,13 @@ from typing import List
 
 import aiohttp
 
-from app.helpers.events import EventType
-
 logger = logging.getLogger(__name__)
 
 
-async def _broadcast_expo_notifications(push_tokens: List[str], data: dict):
-    logger.debug(f"push notification: {json.dumps(data)}")
+async def _broadcast_expo_notifications(push_messages: List[str]):
+    logger.debug(f"push notifications: {json.dumps(push_messages)}")
 
-    if not push_tokens:
+    if not push_messages:
         logger.info("no tokens to push notifications to")
         return
 
@@ -25,8 +23,7 @@ async def _broadcast_expo_notifications(push_tokens: List[str], data: dict):
         "content-encoding": "gzip",
     }
 
-    data["to"] = push_tokens
-    compressed_data = zlib.compress(json.dumps(data).encode("utf-8"))
+    compressed_data = zlib.compress(json.dumps(push_messages).encode("utf-8"))
 
     async with aiohttp.ClientSession(headers=headers) as session:
         async with session.post("https://exp.host/--/api/v2/push/send", data=compressed_data) as resp:
@@ -46,10 +43,10 @@ async def _broadcast_expo_notifications(push_tokens: List[str], data: dict):
                 details = ticket.get("details")
                 error = details.get("error")
                 if error == "DeviceNotRegistered":
-                    logger.warning(f"should remove token: {push_tokens[index]}")
+                    logger.warning(f"should remove token: {push_messages[index]}")
                 else:
                     logger.error(f"unhandled push error: {ticket}")
 
 
-async def broadcast_push_event(event: EventType, data: dict, push_tokens: List[str]):
-    await _broadcast_expo_notifications(push_tokens, data=data)
+async def broadcast_push_event(push_messages: List):
+    await _broadcast_expo_notifications(push_messages=push_messages)

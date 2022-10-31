@@ -41,7 +41,6 @@ from app.services.crud import (
 )
 from app.services.events import broadcast_event
 from app.services.integrations import get_gif_by_url
-from app.services.notifications import broadcast_message_notifications
 from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_current_user_event, broadcast_users_event
 
@@ -67,7 +66,7 @@ async def create_app_message(
     message = await create_item(item=message_model, result_obj=result_obj, user_field=None)
 
     bg_tasks = [
-        (broadcast_message_notifications, (str(message.pk), None, EventType.MESSAGE_CREATE)),
+        (broadcast_event, (EventType.MESSAGE_CREATE, {"message": message.dump()})),
         (update_channel_last_message, (message.channel, message.created_at)),
     ]
 
@@ -108,7 +107,6 @@ async def create_message(
                 {"channel": (await message.channel.fetch()).dump(), "read_at": message.created_at.isoformat()},
             ),
         ),
-        (process_message_mentions, (str(message.pk),)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -136,10 +134,7 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
         data.update({"edited_at": datetime.now(timezone.utc)})
 
     updated_item = await update_item(item=message, data=data)
-
-    await queue_bg_task(
-        broadcast_message_notifications, str(message.id), str(current_user.id), EventType.MESSAGE_UPDATE
-    )
+    await queue_bg_task(broadcast_event, (EventType.MESSAGE_UPDATE, {"message": updated_item.dump()}))
 
     return updated_item
 
@@ -155,9 +150,7 @@ async def delete_message(message_id: str, current_user: User):
     if not can_delete:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
-    await queue_bg_task(
-        broadcast_message_notifications, str(message.id), str(current_user.id), EventType.MESSAGE_REMOVE
-    )
+    await queue_bg_task(broadcast_event, EventType.MESSAGE_REMOVE, {"message": message.dump()})
 
     await delete_item(item=message)
 
@@ -221,11 +214,9 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
     if added:
         await message.commit()
         await queue_bg_task(
-            broadcast_message_notifications,
-            str(message.id),
-            str(current_user.id),
+            broadcast_event,
             EventType.MESSAGE_REACTION_ADD,
-            {"reaction": reaction.dump(), "user": str(current_user.id)},
+            {"message": message.dump(), "reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
     return message
@@ -263,11 +254,9 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
     if removed:
         await message.commit()
         await queue_bg_task(
-            broadcast_message_notifications,
-            str(message.id),
-            str(current_user.id),
+            broadcast_event,
             EventType.MESSAGE_REACTION_REMOVE,
-            {"reaction": reaction.dump(), "user": str(current_user.id)},
+            {"message": message.dump(), "reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
     return message
