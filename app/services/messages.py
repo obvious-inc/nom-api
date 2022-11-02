@@ -143,7 +143,7 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
         data.update({"edited_at": datetime.now(timezone.utc)})
 
     updated_item = await update_item(item=message, data=data)
-    await queue_bg_task(broadcast_event, (EventType.MESSAGE_UPDATE, {"message": updated_item.dump()}))
+    await queue_bg_task(broadcast_event, EventType.MESSAGE_UPDATE, {"message": updated_item.dump()})
 
     return updated_item
 
