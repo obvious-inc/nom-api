@@ -10,7 +10,7 @@ from app.schemas.ws_events import CreateMarkChannelReadEvent
 from app.services.channels import update_channels_read_state
 from app.services.crud import get_item_by_id, update_item
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_connection_ready, broadcast_user_servers_event
+from app.services.websockets import broadcast_user_servers_event
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +64,7 @@ async def handle_pusher_client_event(event: dict):
     user = await _get_user_from_event(event)
 
     client_event: str = event["event"]
-    if client_event == "client-connection-request":
-        await broadcast_connection_ready(current_user=user, channel=channel_name)
-    elif client_event.startswith("client-channel-mark"):
+    if client_event.startswith("client-channel-mark"):
         event_data = json.loads(event["data"])
         single_channel_id = event_data.pop("channel_id")
         if single_channel_id:

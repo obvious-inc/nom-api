@@ -6,6 +6,7 @@ from umongo import Reference
 
 from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
 from app.helpers.events import EventType
+from app.helpers.list_utils import batch_list
 from app.helpers.message_utils import get_message_mentions, get_raw_blocks
 from app.helpers.push_notifications import broadcast_push_event
 from app.models.channel import ChannelReadState
@@ -23,12 +24,6 @@ async def _batch_user_ids(user_ids: List[Reference], chunk_size: int = 90):
     total_length = len(user_ids)
     for ndx in range(0, total_length, chunk_size):
         yield user_ids[ndx : min(ndx + chunk_size, total_length)]
-
-
-async def _batch_list(list_: List, chunk_size: int = 90):
-    total_length = len(list_)
-    for ndx in range(0, total_length, chunk_size):
-        yield list_[ndx : min(ndx + chunk_size, total_length)]
 
 
 async def prepare_event_ws_data(event: EventType, data: dict) -> dict:
@@ -57,11 +52,11 @@ async def dispatch_websocket_event(event: EventType, data: dict):
 
     all_user_ids = [member.pk for member in channel.members]
 
-    async for batch_user_ids in _batch_user_ids(all_user_ids):
+    async for batch_user_ids in batch_list(all_user_ids):
         await broadcast_websocket_event(user_ids=batch_user_ids, ws_data=ws_data, event=event)
 
 
-async def broadcast_push_notification(event: EventType, data: dict):
+async def dispatch_push_notification_event(event: EventType, data: dict):
     message_dict = data.get("message", {})
     app_dict = data.get("app", {})
     message_id = message_dict.get("id")
@@ -135,7 +130,7 @@ async def broadcast_push_notification(event: EventType, data: dict):
         if user.push_tokens and len(user.push_tokens) > 0:
             push_messages.append({**push_data, "to": user.push_tokens, "badge": mention_count})
 
-    async for batched_messages in _batch_list(push_messages):
+    async for batched_messages in batch_list(push_messages):
         await broadcast_push_event(push_messages=batched_messages)
 
 
@@ -143,6 +138,9 @@ async def broadcast_event(event: EventType, data: dict):
     logger.info(f"broadcasting new event: {event}")
     logger.debug(f"event data: {data}")
 
+    # future event pipeline dispatching will be here
+
     await dispatch_websocket_event(event, data)
+
     if event == EventType.MESSAGE_CREATE:
-        await broadcast_push_notification(event, data)
+        await dispatch_push_notification_event(event, data)

@@ -146,10 +146,6 @@ async def broadcast_ws_event(event: EventType, data: dict, ws_channels: Optional
         logger.info("Event broadcast successful. [event_name=%s]", event_name)
 
 
-async def broadcast_connection_ready(current_user: User, channel: str):
-    raise NotImplementedError("no longer in use!")
-
-
 async def broadcast_channel_event(
     channel_id: str, current_user_id: str, event: EventType, custom_data: Optional[dict] = None
 ):
