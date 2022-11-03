@@ -43,7 +43,8 @@ async def _broadcast_expo_notifications(push_messages: List[str]):
                 details = ticket.get("details")
                 error = details.get("error")
                 if error == "DeviceNotRegistered":
-                    logger.warning(f"should remove token: {push_messages[index]}")
+                    error_token = details.get("expoPushToken")
+                    logger.warning(f"should remove token: {error_token}")
                 else:
                     logger.error(f"unhandled push error: {ticket}")
 
