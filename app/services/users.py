@@ -17,7 +17,8 @@ from app.models.user import User
 from app.schemas.servers import ServerMemberUpdateSchema
 from app.schemas.users import UserCreateSchema, UserUpdateSchema
 from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
-from app.services.websockets import broadcast_server_event, broadcast_user_servers_event
+from app.services.events import broadcast_event
+from app.services.websockets import broadcast_server_event
 
 logger = logging.getLogger(__name__)
 
@@ -134,10 +135,9 @@ async def update_user_profile(
             )
         else:
             await queue_bg_task(
-                broadcast_user_servers_event,
-                str(current_user.id),
+                broadcast_event,
                 EventType.USER_PROFILE_UPDATE,
-                {**data, "user": str(current_user.id)},
+                {**data, "user": await current_user.to_dict(exclude_fields=["pfp"])},
             )
 
     return updated_item

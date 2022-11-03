@@ -11,7 +11,6 @@ from app.models.message import Message
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
 from app.services.crud import create_item, find_and_update_item, get_item_by_id
-from app.services.users import get_user_by_id
 from app.services.websockets import broadcast_websocket_message
 
 logger = logging.getLogger(__name__)
@@ -49,7 +48,7 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
 
         if mention_type == "user":
             user_id = mention_ref
-            user = await get_user_by_id(user_id)
+            user = await get_item_by_id(id_=user_id, result_obj=User)
             users_to_notify.append(user)
 
         if mention_type == "broadcast":

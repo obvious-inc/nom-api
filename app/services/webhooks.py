@@ -9,8 +9,8 @@ from app.models.user import User
 from app.schemas.ws_events import CreateMarkChannelReadEvent
 from app.services.channels import update_channels_read_state
 from app.services.crud import get_item_by_id, update_item
+from app.services.events import broadcast_event
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_user_servers_event
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +82,9 @@ async def process_channel_occupied_event(channel_name: str, actor: Union[User, A
     await actor.__class__.collection.update_one(filter={"_id": actor.pk}, update=update_data)
     if isinstance(actor, User):
         await queue_bg_task(
-            broadcast_user_servers_event,
-            str(actor.id),
+            broadcast_event,
             EventType.USER_PRESENCE_UPDATE,
-            {"status": "online"},
+            {"status": "online", "user": await actor.to_dict(exclude_fields=["pfp"])},
         )
 
 
@@ -97,10 +96,9 @@ async def process_channel_vacated_event(channel_name: str, actor: Union[User, Ap
         await update_item(item=actor, data={"status": "offline"})
         if isinstance(actor, User):
             await queue_bg_task(
-                broadcast_user_servers_event,
-                str(actor.id),
+                broadcast_event,
                 EventType.USER_PRESENCE_UPDATE,
-                {"status": "offline"},
+                {"status": "offline", "user": await actor.to_dict(exclude_fields=["pfp"])},
             )
 
 

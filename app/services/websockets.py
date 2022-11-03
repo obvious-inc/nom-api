@@ -42,10 +42,6 @@ async def broadcast_server_event(
     raise NotImplementedError("servers not supported anymore")
 
 
-async def broadcast_user_servers_event(current_user_id: str, event: EventType, custom_data: dict) -> None:
-    raise NotImplementedError("servers not supported anymore")
-
-
 async def fetch_ws_channels_for_scope(scope: str, event: EventType, data: dict) -> List[str]:
     if scope == "channel":
         channel_dict = data.get("channel")
@@ -85,6 +81,18 @@ async def fetch_ws_channels_for_scope(scope: str, event: EventType, data: dict) 
         user = await get_item_by_id(id_=user_id, result_obj=User)
 
         websocket_channels = user.online_channels
+    elif scope == "user_channels":
+        websocket_channels = []
+        user_dict = data.get("user")
+        if not user_dict:
+            raise Exception("expected 'user' in event data: %s. [event=%s]", data, event.name)
+
+        user_id = user_dict.get("id")
+        user = await get_item_by_id(id_=user_id, result_obj=User)
+
+        channels = await get_items(filters={"members": user.pk}, result_obj=Channel, limit=None)
+        for channel in channels:
+            websocket_channels.extend(await get_ws_online_channels(channel))
     else:
         raise Exception("unexpected scope: %s", scope)
 
