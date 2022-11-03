@@ -76,7 +76,7 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
     push_title = f"{author_name} (#{channel.name})"
     push_body = (await get_raw_blocks(message.blocks))[:100]
     push_metadata = {**data, "event": event.name, "url": f"channels/{str(channel.pk)}"}
-    push_data = {"title": push_title, "body": push_body, "data": push_metadata}
+    push_data = {"title": push_title, "body": push_body, "data": push_metadata, "sound": "default"}
 
     users_to_notify = []
     mentions = await get_message_mentions(message)
