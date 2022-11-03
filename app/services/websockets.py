@@ -1,11 +1,9 @@
 import logging
 from typing import List, Optional
 
-from sentry_sdk import capture_exception
-
 from app.helpers.events import EventType, fetch_event_channel_scope
 from app.helpers.list_utils import batch_list
-from app.helpers.websockets import PUSHER_EVENT_MAX_CHANNELS, pusher_client
+from app.helpers.pusher import broadcast_pusher
 from app.models.app import App, AppInstalled
 from app.models.channel import Channel
 from app.models.message import Message
@@ -124,28 +122,6 @@ async def pusher_broadcast_messages(
     await broadcast_pusher(event=event, data=data, pusher_channels=pusher_channels)
 
 
-async def broadcast_pusher(event: EventType, data: dict, pusher_channels: Optional[List[str]] = None):
-    if not pusher_channels:
-        logger.debug("no online websocket channels. [event=%s]", event)
-        return
-
-    has_errors = False
-    event_name = event.value
-
-    pusher_channels = list(set(pusher_channels))
-
-    async for batch_pusher_channels in batch_list(pusher_channels, chunk_size=PUSHER_EVENT_MAX_CHANNELS):
-        try:
-            await pusher_client.trigger(channels=batch_pusher_channels, event_name=event_name, data=data)
-        except Exception as e:
-            logger.exception("Problem broadcasting event to Pusher channel. [event_name=%s]", event_name)
-            capture_exception(e)
-            has_errors = True
-
-    if not has_errors:
-        logger.info("Event broadcast successful. [event_name=%s]", event_name)
-
-
 async def broadcast_channel_event(
     channel_id: str, current_user_id: str, event: EventType, custom_data: Optional[dict] = None
 ):
@@ -248,7 +224,7 @@ async def fetch_channels_for_scope(scope: str, event: EventType, data: dict) -> 
             return []
 
         all_user_ids = [member.pk for member in channel.members]
-        logger.debug(f"users in channel: {len(all_user_ids)}")
+        logger.debug(f"# users in channel: {len(all_user_ids)}")
 
         async for batch_user_ids in batch_list(all_user_ids, chunk_size=100):
             users = await get_items(filters={"_id": {"$in": batch_user_ids}}, result_obj=User, limit=None)
@@ -268,6 +244,6 @@ async def broadcast_websocket_message(event: EventType, data: dict):
         return
 
     pusher_channels = await fetch_channels_for_scope(event_scope, event, data)
-    logger.debug(f"pusher channels: {pusher_channels}")
+    logger.debug(f"# online channels: {len(pusher_channels)}")
 
     await broadcast_pusher(event, data=data, pusher_channels=pusher_channels)

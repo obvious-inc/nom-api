@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Form
 
 from app.dependencies import get_current_app, get_current_user
-from app.helpers.websockets import pusher_client
+from app.helpers.pusher import pusher_client
 from app.models.app import App
 from app.models.user import User
 
