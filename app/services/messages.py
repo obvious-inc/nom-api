@@ -42,7 +42,7 @@ from app.services.crud import (
 from app.services.events import broadcast_event
 from app.services.integrations import get_gif_by_url
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_current_user_event, broadcast_users_event
+from app.services.websockets import broadcast_users_event
 
 logger = logging.getLogger(__name__)
 
@@ -105,15 +105,18 @@ async def create_message(
         item=message_model, result_obj=result_obj, current_user=current_user, user_field="author"
     )
 
+    channel = await message.channel.fetch()
+    dump_channel = await channel.to_dict(exclude_fields=["permission_overwrites"])
+    dump_curr_user = await current_user.to_dict(exclude_fields=["pfp"])
+
     bg_tasks = [
         (broadcast_event, (EventType.MESSAGE_CREATE, {"message": message.dump()})),
         (update_channel_last_message, (message.channel, message.created_at)),
         (
-            broadcast_current_user_event,
+            broadcast_event,
             (
-                str(current_user.id),
                 EventType.CHANNEL_READ,
-                {"channel": (await message.channel.fetch()).dump(), "read_at": message.created_at.isoformat()},
+                {"read_at": message.created_at.isoformat(), "channel": dump_channel, "user": dump_curr_user},
             ),
         ),
     ]

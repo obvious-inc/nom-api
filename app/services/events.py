@@ -64,7 +64,7 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
                 continue
 
     if len(users_to_notify) == 0:
-        logger.debug("no users to notify")
+        logger.debug("no users to push notifications")
         return
 
     push_messages = []

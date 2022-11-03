@@ -50,7 +50,7 @@ async def fetch_event_channel_scope(event: EventType) -> Optional[str]:
     ]:
         return "channel"
     elif event in [EventType.CHANNEL_READ]:
-        return "current_user"
+        return "user"
     elif event in [EventType.USER_PROFILE_UPDATE, EventType.USER_PRESENCE_UPDATE]:
         return "user_channels"
     else:

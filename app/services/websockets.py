@@ -122,21 +122,6 @@ async def pusher_broadcast_messages(
     await broadcast_pusher(event=event, data=data, pusher_channels=pusher_channels)
 
 
-async def broadcast_channel_event(
-    channel_id: str, current_user_id: str, event: EventType, custom_data: Optional[dict] = None
-):
-    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-
-    event_data = {"channel": channel.dump()}
-    if custom_data:
-        event_data.update(custom_data)
-
-    await pusher_broadcast_messages(
-        event=event, data=event_data, current_user=current_user, scope="channel", channel=channel
-    )
-
-
 async def broadcast_server_event(
     server_id: str, current_user_id: str, event: EventType, custom_data: Optional[dict] = None
 ):
@@ -150,20 +135,6 @@ async def broadcast_server_event(
     await pusher_broadcast_messages(
         event=event, data=event_data, current_user=current_user, scope="server", server=server
     )
-
-
-async def broadcast_current_user_event(
-    current_user_id,
-    event: EventType,
-    custom_data: Optional[dict] = None,
-):
-    current_user = await get_item_by_id(id_=current_user_id, result_obj=User)
-
-    event_data = {}
-    if custom_data:
-        event_data.update(custom_data)
-
-    await pusher_broadcast_messages(event=event, data=event_data, current_user=current_user, scope="current_user")
 
 
 async def broadcast_user_servers_event(current_user_id: str, event: EventType, custom_data: dict) -> None:
@@ -224,12 +195,21 @@ async def fetch_channels_for_scope(scope: str, event: EventType, data: dict) -> 
             return []
 
         all_user_ids = [member.pk for member in channel.members]
-        logger.debug(f"# users in channel: {len(all_user_ids)}")
+        logger.debug("# users in channel: %d. [event=%s]", len(all_user_ids), event.name)
 
         async for batch_user_ids in batch_list(all_user_ids, chunk_size=100):
             users = await get_items(filters={"_id": {"$in": batch_user_ids}}, result_obj=User, limit=None)
             for user in users:
                 pusher_channels.extend(user.online_channels)
+    elif scope == "user":
+        user_dict = data.get("user")
+        if not user_dict:
+            raise Exception("expected 'user' in event data: %s. [event=%s]", data, event.name)
+
+        user_id = user_dict.get("id")
+        user = await get_item_by_id(id_=user_id, result_obj=User)
+
+        pusher_channels = user.online_channels
     else:
         raise Exception("unexpected scope: %s", scope)
 
@@ -238,12 +218,12 @@ async def fetch_channels_for_scope(scope: str, event: EventType, data: dict) -> 
 
 async def broadcast_websocket_message(event: EventType, data: dict):
     event_scope = await fetch_event_channel_scope(event)
-    logger.debug(f"event {event} scope: {event_scope}")
+    logger.debug("scope: %s. [event=%s]", event_scope, event.name)
 
     if not event_scope:
         return
 
     pusher_channels = await fetch_channels_for_scope(event_scope, event, data)
-    logger.debug(f"# online channels: {len(pusher_channels)}")
+    logger.debug("# online channels: %d. [event=%s]", len(pusher_channels), event.name)
 
     await broadcast_pusher(event, data=data, pusher_channels=pusher_channels)
