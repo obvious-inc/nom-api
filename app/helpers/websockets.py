@@ -6,6 +6,9 @@ from pusher.aiohttp import AsyncIOBackend
 
 load_dotenv()
 
+# https://pusher.com/docs/channels/server_api/http-api/#publishing-events
+PUSHER_EVENT_MAX_CHANNELS = 100
+
 # TODO: this kind of breaks away from FastAPI's default way of initializing 3rd party clients using dependencies,
 #  but I couldn't find a straightforward way to initialize this once, and not per request. The startup events felt
 #  more hacky than anything else, but might be worth another look.

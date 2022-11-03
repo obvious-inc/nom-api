@@ -2,10 +2,10 @@ import logging
 from typing import List, Optional
 
 from sentry_sdk import capture_exception
-from umongo import Reference
 
-from app.helpers.events import EventType
-from app.helpers.websockets import pusher_client
+from app.helpers.events import EventType, fetch_event_channel_scope
+from app.helpers.list_utils import batch_list
+from app.helpers.websockets import PUSHER_EVENT_MAX_CHANNELS, pusher_client
 from app.models.app import App, AppInstalled
 from app.models.channel import Channel
 from app.models.message import Message
@@ -121,26 +121,26 @@ async def pusher_broadcast_messages(
     elif scope == "pusher_channel" and pusher_channel:
         pusher_channels = [pusher_channel]
 
-    await broadcast_ws_event(event=event, data=data, ws_channels=pusher_channels)
+    await broadcast_pusher(event=event, data=data, pusher_channels=pusher_channels)
 
 
-async def broadcast_ws_event(event: EventType, data: dict, ws_channels: Optional[List[str]] = None):
-    if not ws_channels:
+async def broadcast_pusher(event: EventType, data: dict, pusher_channels: Optional[List[str]] = None):
+    if not pusher_channels:
         logger.debug("no online websocket channels. [event=%s]", event)
         return
 
     has_errors = False
     event_name = event.value
 
-    while len(ws_channels) > 0:
-        push_channels = ws_channels[:90]
+    pusher_channels = list(set(pusher_channels))
+
+    async for batch_pusher_channels in batch_list(pusher_channels, chunk_size=PUSHER_EVENT_MAX_CHANNELS):
         try:
-            await pusher_client.trigger(push_channels, event_name, data)
+            await pusher_client.trigger(channels=batch_pusher_channels, event_name=event_name, data=data)
         except Exception as e:
             logger.exception("Problem broadcasting event to Pusher channel. [event_name=%s]", event_name)
             capture_exception(e)
             has_errors = True
-        ws_channels = ws_channels[90:]
 
     if not has_errors:
         logger.info("Event broadcast successful. [event_name=%s]", event_name)
@@ -213,10 +213,61 @@ async def broadcast_users_event(users: List[User], event: EventType, custom_data
     await pusher_broadcast_messages(event=event, data=event_data, users=users, scope="users", current_user=None)
 
 
-async def broadcast_websocket_event(user_ids: List[Reference], event: EventType, ws_data: dict):
-    listening_users = await get_items(filters={"_id": {"$in": user_ids}}, result_obj=User, limit=None)
-    online_channels = set()
-    for user in listening_users:
-        online_channels.update(user.online_channels)
+async def fetch_channels_for_scope(scope: str, event: EventType, data: dict) -> List[str]:
+    pusher_channels = []
 
-    await broadcast_ws_event(event, data=ws_data, ws_channels=list(online_channels))
+    if scope == "channel":
+        channel_dict = data.get("channel")
+        message_dict = data.get("message")
+        message_id = data.get("message_id", "")
+
+        if channel_dict:
+            if isinstance(channel_dict, dict):
+                channel_id = channel_dict.get("id")
+            else:
+                channel_id = channel_dict
+        elif message_dict:
+            if isinstance(message_dict, dict):
+                channel_id = message_dict.get("channel")
+            elif isinstance(message_dict, str):
+                message = await get_item_by_id(id_=message_dict, result_obj=Message)
+                channel_id = str(message.channel.pk)
+            else:
+                raise Exception("unexpected data", data)
+        elif message_id:
+            message = await get_item_by_id(id_=message_id, result_obj=Message)
+            channel_id = str(message.channel.pk)
+        else:
+            raise Exception(f"expected 'channel' or 'message' in event {event}: {data}")
+
+        channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+        if not channel:
+            raise Exception(f"channel not found: {channel_id}")
+
+        if not channel.members:
+            return []
+
+        all_user_ids = [member.pk for member in channel.members]
+        logger.debug(f"users in channel: {len(all_user_ids)}")
+
+        async for batch_user_ids in batch_list(all_user_ids, chunk_size=100):
+            users = await get_items(filters={"_id": {"$in": batch_user_ids}}, result_obj=User, limit=None)
+            for user in users:
+                pusher_channels.extend(user.online_channels)
+    else:
+        raise Exception("unexpected scope: %s", scope)
+
+    return pusher_channels
+
+
+async def broadcast_websocket_message(event: EventType, data: dict):
+    event_scope = await fetch_event_channel_scope(event)
+    logger.debug(f"event {event} scope: {event_scope}")
+
+    if not event_scope:
+        return
+
+    pusher_channels = await fetch_channels_for_scope(event_scope, event, data)
+    logger.debug(f"pusher channels: {pusher_channels}")
+
+    await broadcast_pusher(event, data=data, pusher_channels=pusher_channels)

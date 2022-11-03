@@ -1,8 +1,5 @@
 import logging
 from datetime import datetime, timezone
-from typing import List
-
-from umongo import Reference
 
 from app.helpers.channels import get_channel_online_users, get_channel_users, is_user_in_channel
 from app.helpers.events import EventType
@@ -15,48 +12,15 @@ from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
 from app.services.crud import create_item, find_and_update_item, get_item_by_id
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_websocket_event
+from app.services.websockets import broadcast_websocket_message
 
 logger = logging.getLogger(__name__)
 
 
-async def _batch_user_ids(user_ids: List[Reference], chunk_size: int = 90):
-    total_length = len(user_ids)
-    for ndx in range(0, total_length, chunk_size):
-        yield user_ids[ndx : min(ndx + chunk_size, total_length)]
-
-
-async def prepare_event_ws_data(event: EventType, data: dict) -> dict:
-    # validate event data
-    return data
-
-
-async def prepare_event_push_data(event: EventType, data: dict) -> dict:
-    pass
-
-
-async def dispatch_websocket_event(event: EventType, data: dict):
-    ws_data = await prepare_event_ws_data(event, data)
-
-    # todo: for channel events and others, this needs to be changed
-    message_dict = ws_data.get("message", {})
-    message_id = message_dict.get("id")
-
-    message = await get_item_by_id(id_=message_id, result_obj=Message)
-    channel = await message.channel.fetch()
-    if not channel:
-        raise Exception("expected message to have a channel")
-
-    if not channel.members:
+async def dispatch_push_notification_event(event: EventType, data: dict):
+    if event != EventType.MESSAGE_CREATE:
         return
 
-    all_user_ids = [member.pk for member in channel.members]
-
-    async for batch_user_ids in batch_list(all_user_ids):
-        await broadcast_websocket_event(user_ids=batch_user_ids, ws_data=ws_data, event=event)
-
-
-async def dispatch_push_notification_event(event: EventType, data: dict):
     message_dict = data.get("message", {})
     app_dict = data.get("app", {})
     message_id = message_dict.get("id")
@@ -136,11 +100,7 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
 
 async def broadcast_event(event: EventType, data: dict):
     logger.info(f"broadcasting new event: {event}")
-    logger.debug(f"event data: {data}")
 
     # future event pipeline dispatching will be here
-
-    await dispatch_websocket_event(event, data)
-
-    if event == EventType.MESSAGE_CREATE:
-        await dispatch_push_notification_event(event, data)
+    await broadcast_websocket_message(event, data)
+    await dispatch_push_notification_event(event, data)
