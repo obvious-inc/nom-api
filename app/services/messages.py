@@ -42,7 +42,6 @@ from app.services.crud import (
 from app.services.events import broadcast_event
 from app.services.integrations import get_gif_by_url
 from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_users_event
 
 logger = logging.getLogger(__name__)
 
@@ -346,12 +345,6 @@ async def process_message_mentions(message_id: str):
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=user)
 
         # TODO: Create mention activity entry
-
-    await broadcast_users_event(
-        users=users_to_notify,
-        event=EventType.NOTIFY_USER_MENTION,
-        custom_data={"message": message.dump()},
-    )
 
     # TODO: Broadcast push notifications
     offline_users = [user for user in users_to_notify if not user.status or user.status == "offline"]

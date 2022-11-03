@@ -8,7 +8,7 @@ from app.models.message import Message
 from app.models.user import User
 from app.schemas.messages import MessageCreateSchema
 from app.services.crud import create_item
-from app.services.websockets import get_channel_online_channels
+from app.services.websockets import get_ws_online_channels
 
 
 class TestWebsocketRoutes:
@@ -86,9 +86,9 @@ class TestWebsocketRoutes:
         await current_user.commit()
 
         message_channel = await message.channel.fetch()
-        channels = await get_channel_online_channels(channel=message_channel, current_user=current_user)
+        channels = await get_ws_online_channels(channel=message_channel)
         assert len(channels) == 1
-        channels = await get_channel_online_channels(channel=message_channel, current_user=current_user)
+        channels = await get_ws_online_channels(channel=message_channel)
         assert len(channels) == 1
-        channels = await get_channel_online_channels(channel=message_channel, current_user=current_user)
+        channels = await get_ws_online_channels(channel=message_channel)
         assert len(channels) == 1
