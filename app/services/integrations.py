@@ -1,8 +1,10 @@
+import http
 import logging
 from typing import List, Optional
 from urllib.parse import urlparse
 
 import aiohttp
+from fastapi import HTTPException
 
 from app.config import get_settings
 from app.helpers.giphy import GiphyClient
@@ -106,6 +108,6 @@ async def generate_dalle_image(prompt: str):
 
             if not data or len(data) == 0:
                 logger.debug(f"DALL-E response: {json_response}")
-                raise ValueError(f"no image generated for prompt: {prompt}")
+                raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST)
 
             return data[0]
