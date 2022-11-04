@@ -8,7 +8,7 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 
-async def _broadcast_expo_notifications(push_messages: List[str]):
+async def send_expo_push_notifications(push_messages: List[str]):
     logger.debug(f"push notifications: {json.dumps(push_messages)}")
 
     if not push_messages:
@@ -47,7 +47,3 @@ async def _broadcast_expo_notifications(push_messages: List[str]):
                     logger.warning(f"should remove token: {error_token}")
                 else:
                     logger.error(f"unhandled push error: {ticket}")
-
-
-async def broadcast_push_event(push_messages: List):
-    await _broadcast_expo_notifications(push_messages=push_messages)
