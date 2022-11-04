@@ -7,14 +7,9 @@ from urllib.parse import urlparse
 from bson import ObjectId
 from fastapi import HTTPException
 
-from app.helpers.channels import (
-    get_channel_online_users,
-    get_channel_users,
-    is_user_in_channel,
-    update_channel_last_message,
-)
+from app.helpers.channels import is_user_in_channel, update_channel_last_message
 from app.helpers.events import EventType
-from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
+from app.helpers.message_utils import blockify_content, get_message_mentioned_users, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.models.app import App
 from app.models.base import APIDocument
@@ -41,7 +36,6 @@ from app.services.crud import (
 )
 from app.services.events import broadcast_event
 from app.services.integrations import get_gif_by_url
-from app.services.users import get_user_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +112,7 @@ async def create_message(
                 {"read_at": message.created_at.isoformat(), "channel": dump_channel, "user": dump_curr_user},
             ),
         ),
+        (process_message_mentions, (str(message.pk),)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -296,35 +291,8 @@ async def post_process_message_creation(message_id: str):
 async def process_message_mentions(message_id: str):
     message = await get_item_by_id(id_=message_id, result_obj=Message)
     channel = await message.channel.fetch()
-    mentions = await get_message_mentions(message)
-    if not mentions:
-        return
 
-    users_to_notify = []
-
-    for mention_type, mention_ref in mentions:
-        logger.debug(f"should send notification of type '{mention_type}' to @{mention_ref}")
-
-        if mention_type == "user":
-            user_id = mention_ref
-            user = await get_user_by_id(user_id)
-            users_to_notify.append(user)
-
-        if mention_type == "broadcast":
-            if mention_ref == "here":
-                online_users = await get_channel_online_users(channel=channel)
-                users_to_notify.extend(online_users)
-            elif mention_ref == "channel" or mention_ref == "everyone":
-                channel_users = await get_channel_users(channel=channel)
-                users_to_notify.extend(channel_users)
-            else:
-                logger.warning(f"unknown mention reference: {mention_ref}")
-                continue
-
-    if len(users_to_notify) == 0:
-        logger.debug("no users to notify")
-        return
-
+    users_to_notify = await get_message_mentioned_users(message=message)
     for user in users_to_notify:
         user_in_channel = await is_user_in_channel(user=user, channel=channel)
         if not user_in_channel:
@@ -345,11 +313,6 @@ async def process_message_mentions(message_id: str):
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=user)
 
         # TODO: Create mention activity entry
-
-    # TODO: Broadcast push notifications
-    offline_users = [user for user in users_to_notify if not user.status or user.status == "offline"]
-    if offline_users:
-        logger.debug(f"TBD | sending push notifications to {len(offline_users)} offline users")
 
 
 async def create_reply_message(

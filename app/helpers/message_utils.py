@@ -2,9 +2,12 @@ import logging
 import re
 from typing import List, Optional, Tuple
 
+from bson import ObjectId
+
+from app.helpers.list_utils import batch_list
 from app.models.message import Message
 from app.models.user import User
-from app.services.crud import get_item_by_id
+from app.services.crud import get_item_by_id, get_items
 
 logger = logging.getLogger(__name__)
 
@@ -173,3 +176,25 @@ async def get_raw_blocks(blocks: List[dict]):
 
     text = "\n".join(elements)
     return text
+
+
+async def get_message_mentioned_users(message: Message) -> List[User]:
+    user_ids = set()
+    mentions = await get_message_mentions(message)
+    for mention_type, mention_ref in mentions:
+        logger.debug(f"found '{mention_type}' mention of @{mention_ref}")
+
+        if mention_type == "user":
+            user_ids.add(ObjectId(mention_ref))
+        elif mention_type == "broadcast":
+            logger.warning("broadcast mentions not supported yet")
+            continue
+        else:
+            logger.error(f"unsupported mention type: {mention_type}")
+            continue
+
+    users = []
+    async for batch_user_ids in batch_list(list(user_ids)):
+        users.extend(await get_items(filters={"_id": {"$in": batch_user_ids}}, result_obj=User, limit=None))
+
+    return users
