@@ -7,15 +7,10 @@ from urllib.parse import urlparse
 from bson import ObjectId
 from fastapi import HTTPException
 
-from app.helpers.channels import (
-    get_channel_online_users,
-    get_channel_users,
-    is_user_in_channel,
-    update_channel_last_message,
-)
-from app.helpers.message_utils import blockify_content, get_message_mentions, stringify_blocks
+from app.helpers.channels import is_user_in_channel, update_channel_last_message
+from app.helpers.events import EventType
+from app.helpers.message_utils import blockify_content, get_message_mentioned_users, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
@@ -39,16 +34,15 @@ from app.services.crud import (
     get_items,
     update_item,
 )
+from app.services.events import broadcast_event
 from app.services.integrations import get_gif_by_url
-from app.services.users import get_user_by_id
-from app.services.websockets import broadcast_current_user_event, broadcast_message_event, broadcast_users_event
 
 logger = logging.getLogger(__name__)
 
 
 async def create_app_message(
     message_model: Union[WebhookMessageCreateSchema, AppInstallMessageCreateSchema, AppMessageCreateSchema],
-    current_app: App = None,
+    current_app: App,
 ):
     if isinstance(message_model, WebhookMessageCreateSchema):
         result_obj = WebhookMessage
@@ -65,8 +59,17 @@ async def create_app_message(
     message = await create_item(item=message_model, result_obj=result_obj, user_field=None)
 
     bg_tasks = [
-        (broadcast_message_event, (str(message.id), None, WebSocketServerEvent.MESSAGE_CREATE)),
-        (update_channel_last_message, (message.channel, message)),
+        (
+            broadcast_event,
+            (
+                EventType.MESSAGE_CREATE,
+                {
+                    "message": await message.to_dict(),
+                    "app": await current_app.to_dict(exclude_fields=["client_secret"]),
+                },
+            ),
+        ),
+        (update_channel_last_message, (message.channel, message.created_at)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -95,18 +98,21 @@ async def create_message(
         item=message_model, result_obj=result_obj, current_user=current_user, user_field="author"
     )
 
+    channel = await message.channel.fetch()
+    dump_channel = await channel.to_dict(exclude_fields=["permission_overwrites"])
+    dump_curr_user = await current_user.to_dict(exclude_fields=["pfp"])
+
     bg_tasks = [
-        (broadcast_message_event, (str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_CREATE)),
-        (update_channel_last_message, (message.channel, message)),
+        (broadcast_event, (EventType.MESSAGE_CREATE, {"message": message.dump()})),
+        (update_channel_last_message, (message.channel, message.created_at)),
         (
-            broadcast_current_user_event,
+            broadcast_event,
             (
-                str(current_user.id),
-                WebSocketServerEvent.CHANNEL_READ,
-                {"channel": (await message.channel.fetch()).dump(), "read_at": message.created_at.isoformat()},
+                EventType.CHANNEL_READ,
+                {"read_at": message.created_at.isoformat(), "channel": dump_channel, "user": dump_curr_user},
             ),
         ),
-        (process_message_mentions, (str(message.id),)),
+        (process_message_mentions, (str(message.pk),)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -134,10 +140,7 @@ async def update_message(message_id: str, update_data: MessageUpdateSchema, curr
         data.update({"edited_at": datetime.now(timezone.utc)})
 
     updated_item = await update_item(item=message, data=data)
-
-    await queue_bg_task(
-        broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_UPDATE
-    )
+    await queue_bg_task(broadcast_event, EventType.MESSAGE_UPDATE, {"message": updated_item.dump()})
 
     return updated_item
 
@@ -153,9 +156,7 @@ async def delete_message(message_id: str, current_user: User):
     if not can_delete:
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
-    await queue_bg_task(
-        broadcast_message_event, str(message.id), str(current_user.id), WebSocketServerEvent.MESSAGE_REMOVE
-    )
+    await queue_bg_task(broadcast_event, EventType.MESSAGE_REMOVE, {"message": message.dump()})
 
     await delete_item(item=message)
 
@@ -219,11 +220,9 @@ async def add_reaction_to_message(message_id, reaction_emoji: str, current_user:
     if added:
         await message.commit()
         await queue_bg_task(
-            broadcast_message_event,
-            str(message.id),
-            str(current_user.id),
-            WebSocketServerEvent.MESSAGE_REACTION_ADD,
-            {"reaction": reaction.dump(), "user": str(current_user.id)},
+            broadcast_event,
+            EventType.MESSAGE_REACTION_ADD,
+            {"message": message.dump(), "reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
     return message
@@ -261,11 +260,9 @@ async def remove_reaction_from_message(message_id, reaction_emoji: str, current_
     if removed:
         await message.commit()
         await queue_bg_task(
-            broadcast_message_event,
-            str(message.id),
-            str(current_user.id),
-            WebSocketServerEvent.MESSAGE_REACTION_REMOVE,
-            {"reaction": reaction.dump(), "user": str(current_user.id)},
+            broadcast_event,
+            EventType.MESSAGE_REACTION_REMOVE,
+            {"message": message.dump(), "reaction": reaction.dump(), "user": str(current_user.id)},
         )
 
     return message
@@ -294,35 +291,8 @@ async def post_process_message_creation(message_id: str):
 async def process_message_mentions(message_id: str):
     message = await get_item_by_id(id_=message_id, result_obj=Message)
     channel = await message.channel.fetch()
-    mentions = await get_message_mentions(message)
-    if not mentions:
-        return
 
-    users_to_notify = []
-
-    for mention_type, mention_ref in mentions:
-        logger.debug(f"should send notification of type '{mention_type}' to @{mention_ref}")
-
-        if mention_type == "user":
-            user_id = mention_ref
-            user = await get_user_by_id(user_id)
-            users_to_notify.append(user)
-
-        if mention_type == "broadcast":
-            if mention_ref == "here":
-                online_users = await get_channel_online_users(channel=channel)
-                users_to_notify.extend(online_users)
-            elif mention_ref == "channel" or mention_ref == "everyone":
-                channel_users = await get_channel_users(channel=channel)
-                users_to_notify.extend(channel_users)
-            else:
-                logger.warning(f"unknown mention reference: {mention_ref}")
-                continue
-
-    if len(users_to_notify) == 0:
-        logger.debug("no users to notify")
-        return
-
+    users_to_notify = await get_message_mentioned_users(message=message)
     for user in users_to_notify:
         user_in_channel = await is_user_in_channel(user=user, channel=channel)
         if not user_in_channel:
@@ -343,17 +313,6 @@ async def process_message_mentions(message_id: str):
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=user)
 
         # TODO: Create mention activity entry
-
-    await broadcast_users_event(
-        users=users_to_notify,
-        event=WebSocketServerEvent.NOTIFY_USER_MENTION,
-        custom_data={"message": message.dump()},
-    )
-
-    # TODO: Broadcast push notifications
-    offline_users = [user for user in users_to_notify if not user.status or user.status == "offline"]
-    if offline_users:
-        logger.debug(f"TBD | sending push notifications to {len(offline_users)} offline users")
 
 
 async def create_reply_message(

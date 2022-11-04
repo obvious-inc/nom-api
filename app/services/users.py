@@ -6,10 +6,10 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import HTTPException
 
+from app.helpers.events import EventType
 from app.helpers.pfp import extract_contract_and_token_from_string, upload_pfp_url_and_update_profile
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address, get_nft, get_nft_image_url, verify_token_ownership
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
 from app.models.server import ServerMember
@@ -17,7 +17,8 @@ from app.models.user import User
 from app.schemas.servers import ServerMemberUpdateSchema
 from app.schemas.users import UserCreateSchema, UserUpdateSchema
 from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
-from app.services.websockets import broadcast_server_event, broadcast_user_servers_event
+from app.services.events import broadcast_event
+from app.services.websockets import broadcast_server_event
 
 logger = logging.getLogger(__name__)
 
@@ -129,15 +130,14 @@ async def update_user_profile(
                 broadcast_server_event,
                 server_id,
                 str(current_user.id),
-                WebSocketServerEvent.SERVER_PROFILE_UPDATE,
+                EventType.SERVER_PROFILE_UPDATE,
                 {**data, "user": str(current_user.id), "member": str(profile.id)},
             )
         else:
             await queue_bg_task(
-                broadcast_user_servers_event,
-                str(current_user.id),
-                WebSocketServerEvent.USER_PROFILE_UPDATE,
-                {**data, "user": str(current_user.id)},
+                broadcast_event,
+                EventType.USER_PROFILE_UPDATE,
+                {**data, "user": await current_user.to_dict(exclude_fields=["pfp"])},
             )
 
     return updated_item

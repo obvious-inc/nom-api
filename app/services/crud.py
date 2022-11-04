@@ -69,7 +69,7 @@ async def create_items(
     return created_object_ids
 
 
-async def get_item_by_id(id_: str, result_obj: Type[APIDocumentType]) -> APIDocumentType:
+async def get_item_by_id(id_: Union[str, ObjectId, Reference], result_obj: Type[APIDocumentType]) -> APIDocumentType:
     id_ = await parse_object_id(id_)
     item = await result_obj.find_one({"_id": id_})
     return item

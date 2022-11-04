@@ -5,8 +5,8 @@ from fastapi import HTTPException
 from starlette import status
 
 from app.helpers.cache_utils import cache
+from app.helpers.events import EventType
 from app.helpers.queue_utils import queue_bg_task
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.section import Section
 from app.models.server import Server
 from app.models.user import User
@@ -36,7 +36,7 @@ async def create_section(server_id: str, section_model: SectionCreateSchema, cur
         broadcast_server_event,
         server_id,
         str(current_user.id),
-        WebSocketServerEvent.SERVER_SECTION_CREATE,
+        EventType.SERVER_SECTION_CREATE,
         {"server": server_id, "section": await section.to_dict()},
     )
 
@@ -56,7 +56,7 @@ async def update_section(section_id: str, update_data: SectionUpdateSchema, curr
         broadcast_server_event,
         str(server.pk),
         str(current_user.id),
-        WebSocketServerEvent.SERVER_SECTION_UPDATE,
+        EventType.SERVER_SECTION_UPDATE,
         {"server": str(server.pk), "section": await updated_section.to_dict()},
     )
 
@@ -107,7 +107,7 @@ async def update_server_sections(server_id: str, sections: List[SectionServerUpd
         broadcast_server_event,
         server_id,
         str(current_user.id),
-        WebSocketServerEvent.SERVER_SECTIONS_UPDATE,
+        EventType.SERVER_SECTIONS_UPDATE,
         {"server": server_id, "sections": [await section.to_dict() for section in final_sections]},
     )
 
@@ -127,7 +127,7 @@ async def delete_section(section_id: str, current_user: User):
         broadcast_server_event,
         str(server.pk),
         str(current_user.id),
-        WebSocketServerEvent.SERVER_SECTION_DELETE,
+        EventType.SERVER_SECTION_DELETE,
         {"server": str(server.pk), "section": await section.to_dict()},
     )
 

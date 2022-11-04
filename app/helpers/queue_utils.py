@@ -67,6 +67,7 @@ async def handle_results(results, tasks: List[Task]):
             logger.warning(f"Task was cancelled: {result} | task: {task}")
         elif isinstance(result, Exception):
             logger.error(f"Handling exception: {result} | task: {task}")
+            logger.exception(result)
             capture_exception(result)
 
 
@@ -89,6 +90,7 @@ async def dispatch_serial_fs(fs: List[tuple[Callable, tuple[Any, ...], dict]]):
         except Exception as e:
             logger.error(f"Handling exception: {e} | task: {task}")
             capture_exception(e)
+            logger.exception(e)
             break
 
 
