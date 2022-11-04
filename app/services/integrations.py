@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 from urllib.parse import urlparse
 
@@ -6,6 +7,8 @@ import aiohttp
 from app.config import get_settings
 from app.helpers.giphy import GiphyClient
 from app.helpers.tenor import TenorClient
+
+logger = logging.getLogger(__name__)
 
 
 async def _get_giphy_search(search_term: str, media_filter: Optional[str]):
@@ -102,6 +105,7 @@ async def generate_dalle_image(prompt: str):
             data: List[dict] = json_response.get("data")
 
             if not data or len(data) == 0:
-                raise Exception("no image generated")
+                logger.debug(f"DALL-E response: {json_response}")
+                raise ValueError(f"no image generated for prompt: {prompt}")
 
             return data[0]
