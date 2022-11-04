@@ -1,8 +1,16 @@
-from typing import Optional
+import http
+import logging
+from typing import List, Optional
 from urllib.parse import urlparse
 
+import aiohttp
+from fastapi import HTTPException
+
+from app.config import get_settings
 from app.helpers.giphy import GiphyClient
 from app.helpers.tenor import TenorClient
+
+logger = logging.getLogger(__name__)
 
 
 async def _get_giphy_search(search_term: str, media_filter: Optional[str]):
@@ -80,3 +88,26 @@ async def get_gif_by_url(gif_url: str):
         raise Exception(f"unexpected GIF domain: {parsed_url.hostname}")
 
     return gif
+
+
+async def generate_dalle_image(prompt: str):
+    settings = get_settings()
+    url = "https://api.openai.com/v1/images/generations"
+
+    headers = {
+        "Authorization": f"Bearer {settings.dalle_api_key}",
+        "Content-Type": "application/json",
+    }
+
+    json_data = {"prompt": prompt, "n": 1, "size": "512x512"}
+
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.post(url, json=json_data) as response:
+            json_response = await response.json()
+            data: List[dict] = json_response.get("data")
+
+            if not data:
+                logger.debug(f"DALL-E response: {json_response}")
+                raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST)
+
+            return data[0]
