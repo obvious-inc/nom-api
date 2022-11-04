@@ -32,8 +32,6 @@ class EventType(Enum):
     SERVER_SECTION_DELETE = "SERVER_SECTION_DELETE"
     SERVER_SECTIONS_UPDATE = "SERVER_SECTIONS_UPDATE"
 
-    NOTIFY_USER_MENTION = "NOTIFY_USER_MENTION"
-
 
 async def fetch_event_channel_scope(event: EventType) -> Optional[str]:
     if event in [
