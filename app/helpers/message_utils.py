@@ -198,3 +198,36 @@ async def get_message_mentioned_users(message: Message) -> List[User]:
         users.extend(await get_items(filters={"_id": {"$in": batch_user_ids}}, result_obj=User, limit=None))
 
     return users
+
+
+async def get_node_links(node):
+    node_type = node.get("type")
+    if node_type == "link":
+        return node.get("url")
+    else:
+        return None
+
+
+async def get_blocks_links(nodes: List[dict]):
+    links = []
+    for node in nodes:
+        node_links = await get_node_links(node)
+        if node_links:
+            links.append(node_links)
+
+        children = node.get("children")
+        if not children:
+            continue
+
+        child_links = await get_blocks_links(children)
+        if child_links:
+            links.extend(child_links)
+
+    return links
+
+
+async def get_message_links(message: Message) -> List[str]:
+    if not message.blocks:
+        return []
+
+    return await get_blocks_links(message.blocks)
