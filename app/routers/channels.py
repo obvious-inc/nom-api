@@ -25,6 +25,7 @@ from app.services.channels import (
     get_channel,
     get_channel_members,
     get_channel_permissions,
+    get_public_channels,
     invite_members_to_channel,
     join_channel,
     kick_member_from_channel,
@@ -35,6 +36,15 @@ from app.services.channels import (
 from app.services.messages import get_message, get_messages
 
 router = APIRouter()
+
+
+@router.get(
+    "/@public",
+    response_description="Get public channels",
+    response_model=List[EitherChannel],
+)
+async def get_fetch_public_channels():
+    return await get_public_channels()
 
 
 @router.post(

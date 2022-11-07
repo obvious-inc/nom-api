@@ -9,11 +9,13 @@ from app.models.base import APIDocument
 class User(APIDocument):
     display_name = fields.StrField()
     wallet_address = fields.StrField()
+    ens_domain = fields.StrField()
     email = fields.StrField()
     pfp = fields.DictField()
     description = fields.StrField()
-    online_channels = fields.ListField(fields.StrField(), required=False, default=[])
     status = fields.StrField(default="offline")
+
+    online_channels = fields.ListField(fields.StrField(), required=False, default=[])
     push_tokens = fields.ListField(fields.StrField(), required=False, default=[])
 
     class Meta:

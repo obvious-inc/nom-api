@@ -47,9 +47,9 @@ class Settings(BaseSettings):
 
     giphy_api_key: Optional[str]
     tenor_api_key: Optional[str]
-
     alchemy_api_key: Optional[str]
     simplehash_api_key: Optional[str]
+    dalle_api_key: Optional[str]
 
     auto_join_channel_ids: Optional[str]
 

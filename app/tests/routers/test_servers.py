@@ -181,6 +181,7 @@ class TestServerRoutes:
         assert member is not None
         assert member.user == guest_user
 
+    @pytest.mark.skip("Not using guild.xyz at the moment")
     @pytest.mark.asyncio
     async def test_join_server_guild_rules_ok(
         self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
@@ -199,6 +200,7 @@ class TestServerRoutes:
         assert member is not None
         assert member.user == guest_user
 
+    @pytest.mark.skip("Not using guild.xyz at the moment")
     @pytest.mark.asyncio
     async def test_join_server_guild_rules_nok(
         self, app: FastAPI, db: Database, server: Server, guest_user: User, get_authorized_client: Callable
@@ -216,6 +218,7 @@ class TestServerRoutes:
         member = await get_item(filters={"server": server.pk, "user": guest_user.pk}, result_obj=ServerMember)
         assert member is None
 
+    @pytest.mark.skip("Not using guild.xyz at the moment")
     @pytest.mark.asyncio
     async def test_join_server_allowlist_ok_and_guild_nok(
         self,
@@ -242,6 +245,7 @@ class TestServerRoutes:
         assert member is not None
         assert member.user == guest_user
 
+    @pytest.mark.skip("Not using guild.xyz at the moment")
     @pytest.mark.asyncio
     async def test_join_server_allowlist_nok_and_guild_ok(
         self,
@@ -333,6 +337,7 @@ class TestServerRoutes:
             else:
                 assert json_response[field] == original_response[field]
 
+    @pytest.mark.skip("Not using guild.xyz at the moment")
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "rules, is_eligible",

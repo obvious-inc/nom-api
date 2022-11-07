@@ -4,6 +4,7 @@ from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 
 from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIBaseUpdateSchema, PyObjectId
+from app.schemas.permissions import PermissionCreateSchema
 
 
 class ChannelSchema(APIBaseSchema):
@@ -79,6 +80,7 @@ class TopicChannelCreateSchema(ChannelCreateSchema):
     members: Optional[List[str]] = []
     description: Optional[str] = ""
     avatar: Optional[str] = ""
+    permission_overwrites: Optional[List[PermissionCreateSchema]] = []
 
 
 class ServerChannelCreateSchema(ChannelCreateSchema):

@@ -663,7 +663,7 @@ class TestChannelsRoutes:
             content="webhook message!",
             channel=str(integration_app_webhook.channel.pk),
         )
-        await create_app_message(message_model=wh_message_model)
+        await create_app_message(message_model=wh_message_model, current_app=integration_app)
 
         response = await authorized_client.get(f"/channels/{str(server_channel.pk)}/messages")
         assert response.status_code == 200
@@ -1262,3 +1262,321 @@ class TestChannelsRoutes:
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.get(f"/channels/{str(topic_channel.pk)}/members")
         assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel_with_permissions(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        data = {
+            "kind": "topic",
+            "name": "my-open-channel",
+            "permission_overwrites": [{"group": "@public", "permissions": ["messages.list", "channels.view"]}],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+
+        channel_id = json_response["id"]
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel_with_permissions_wrong_group(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+    ):
+        data = {
+            "kind": "topic",
+            "name": "my-open-channel",
+            "permission_overwrites": [{"group": "@random", "permissions": ["messages.list", "channels.view"]}],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_create_open_topic_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        data = {
+            "kind": "topic",
+            "name": "my-open-channel",
+            "permission_overwrites": [
+                {"group": "@public", "permissions": ["channels.view", "messages.list", "messages.create"]},
+            ],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response != {}
+        assert "owner" in json_response
+        assert json_response["owner"] == str(current_user.id)
+
+        channel_id = json_response["id"]
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+        data = {"content": "hey", "channel": channel_id}
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 201
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+
+    @pytest.mark.asyncio
+    async def test_create_closed_topic_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+
+        closed_member = await create_new_user()
+        guest_user = await create_new_user()
+
+        data = {
+            "kind": "topic",
+            "name": "my-closed-channel",
+            "members": [str(closed_member.pk)],
+            "permission_overwrites": [
+                {"group": "@public", "permissions": ["channels.view", "messages.list"]},
+            ],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        channel_id = json_response["id"]
+
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+        data = {"content": "hey", "channel": channel_id}
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 403
+
+        member_client = await get_authorized_client(closed_member)
+        response = await member_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await member_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+        data = {"content": "hey", "channel": channel_id}
+        response = await member_client.post("/messages", json=data)
+        assert response.status_code == 201
+
+        test_wallet_add = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+        data = {"members": [test_wallet_add]}
+        response = await member_client.post(f"/channels/{channel_id}/invite", json=data)
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_create_closed_mutable_topic_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+
+        closed_member = await create_new_user()
+        guest_user = await create_new_user()
+
+        data = {
+            "kind": "topic",
+            "name": "my-closed-channel",
+            "members": [str(closed_member.pk)],
+            "permission_overwrites": [
+                {"group": "@public", "permissions": ["channels.view", "messages.list"]},
+                {
+                    "group": "@members",
+                    "permissions": ["channels.view", "messages.list", "messages.create", "channels.invite"],
+                },
+            ],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        channel_id = json_response["id"]
+
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+        data = {"content": "hey", "channel": channel_id}
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 403
+
+        member_client = await get_authorized_client(closed_member)
+        response = await member_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await member_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+        data = {"content": "hey", "channel": channel_id}
+        response = await member_client.post("/messages", json=data)
+        assert response.status_code == 201
+
+        test_wallet_add = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+        data = {"members": [test_wallet_add]}
+        response = await member_client.post(f"/channels/{channel_id}/invite", json=data)
+        assert response.status_code == 204
+
+    @pytest.mark.asyncio
+    async def test_create_private_topic_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+
+        closed_member = await create_new_user()
+        guest_user = await create_new_user()
+
+        data = {"kind": "topic", "name": "my-private-channel", "members": [str(closed_member.pk)]}
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        channel_id = json_response["id"]
+
+        guest_client = await get_authorized_client(guest_user)
+        response = await guest_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 403
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 403
+
+        data = {"content": "hey", "channel": channel_id}
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 403
+
+        member_client = await get_authorized_client(closed_member)
+        response = await member_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await member_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+        data = {"content": "hey", "channel": channel_id}
+        response = await member_client.post("/messages", json=data)
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_create_private_immutable_topic_channel(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        data = {
+            "kind": "topic",
+            "name": "my-private-immutable-channel",
+            "permission_overwrites": [
+                {
+                    "group": "@owners",
+                    "permissions": ["messages.list", "messages.create", "channels.view", "channels.members.list"],
+                }
+            ],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        channel_id = json_response["id"]
+
+        response = await authorized_client.get(f"/channels/{channel_id}")
+        assert response.status_code == 200
+
+        response = await authorized_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+        data = {"content": "hey", "channel": channel_id}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+
+        test_wallet_add = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+        data = {"members": [test_wallet_add]}
+        response = await authorized_client.post(f"/channels/{channel_id}/invite", json=data)
+        assert response.status_code == 403
+
+        tc = await get_item_by_id(id_=channel_id, result_obj=Channel)
+        assert len(tc.members) == 1
+        assert tc.members[0] == current_user
+
+    @pytest.mark.asyncio
+    async def test_fetch_public_channels(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, client
+    ):
+        data = {
+            "kind": "topic",
+            "name": "my-open-channel",
+            "permission_overwrites": [
+                {"group": "@public", "permissions": ["channels.view", "messages.list"]},
+            ],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        public_channel_id = json_response["id"]
+
+        data = {
+            "kind": "topic",
+            "name": "my-open-channel",
+            "permission_overwrites": [
+                {"group": "@public", "permissions": ["channels.view"]},
+                {"group": "@members", "permissions": ["channels.view", "messages.list"]},
+            ],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+
+        response = await client.get("/channels/@public")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert json_response[0]["id"] == public_channel_id

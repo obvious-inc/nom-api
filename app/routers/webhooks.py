@@ -5,8 +5,8 @@ from fastapi import APIRouter, Body, Header, HTTPException, Request
 from sentry_sdk import capture_exception
 from starlette import status
 
+from app.helpers.pusher import pusher_client
 from app.helpers.queue_utils import queue_bg_task
-from app.helpers.websockets import pusher_client
 from app.models.webhook import Webhook
 from app.schemas.messages import WebhookMessageCreateSchema
 from app.services.crud import get_item_by_id

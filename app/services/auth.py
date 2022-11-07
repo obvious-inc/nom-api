@@ -81,7 +81,7 @@ async def generate_wallet_token(data: AuthWalletSchema) -> AccessTokenSchema:
 
     user = await get_user_by_wallet_address(wallet_address=signed_address)
     if not user:
-        user = await create_user(UserCreateSchema(wallet_address=signed_address), fetch_ens=True)
+        user = await create_user(UserCreateSchema(wallet_address=signed_address))
 
     await add_user_to_default_channels(str(user.pk))
 

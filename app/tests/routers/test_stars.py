@@ -16,62 +16,59 @@ class TestStarsRoutes:
     async def test_create_star_channel_message(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, channel_message: Message
     ):
-        data = {"message": str(channel_message.id)}
+        data = {"type": "message", "reference": str(channel_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
         json_response = response.json()
         assert json_response["type"] == "message"
-        assert json_response["message"] == str(channel_message.id)
+        assert json_response["reference"] == str(channel_message.id)
 
     @pytest.mark.asyncio
     async def test_create_star_dm(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, direct_message: Message
     ):
-        data = {"message": str(direct_message.id)}
+        data = {"type": "message", "reference": str(direct_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
         json_response = response.json()
         assert json_response["type"] == "message"
-        assert json_response["message"] == str(direct_message.id)
+        assert json_response["reference"] == str(direct_message.id)
 
     @pytest.mark.asyncio
     async def test_create_star_server_channel(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server_channel: Channel
     ):
-        data = {"channel": str(server_channel.id)}
+        data = {"type": "channel", "reference": str(server_channel.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
         json_response = response.json()
         assert json_response["type"] == "channel"
-        assert json_response["channel"] == str(server_channel.id)
+        assert json_response["reference"] == str(server_channel.id)
 
     @pytest.mark.asyncio
     async def test_create_star_dm_channel(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, dm_channel: Channel
     ):
-        data = {"channel": str(dm_channel.id)}
+        data = {"type": "channel", "reference": str(dm_channel.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
         json_response = response.json()
         assert json_response["type"] == "channel"
-        assert json_response["channel"] == str(dm_channel.id)
+        assert json_response["reference"] == str(dm_channel.id)
 
     @pytest.mark.asyncio
     async def test_create_star_server(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
     ):
-        data = {"server": str(server.id)}
+        data = {"type": "server", "reference": str(server.id)}
         response = await authorized_client.post("/stars", json=data)
-        assert response.status_code == 201
-        json_response = response.json()
-        assert json_response["type"] == "server"
-        assert json_response["server"] == str(server.id)
+        assert response.status_code == 400
 
     @pytest.mark.asyncio
     async def test_create_star_random(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
     ):
-        data = {"random": "whatevz"}
+        data = {"type": "random", "reference": "whatevz"}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 400
 
@@ -79,7 +76,7 @@ class TestStarsRoutes:
     async def test_create_star_multiple_times(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, channel_message: Message
     ):
-        data = {"message": str(channel_message.id)}
+        data = {"type": "message", "reference": str(channel_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
 
@@ -103,7 +100,7 @@ class TestStarsRoutes:
         get_authorized_client: Callable,
         channel_message: Message,
     ):
-        data = {"message": str(channel_message.id)}
+        data = {"type": "message", "reference": str(channel_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
 
@@ -127,7 +124,7 @@ class TestStarsRoutes:
         stars = (await authorized_client.get("/stars")).json()
         assert len(stars) == 0
 
-        data = {"message": str(channel_message.id)}
+        data = {"type": "message", "reference": str(channel_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
 
@@ -135,13 +132,13 @@ class TestStarsRoutes:
 
         assert len(stars) == 1
         assert stars[0]["type"] == "message"
-        assert stars[0]["message"] == str(channel_message.id)
+        assert stars[0]["reference"] == str(channel_message.id)
 
     @pytest.mark.asyncio
     async def test_delete_star(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, channel_message: Message
     ):
-        data = {"message": str(channel_message.id)}
+        data = {"type": "message", "reference": str(channel_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
 
@@ -154,7 +151,7 @@ class TestStarsRoutes:
     async def test_delete_star_multiple_times(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, channel_message: Message
     ):
-        data = {"message": str(channel_message.id)}
+        data = {"type": "message", "reference": str(channel_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
         star_id = response.json()["id"]
@@ -191,7 +188,7 @@ class TestStarsRoutes:
         get_authorized_client: Callable,
         channel_message: Message,
     ):
-        data = {"message": str(channel_message.id)}
+        data = {"type": "message", "reference": str(channel_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
         star_id = response.json()["id"]
@@ -207,7 +204,7 @@ class TestStarsRoutes:
     async def test_get_message_stars(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, channel_message: Message
     ):
-        data = {"message": str(channel_message.id)}
+        data = {"type": "message", "reference": str(channel_message.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
 
@@ -220,18 +217,17 @@ class TestStarsRoutes:
         stars = response.json()
         assert len(stars) == 1
         assert stars[0]["type"] == "message"
-        assert stars[0]["message"] == data["message"]
+        assert stars[0]["reference"] == data["reference"]
 
     @pytest.mark.asyncio
     async def test_get_channel_stars(
         self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server_channel: Channel
     ):
-        data = {"channel": str(server_channel.id)}
+        data = {"type": "channel", "reference": str(server_channel.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
 
         assert (await authorized_client.get("/stars?type=message")).json() == []
-        assert (await authorized_client.get("/stars?type=server")).json() == []
 
         response = await authorized_client.get("/stars?type=channel")
         assert response.status_code == 200
@@ -239,23 +235,93 @@ class TestStarsRoutes:
         stars = response.json()
         assert len(stars) == 1
         assert stars[0]["type"] == "channel"
-        assert stars[0]["channel"] == data["channel"]
+        assert stars[0]["reference"] == data["reference"]
 
     @pytest.mark.asyncio
-    async def test_get_server_stars(
-        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, server: Server
+    async def test_create_star_user(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        create_new_user: Callable,
     ):
-        data = {"server": str(server.id)}
+        fake_user = await create_new_user()
+        data = {"type": "user", "reference": str(fake_user.id)}
+        response = await authorized_client.post("/stars", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response["type"] == "user"
+        assert json_response["reference"] == str(fake_user.id)
+
+    @pytest.mark.asyncio
+    async def test_get_user_stars(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        create_new_user: Callable,
+    ):
+        fake_user = await create_new_user()
+        data = {"type": "user", "reference": str(fake_user.id)}
         response = await authorized_client.post("/stars", json=data)
         assert response.status_code == 201
 
         assert (await authorized_client.get("/stars?type=channel")).json() == []
         assert (await authorized_client.get("/stars?type=message")).json() == []
 
-        response = await authorized_client.get("/stars?type=server")
+        response = await authorized_client.get("/stars?type=user")
         assert response.status_code == 200
 
         stars = response.json()
         assert len(stars) == 1
-        assert stars[0]["type"] == "server"
-        assert stars[0]["server"] == data["server"]
+        assert stars[0]["type"] == "user"
+        assert stars[0]["reference"] == data["reference"]
+
+    @pytest.mark.asyncio
+    async def test_create_star_wallet_address(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        create_new_user: Callable,
+        wallet,
+    ):
+        data = {"type": "wallet_address", "reference": wallet}
+        response = await authorized_client.post("/stars", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        assert json_response["type"] == "wallet_address"
+        assert json_response["reference"] == wallet
+
+    @pytest.mark.asyncio
+    async def test_get_wallet_stars(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        server: Server,
+        create_new_user: Callable,
+        wallet,
+    ):
+        data = {"type": "wallet_address", "reference": wallet}
+        response = await authorized_client.post("/stars", json=data)
+        assert response.status_code == 201
+
+        assert (await authorized_client.get("/stars?type=channel")).json() == []
+        assert (await authorized_client.get("/stars?type=message")).json() == []
+        assert (await authorized_client.get("/stars?type=user")).json() == []
+
+        response = await authorized_client.get("/stars?type=wallet_address")
+        assert response.status_code == 200
+
+        stars = response.json()
+        assert len(stars) == 1
+        assert stars[0]["type"] == "wallet_address"
+        assert stars[0]["reference"] == wallet

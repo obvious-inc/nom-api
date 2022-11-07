@@ -882,16 +882,16 @@ class TestMessagesRoutes:
         db: Database,
         current_user: User,
         authorized_client: AsyncClient,
-        server: Server,
-        server_channel: Channel,
         create_new_user: Callable,
         get_authorized_client: Callable,
+        topic_channel: Channel,
     ):
         guest_user = await create_new_user()
-        guest_client = await get_authorized_client(guest_user)
+        invite_data = {"members": [str(guest_user.pk)]}
+        response = await authorized_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=invite_data)
+        assert response.status_code == 204
 
-        response = await guest_client.post(f"/servers/{str(server.pk)}/join")
-        assert response.status_code == 201
+        guest_client = await get_authorized_client(guest_user)
 
         data = {
             "blocks": [
@@ -904,8 +904,7 @@ class TestMessagesRoutes:
                     ],
                 }
             ],
-            "server": str(server.id),
-            "channel": str(server_channel.id),
+            "channel": str(topic_channel.pk),
         }
         response = await guest_client.post("/messages", json=data)
         assert response.status_code == 201
@@ -926,6 +925,7 @@ class TestMessagesRoutes:
         assert "mention_count" in json_response[0]
         assert json_response[0]["mention_count"] == 1
 
+    @pytest.mark.skip("No support for group broadcast yet")
     @pytest.mark.asyncio
     async def test_create_message_broadcast_mention_count_increase(
         self,
@@ -1011,7 +1011,7 @@ class TestMessagesRoutes:
             content="webhook message!",
             channel=str(integration_app_webhook.channel.pk),
         )
-        wh_message = await create_app_message(message_model=wh_message_model)
+        wh_message = await create_app_message(message_model=wh_message_model, current_app=integration_app)
 
         response = await authorized_client.get(f"/channels/{str(server_channel.id)}/messages/{str(wh_message.id)}")
         assert response.status_code == 200

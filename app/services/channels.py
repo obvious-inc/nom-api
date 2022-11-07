@@ -1,4 +1,5 @@
 import http
+import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -11,16 +12,15 @@ from starlette import status
 
 from app.helpers import cloudflare
 from app.helpers.cache_utils import cache
-from app.helpers.channels import convert_permission_object_to_cached
+from app.helpers.channels import convert_permission_object_to_cached, is_user_in_channel
+from app.helpers.events import EventType
 from app.helpers.permissions import fetch_user_permissions, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address
-from app.helpers.ws_events import WebSocketServerEvent
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.common import PermissionOverwrite
 from app.models.section import Section
-from app.models.server import ServerMember
 from app.models.user import User
 from app.schemas.channels import (
     ChannelBulkReadStateCreateSchema,
@@ -42,9 +42,9 @@ from app.services.crud import (
     get_items,
     update_item,
 )
+from app.services.events import broadcast_event
 from app.services.messages import create_message
 from app.services.users import create_user, get_user_by_wallet_address
-from app.services.websockets import broadcast_channel_event
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ async def parse_member_list(members: List[str], create_if_not_user: bool = True)
             wallet_addr = checksum_address(member)
             user = await get_user_by_wallet_address(wallet_address=wallet_addr)
             if not user and create_if_not_user:
-                user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr), fetch_ens=True)
+                user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr))
         else:
             user = await get_item_by_id(id_=member, result_obj=User)
 
@@ -167,11 +167,9 @@ async def delete_channel(channel_id, current_user: User):
         capture_exception(e)
 
     await queue_bg_task(
-        broadcast_channel_event,
-        channel_id,
-        str(current_user.id),
-        WebSocketServerEvent.CHANNEL_DELETED,
-        {"channel": channel_id},
+        broadcast_event,
+        EventType.CHANNEL_DELETED,
+        {"channel": await channel.to_dict(exclude_fields=["permission_overwrites"])},
     )
 
     return deleted_channel
@@ -207,25 +205,20 @@ async def update_channels_read_state(channel_ids: List[str], current_user: User,
 
 async def create_typing_indicator(channel_id: str, current_user: User) -> None:
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
-    notify = False
 
-    if channel.kind == "server":
-        user_member = await get_item(
-            filters={"user": current_user, "server": channel.server.pk},
-            result_obj=ServerMember,
-        )
-        notify = True if user_member else False
-    elif channel.kind == "dm" or channel.kind == "topic":
-        notify = current_user in channel.members
+    user_in_channel = await is_user_in_channel(user=current_user, channel=channel)
 
-    if notify:
-        await queue_bg_task(
-            broadcast_channel_event,
-            channel_id,
-            str(current_user.id),
-            WebSocketServerEvent.USER_TYPING,
-            {"user": await current_user.to_dict(exclude_fields=["pfp"])},
-        )
+    if not user_in_channel:
+        return
+
+    await queue_bg_task(
+        broadcast_event,
+        EventType.USER_TYPING,
+        {
+            "user": await current_user.to_dict(exclude_fields=["pfp"]),
+            "channel": await channel.to_dict(exclude_fields=["permission_overwrites"]),
+        },
+    )
 
 
 async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, current_user: User):
@@ -253,11 +246,9 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
     updated_item = await update_item(item=channel, data=data)
 
     await queue_bg_task(
-        broadcast_channel_event,
-        channel_id,
-        str(current_user.id),
-        WebSocketServerEvent.CHANNEL_UPDATE,
-        {"channel": updated_item.dump()},
+        broadcast_event,
+        EventType.CHANNEL_UPDATE,
+        {"channel": await updated_item.to_dict(exclude_fields=["permission_overwrites"])},
     )
 
     updated_fields = list(data.keys())
@@ -291,11 +282,12 @@ async def invite_members_to_channel(channel_id: str, members: List[str], current
 
     for new_user in new_users:
         await queue_bg_task(
-            broadcast_channel_event,
-            channel_id,
-            str(new_user.pk),
-            WebSocketServerEvent.CHANNEL_USER_INVITED,
-            {"channel": channel_id, "user": await new_user.to_dict(exclude_fields=["pfp"])},
+            broadcast_event,
+            EventType.CHANNEL_USER_INVITED,
+            {
+                "channel": await channel.to_dict(exclude_fields=["permission_overwrites"]),
+                "user": await new_user.to_dict(exclude_fields=["pfp"]),
+            },
         )
 
         message = SystemMessageCreateSchema(channel=channel_id, type=1, inviter=str(current_user.pk))
@@ -353,11 +345,12 @@ async def join_channel(channel_id: str, current_user: User):
     await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in current_channel_members]))
 
     await queue_bg_task(
-        broadcast_channel_event,
-        channel_id,
-        str(current_user.pk),
-        WebSocketServerEvent.CHANNEL_USER_JOINED,
-        {"channel": channel_id, "user": await current_user.to_dict(exclude_fields=["pfp"])},
+        broadcast_event,
+        EventType.CHANNEL_USER_JOINED,
+        {
+            "channel": await channel.to_dict(exclude_fields=["permission_overwrites"]),
+            "user": await current_user.to_dict(exclude_fields=["pfp"]),
+        },
     )
 
     message = SystemMessageCreateSchema(channel=channel_id, type=1)
@@ -382,3 +375,37 @@ async def get_channel_members(channel_id: str):
 
 async def get_user_channels(current_user: User):
     return await get_items(filters={"members": current_user.pk}, result_obj=Channel, limit=None)
+
+
+async def get_public_channels():
+    cache_key = "discovery:channels:@public"
+
+    cached_channel_ids = await cache.client.get(cache_key)
+    if cached_channel_ids:
+        channel_ids = json.loads(cached_channel_ids)
+        channel_pks = [ObjectId(channel_id) for channel_id in channel_ids]
+        channels = await get_items(filters={"_id": {"$in": channel_pks}}, result_obj=Channel, limit=None)
+    else:
+        channel_docs = await Channel.collection.aggregate(
+            [
+                {
+                    "$match": {
+                        "deleted": False,
+                        "kind": "topic",
+                        "permission_overwrites": {
+                            "$elemMatch": {
+                                "group": "@public",
+                                "permissions": {"$all": ["messages.list", "channels.view"]},
+                            }
+                        },
+                    }
+                },
+                {"$sort": {"members": -1}},
+                {"$limit": 20},
+            ]
+        ).to_list(length=None)
+        channels = [Channel.build_from_mongo(channel) for channel in channel_docs]
+        channel_ids = [str(channel.pk) for channel in channels]
+        await cache.client.set(cache_key, json.dumps(channel_ids), ex=3600)
+
+    return channels
