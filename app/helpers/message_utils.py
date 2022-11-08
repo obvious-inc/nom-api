@@ -1,12 +1,13 @@
 import logging
 import re
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from bson import ObjectId
 
 from app.helpers.list_utils import batch_list
 from app.models.message import Message
 from app.models.user import User
+from app.schemas.messages import MessageCreateSchema, SystemMessageCreateSchema
 from app.services.crud import get_item_by_id, get_items
 
 logger = logging.getLogger(__name__)
@@ -198,3 +199,28 @@ async def get_message_mentioned_users(message: Message) -> List[User]:
         users.extend(await get_items(filters={"_id": {"$in": batch_user_ids}}, result_obj=User, limit=None))
 
     return users
+
+
+async def is_message_empty(message_model: Union[MessageCreateSchema, SystemMessageCreateSchema]) -> bool:
+    if not message_model.blocks or len(message_model.blocks) == 0:
+        return True
+
+    if len(message_model.blocks) > 1:
+        return False
+
+    single_block = message_model.blocks[0]
+
+    if single_block.get("type") != "paragraph":
+        return False
+
+    paragraph_children = single_block.get("children", [])
+    if len(paragraph_children) > 1:
+        return False
+
+    paragraph_child = paragraph_children[0]
+
+    text = paragraph_child.get("text")
+    if text == "":
+        return True
+
+    return False

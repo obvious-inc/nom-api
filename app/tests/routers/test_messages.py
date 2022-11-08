@@ -1311,3 +1311,16 @@ class TestMessagesRoutes:
         assert json_response["app"] is not None
         assert json_response["app"] == str(integration_app.pk)
         assert json_response["type"] == 3
+
+    @pytest.mark.asyncio
+    async def test_create_empty_message_fails(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+    ):
+        data = {"blocks": [{"type": "paragraph", "children": [{"text": ""}]}], "channel": str(topic_channel.pk)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 400

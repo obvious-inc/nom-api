@@ -2,7 +2,8 @@ from typing import List
 
 import pytest
 
-from app.helpers.message_utils import get_message_content_mentions, stringify_blocks
+from app.helpers.message_utils import get_message_content_mentions, is_message_empty, stringify_blocks
+from app.schemas.messages import MessageCreateSchema
 
 
 class TestMessageUtils:
@@ -165,3 +166,33 @@ class TestMessageUtils:
     )
     async def test_stringify_blocks(self, blocks: List[dict], text: str):
         assert await stringify_blocks(blocks) == text
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "blocks, expected_is_empty",
+        [
+            ([{"type": "paragraph", "children": [{"text": "hey"}]}], False),
+            ([{"type": "paragraph", "children": [{"text": ""}]}], True),
+            (
+                [
+                    {"type": "paragraph", "children": [{"text": "hey"}]},
+                    {"type": "paragraph", "children": [{"text": "there"}]},
+                    {"type": "paragraph", "children": []},
+                    {"type": "paragraph", "children": [{"text": "multiline text"}]},
+                ],
+                False,
+            ),
+            (
+                [
+                    {
+                        "type": "paragraph",
+                        "children": [{"text": "", "bold": True}],
+                    }
+                ],
+                True,
+            ),
+        ],
+    )
+    async def test_is_message_empty_model(self, blocks: List[dict], expected_is_empty: bool):
+        message_model = MessageCreateSchema(blocks=blocks)
+        assert await is_message_empty(message_model) is expected_is_empty

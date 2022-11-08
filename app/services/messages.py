@@ -6,10 +6,11 @@ from urllib.parse import urlparse
 
 from bson import ObjectId
 from fastapi import HTTPException
+from starlette import status
 
 from app.helpers.channels import is_user_in_channel, update_channel_last_message
 from app.helpers.events import EventType
-from app.helpers.message_utils import blockify_content, get_message_mentioned_users, stringify_blocks
+from app.helpers.message_utils import blockify_content, get_message_mentioned_users, is_message_empty, stringify_blocks
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.models.app import App
 from app.models.base import APIDocument
@@ -88,6 +89,9 @@ async def create_message(
         message_model.blocks = await blockify_content(message_model.content)
     else:
         pass
+
+    if await is_message_empty(message_model):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty message")
 
     if isinstance(message_model, SystemMessageCreateSchema):
         result_obj = SystemMessage
