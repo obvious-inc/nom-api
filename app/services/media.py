@@ -5,7 +5,7 @@ from fastapi import HTTPException, UploadFile
 
 from app.config import get_settings
 from app.helpers.aws import upload_file
-from app.helpers.cloudflare import upload_images
+from app.helpers.cloudflare import upload_image_url, upload_images
 from app.models.user import User
 
 
@@ -32,3 +32,7 @@ async def upload_image_files(images: List[UploadFile], current_user: User):
         images,
         prefix=str(current_user.id),
     )
+
+
+async def upload_image_from_url(image_url: str, current_user: User) -> dict:
+    return await upload_image_url(image_url=image_url, prefix=str(current_user.pk))
