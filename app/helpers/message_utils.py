@@ -202,6 +202,9 @@ async def get_message_mentioned_users(message: Message) -> List[User]:
 
 
 async def is_message_empty(message_model: Union[MessageCreateSchema, SystemMessageCreateSchema]) -> bool:
+    if message_model.type != 0:
+        return False
+
     if not message_model.blocks or len(message_model.blocks) == 0:
         return True
 
