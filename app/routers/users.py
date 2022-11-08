@@ -1,15 +1,24 @@
 from typing import List, Optional, Union
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Response
+from starlette.status import HTTP_204_NO_CONTENT
 
 from app.dependencies import PermissionsChecker, get_current_user
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateSchema, EitherChannel
+from app.schemas.preferences import UserPreferencesSchema, UserPreferencesUpdateSchema
 from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
 from app.schemas.users import EitherUserProfile, PublicUserSchema, UserUpdateSchema
 from app.services.channels import get_user_channels
 from app.services.servers import get_user_servers
-from app.services.users import get_user_profile_by_server_id, get_user_read_states, get_users_info, update_user_profile
+from app.services.users import (
+    get_user_preferences,
+    get_user_profile_by_server_id,
+    get_user_read_states,
+    get_users_info,
+    update_user_preferences,
+    update_user_profile,
+)
 
 router = APIRouter()
 
@@ -58,3 +67,19 @@ async def fetch_get_user_channels(current_user: User = Depends(get_current_user)
 )
 async def post_get_users_info(data=Body(...)):
     return await get_users_info(data)
+
+
+@router.get("/me/preferences", summary="Get user preferences", response_model=UserPreferencesSchema)
+async def fetch_get_user_preferences(current_user: User = Depends(get_current_user)):
+    user_preferences = await get_user_preferences(current_user)
+    if not user_preferences:
+        return Response(status_code=HTTP_204_NO_CONTENT)
+
+    return user_preferences
+
+
+@router.put("/me/preferences", summary="Update user preferences", response_model=UserPreferencesSchema)
+async def put_update_user_preferences(
+    update_data: UserPreferencesUpdateSchema = Body(...), current_user: User = Depends(get_current_user)
+):
+    return await update_user_preferences(update_data, current_user)

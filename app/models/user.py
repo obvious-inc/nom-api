@@ -33,3 +33,13 @@ class Role(APIDocument):
     class Meta:
         collection_name = "roles"
         indexes = ["server"]
+
+
+@instance.register
+class UserPreferences(APIDocument):
+    user = fields.ReferenceField("User")
+    channels = fields.DictField(required=False, default=[])
+
+    class Meta:
+        collection_name = "users_preferences"
+        indexes = ["user"]

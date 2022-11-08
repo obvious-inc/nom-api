@@ -139,3 +139,66 @@ class TestUserRoutes:
         await current_user.reload()
         assert len(current_user.push_tokens) == 1
         assert current_user.push_tokens == data["push_tokens"]
+
+    @pytest.mark.asyncio
+    async def test_get_empty_user_preferences(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient
+    ):
+        response = await authorized_client.get("/users/me/preferences")
+        assert response.status_code == 204
+
+    @pytest.mark.asyncio
+    async def test_patch_user_preferences_create(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+    ):
+        data = {"channels": {str(topic_channel.pk): {"muted": True}}}
+        response = await authorized_client.put("/users/me/preferences", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response != {}
+
+        response = await authorized_client.get("/users/me/preferences")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response != {}
+        assert "channels" in json_response
+        channel_prefs = json_response.get("channels")
+        topic_channel_prefs = channel_prefs.get(str(topic_channel.pk))
+        assert topic_channel_prefs is not None
+        assert topic_channel_prefs != {}
+
+    @pytest.mark.asyncio
+    async def test_patch_user_preferences_update(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+    ):
+        data = {"channels": {str(topic_channel.pk): {"muted": True}}}
+        response = await authorized_client.put("/users/me/preferences", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert "channels" in json_response
+        channel_prefs = json_response.get("channels")
+        topic_channel_prefs = channel_prefs.get(str(topic_channel.pk))
+        assert topic_channel_prefs is not None
+        assert topic_channel_prefs != {}
+        assert topic_channel_prefs.get("muted") is True
+
+        data = {"channels": {str(topic_channel.pk): {"muted": False}}}
+        response = await authorized_client.put("/users/me/preferences", json=data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert "channels" in json_response
+        channel_prefs = json_response.get("channels")
+        topic_channel_prefs = channel_prefs.get(str(topic_channel.pk))
+        assert topic_channel_prefs is not None
+        assert topic_channel_prefs != {}
+        assert topic_channel_prefs.get("muted") is False

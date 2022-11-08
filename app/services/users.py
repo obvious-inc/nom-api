@@ -13,7 +13,8 @@ from app.helpers.w3 import checksum_address, get_nft, get_nft_image_url, verify_
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
 from app.models.server import ServerMember
-from app.models.user import User
+from app.models.user import User, UserPreferences
+from app.schemas.preferences import UserPreferencesUpdateSchema
 from app.schemas.servers import ServerMemberUpdateSchema
 from app.schemas.users import UserCreateSchema, UserUpdateSchema
 from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
@@ -157,3 +158,17 @@ async def get_users_info(data: dict):
             pass
 
     return await get_items(filters={"_id": {"$in": user_obj_ids}}, result_obj=User)
+
+
+async def get_user_preferences(current_user: User):
+    return await get_item(filters={"user": current_user.pk}, result_obj=UserPreferences)
+
+
+async def update_user_preferences(update_data: UserPreferencesUpdateSchema, current_user: User) -> UserPreferences:
+    current_prefs = await get_user_preferences(current_user)
+
+    if not current_prefs:
+        return await create_item(item=update_data, result_obj=UserPreferences, current_user=current_user)
+
+    data = update_data.dict(exclude_unset=True)
+    return await update_item(item=current_prefs, data=data)
