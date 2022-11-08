@@ -1,12 +1,18 @@
 import datetime
 import json
+import re
 from typing import Any, Dict, List, Optional
 
+from bson import ObjectId
+
 from app.helpers.cache_utils import cache
+from app.helpers.w3 import checksum_address
 from app.models.channel import Channel
 from app.models.server import ServerMember
 from app.models.user import User
+from app.schemas.users import UserCreateSchema
 from app.services.crud import get_item, get_item_by_id, get_items, update_item
+from app.services.users import create_user
 
 
 async def is_user_in_channel(user: User, channel: Channel) -> bool:
@@ -85,3 +91,25 @@ async def update_channel_last_message(channel_id, message_created_at: datetime.d
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
     if not channel.last_message_at or message_created_at > channel.last_message_at:
         await update_item(item=channel, data={"last_message_at": message_created_at})
+
+
+async def parse_member_list(members: List[str], create_if_not_user: bool = True) -> List[User]:
+    unique_member_list = list(set(members))
+
+    user_ids = [ObjectId(member) for member in unique_member_list if ObjectId.is_valid(member)]
+    users = await get_items(filters={"_id": {"$in": user_ids}}, result_obj=User, limit=None)
+
+    addresses = [checksum_address(member) for member in unique_member_list if re.match(r"^0x[a-fA-F\d]{40}$", member)]
+    address_users = await get_items(filters={"wallet_address": {"$in": addresses}}, result_obj=User, limit=None)
+    users.extend(address_users)
+
+    existing_wallets = [user.wallet_address for user in users]
+    new_wallets = [wallet for wallet in addresses if wallet not in existing_wallets]
+
+    for address in new_wallets:
+        wallet_addr = checksum_address(address)
+        if create_if_not_user:
+            user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr))
+            users.append(user)
+
+    return users

@@ -1,7 +1,6 @@
 import http
 import json
 import logging
-import re
 from datetime import datetime, timezone
 from typing import List, Optional, Union, cast
 
@@ -12,11 +11,10 @@ from starlette import status
 
 from app.helpers import cloudflare
 from app.helpers.cache_utils import cache
-from app.helpers.channels import convert_permission_object_to_cached, is_user_in_channel
+from app.helpers.channels import convert_permission_object_to_cached, is_user_in_channel, parse_member_list
 from app.helpers.events import EventType
 from app.helpers.permissions import fetch_user_permissions, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
-from app.helpers.w3 import checksum_address
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.common import PermissionOverwrite
@@ -32,7 +30,6 @@ from app.schemas.channels import (
 )
 from app.schemas.messages import SystemMessageCreateSchema
 from app.schemas.permissions import PermissionUpdateSchema
-from app.schemas.users import UserCreateSchema
 from app.services.crud import (
     create_item,
     delete_item,
@@ -44,32 +41,15 @@ from app.services.crud import (
 )
 from app.services.events import broadcast_event
 from app.services.messages import create_message
-from app.services.users import create_user, get_user_by_wallet_address
 
 logger = logging.getLogger(__name__)
 
 
-async def parse_member_list(members: List[str], create_if_not_user: bool = True):
-    final_member_list = []
-    for member in members:
-        if re.match(r"^0x[a-fA-F\d]{40}$", member):
-            wallet_addr = checksum_address(member)
-            user = await get_user_by_wallet_address(wallet_address=wallet_addr)
-            if not user and create_if_not_user:
-                user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr))
-        else:
-            user = await get_item_by_id(id_=member, result_obj=User)
-
-        if user not in final_member_list:
-            final_member_list.append(user)
-
-    return final_member_list
-
-
 async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: User) -> Union[Channel, APIDocument]:
-    channel_model.members = await parse_member_list(members=channel_model.members or [])
-    if current_user not in channel_model.members:
-        channel_model.members.insert(0, current_user)
+    model_users = await parse_member_list(members=channel_model.members or [])
+    channel_model.members = [user.pk for user in model_users]
+    if current_user.pk not in channel_model.members:
+        channel_model.members.insert(0, current_user.pk)
 
     # if same exact dm channel already exists, ignore
     filters = {
@@ -96,7 +76,8 @@ async def create_server_channel(
 async def create_topic_channel(
     channel_model: TopicChannelCreateSchema, current_user: User
 ) -> Union[Channel, APIDocument]:
-    channel_model.members = await parse_member_list(members=channel_model.members or [])
+    model_users = await parse_member_list(members=channel_model.members or [])
+    channel_model.members = [user.pk for user in model_users]
     if not channel_model.members:
         channel_model.members = [current_user.pk]
     else:
