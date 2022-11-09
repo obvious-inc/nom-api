@@ -40,6 +40,10 @@ async def should_send_push_notification(
     if message.author == user:
         return False
 
+    if message.type == 1:
+        # ignore system messages like changing channel name or topic; or new members
+        return False
+
     user_prefs = await get_item(filters={"user": user}, result_obj=UserPreferences)
     if user_prefs:
         channels = user_prefs.channels
