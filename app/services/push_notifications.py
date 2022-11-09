@@ -40,7 +40,7 @@ async def should_send_push_notification(
     if message.author == user:
         return False
 
-    if message.type == 1:
+    if message.type in [1, 5]:
         # ignore system messages like changing channel name or topic; or new members
         return False
 
