@@ -82,7 +82,6 @@ async def get_message_nodes_mentions(nodes: List[dict]) -> List[Tuple[str, str]]
 
 async def get_message_mentions(message: Message) -> List[Tuple[str, str]]:
     if not message.blocks:
-        logger.warning(f"no blocks to fetch mentions from. [message={str(message.id)}")
         return []
 
     return await get_message_nodes_mentions(message.blocks)
