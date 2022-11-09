@@ -78,7 +78,7 @@ class RoleCreateSchema(APIBaseCreateSchema):
 
 
 class MemberPfpSchema(BaseModel):
-    cf_id: str
+    cf_id: Optional[str]
     input_image_url: str
     verified: bool
 
