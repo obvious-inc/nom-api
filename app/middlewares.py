@@ -62,9 +62,10 @@ async def add_canonical_log_line(request: Request, call_next):
         "http_method": request.method,
         "http_path": request.url.path,
         "http_status": response.status_code,
+        "type": "request",
     }
 
-    for attr in ["user_id", "auth_type", "auth_source", "actor_type", "app_id"]:
+    for attr in ["user_id", "auth_type", "auth_source", "actor_type", "app_id", "permissions_used"]:
         try:
             log_line_data[attr] = getattr(request.state, attr)
         except AttributeError:

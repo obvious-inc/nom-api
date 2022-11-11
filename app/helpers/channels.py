@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from bson import ObjectId
 
 from app.helpers.cache_utils import cache
+from app.helpers.queue_utils import timed_task
 from app.helpers.w3 import checksum_address
 from app.models.channel import Channel
 from app.models.server import ServerMember
@@ -87,6 +88,7 @@ async def fetch_and_cache_channel(channel_id: Optional[str]) -> Optional[Dict[st
     return dict_channel
 
 
+@timed_task()
 async def update_channel_last_message(channel_id, message_created_at: datetime.datetime):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
     if not channel.last_message_at or message_created_at > channel.last_message_at:

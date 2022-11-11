@@ -1,6 +1,8 @@
 import asyncio
+import functools
 import itertools
 import logging
+import time
 from asyncio import CancelledError, Task
 from typing import Any, Callable, Dict, List, Tuple
 
@@ -10,6 +12,32 @@ logger = logging.getLogger(__name__)
 
 _bg_task_name_counter = itertools.count(1).__next__
 MAX_SHUTDOWN_WAIT_SECONDS = 5
+
+
+def timed_task():
+    def wrapper(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapped(*args, **kwargs) -> Any:
+            start_time = time.time()
+            try:
+                return await func(*args, **kwargs)
+            finally:
+                process_time = (time.time() - start_time) * 1000
+                formatted_process_time = "{:.2f}".format(process_time)
+
+                log_line_data = {
+                    "duration": formatted_process_time,
+                    "type": "task",
+                    "task": getattr(func, "__name__", repr(func)),
+                }
+
+                sorted_dict = dict(sorted(log_line_data.items(), key=lambda x: x[0].lower()))
+                log_line = " ".join([f"{key}={value}" for key, value in sorted_dict.items()])
+                logger.info("canonical-log %s", log_line)
+
+        return wrapped
+
+    return wrapper
 
 
 async def _get_bg_task_name():

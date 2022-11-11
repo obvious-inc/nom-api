@@ -11,7 +11,7 @@ from starlette import status
 from app.helpers.channels import is_user_in_channel, update_channel_last_message
 from app.helpers.events import EventType
 from app.helpers.message_utils import blockify_content, get_message_mentioned_users, is_message_empty, stringify_blocks
-from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
+from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks, timed_task
 from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
@@ -292,6 +292,7 @@ async def post_process_message_creation(message_id: str):
     await update_item(item=message, data=data)
 
 
+@timed_task()
 async def process_message_mentions(message_id: str):
     message = await get_item_by_id(id_=message_id, result_obj=Message)
     channel = await message.channel.fetch()

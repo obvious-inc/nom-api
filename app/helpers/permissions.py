@@ -305,6 +305,8 @@ async def check_request_permissions(
         user_id=user_id, channel_id=channel_id, server_id=server_id, app_id=app_id, token_scopes=token_scopes
     )
 
+    request.state.permissions_used = ",".join(permissions)
+
     if not all([req_permission in user_permissions for req_permission in permissions]):
         raise APIPermissionError(needed_permissions=permissions, user_permissions=user_permissions)
 
