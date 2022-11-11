@@ -5,6 +5,8 @@ from typing import List
 
 import aiohttp
 
+from app.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,12 +17,15 @@ async def send_expo_push_notifications(push_messages: List[str]):
         logger.info("no tokens to push notifications to")
         return
 
+    settings = get_settings()
+
     headers = {
         "host": "exp.host",
         "accept": "application/json",
         "accept-encoding": "gzip, deflate",
         "content-type": "application/json",
         "content-encoding": "gzip",
+        "authorization": f"bearer {settings.expo_access_token}",
     }
 
     compressed_data = zlib.compress(json.dumps(push_messages).encode("utf-8"))

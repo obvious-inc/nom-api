@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     alchemy_api_key: Optional[str]
     simplehash_api_key: Optional[str]
     dalle_api_key: Optional[str]
+    expo_access_token: Optional[str]
 
     auto_join_channel_ids: Optional[str]
 
