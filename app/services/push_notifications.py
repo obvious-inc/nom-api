@@ -5,6 +5,7 @@ from app.helpers.events import EventType
 from app.helpers.expo import send_expo_push_notifications
 from app.helpers.list_utils import batch_list
 from app.helpers.message_utils import get_message_mentioned_users, get_raw_blocks
+from app.helpers.queue_utils import timed_task
 from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
 from app.models.user import User, UserPreferences
@@ -59,6 +60,7 @@ async def should_send_push_notification(
     return True
 
 
+@timed_task()
 async def dispatch_push_notification_event(event: EventType, data: dict):
     if event != EventType.MESSAGE_CREATE:
         return

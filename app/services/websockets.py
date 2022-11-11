@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.helpers.events import EventType, fetch_event_channel_scope
 from app.helpers.list_utils import batch_list
 from app.helpers.pusher import broadcast_pusher
+from app.helpers.queue_utils import timed_task
 from app.models.app import App, AppInstalled
 from app.models.channel import Channel
 from app.models.message import Message
@@ -99,6 +100,7 @@ async def fetch_ws_channels_for_scope(scope: str, event: EventType, data: dict) 
     return websocket_channels
 
 
+@timed_task()
 async def broadcast_websocket_message(event: EventType, data: dict):
     event_scope = await fetch_event_channel_scope(event)
     logger.debug("scope: %s. [event=%s]", event_scope, event.name)
