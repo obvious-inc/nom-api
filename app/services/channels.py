@@ -343,7 +343,16 @@ async def get_channel_permissions(channel_id: str, current_user_or_exception: Un
         raise current_user_or_exception
 
     user_id = str(current_user_or_exception.pk) if current_user_or_exception else None
-    return await fetch_user_permissions(channel_id=channel_id, server_id=None, user_id=user_id)
+
+    try:
+        permissions = await fetch_user_permissions(channel_id=channel_id, server_id=None, user_id=user_id)
+    except Exception:
+        permissions = None
+
+    if not permissions:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    return permissions
 
 
 async def get_channel_members(channel_id: str):
