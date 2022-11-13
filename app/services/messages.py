@@ -10,8 +10,15 @@ from starlette import status
 
 from app.helpers.channels import is_user_in_channel, update_channel_last_message
 from app.helpers.events import EventType
-from app.helpers.message_utils import blockify_content, get_message_mentioned_users, is_message_empty, stringify_blocks
+from app.helpers.message_utils import (
+    blockify_content,
+    get_message_links,
+    get_message_mentioned_users,
+    is_message_empty,
+    stringify_blocks,
+)
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks, timed_task
+from app.helpers.urls import unfurl_url
 from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
@@ -117,6 +124,7 @@ async def create_message(
             ),
         ),
         (process_message_mentions, (str(message.pk),)),
+        (unfurl_message_links, (str(message.pk),)),
     ]
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
@@ -290,6 +298,26 @@ async def post_process_message_creation(message_id: str):
         return
 
     await update_item(item=message, data=data)
+
+
+@timed_task()
+async def unfurl_message_links(message_id: str):
+    message = await get_item_by_id(id_=message_id, result_obj=Message)
+    links = await get_message_links(message=message)
+
+    embeds = []
+    for link in links:
+        try:
+            unfurled_metadata = await unfurl_url(link)
+            embeds.append(unfurled_metadata)
+        except Exception as e:
+            logger.warning(f"problem trying to unfurl {link}: {e}")
+            continue
+
+    if embeds:
+        data = {"embeds": embeds}
+        updated_item = await update_item(item=message, data=data)
+        await queue_bg_task(broadcast_event, EventType.MESSAGE_UPDATE, {"message": updated_item.dump()})
 
 
 @timed_task()

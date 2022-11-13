@@ -45,6 +45,8 @@ uvloop = "^0.16"
 watchgod = "^0.7"
 web3 = "^5.26"
 aioauth = "^1.5.0"
+beautifulsoup4 = "^4.11.1"
+lxml = "^4.9.1"
 
 [tool.poetry.dev-dependencies]
 black = { version = "*", allow-prereleases = true }
