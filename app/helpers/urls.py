@@ -1,6 +1,7 @@
 import logging
 import re
 from typing import Optional
+from urllib.parse import urlparse, urlunparse
 
 import aiohttp
 from bs4 import BeautifulSoup, SoupStrainer
@@ -50,10 +51,9 @@ async def extract_unfurl_info_from_html(html: str, url: str = None) -> dict:
         favicon = "https:" + favicon
 
     if favicon.startswith("/") and url is not None:
-        if url.endswith("/"):
-            favicon = url + favicon[1:]
-        else:
-            favicon = url + favicon
+        parsed_url = urlparse(url)
+        parsed_url = parsed_url._replace(path=favicon)
+        favicon = urlunparse(parsed_url)
 
     meta_soup = BeautifulSoup(html, "lxml", parse_only=meta_tags_strainer)
     for meta_tag in meta_soup.findAll("meta"):
