@@ -80,8 +80,7 @@ async def unfurl_url(url: str) -> Optional[dict]:
             text = await resp.text()
 
             if not resp.ok:
-                logger.error(f"{resp.status} {text} | problem fetching url: {url}")
-                return None
+                resp.raise_for_status()
 
             info = await extract_unfurl_info_from_html(text, url=url)
             return {"url": url, **info}
