@@ -288,7 +288,7 @@ async def kick_member_from_channel(channel_id: str, member_id: str):
     current_channel_members = [str(m.pk) for m in channel.members]
 
     if member_id not in current_channel_members:
-        raise Exception(f"member {member_id} is not in channel {channel_id}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="member is not part of the channel")
 
     final_channel_members = [m for m in current_channel_members if m != member_id]
     await update_item(item=channel, data={"members": final_channel_members})
