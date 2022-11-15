@@ -32,6 +32,7 @@ INTERESTING_METATAGS = [
     "og:title",
     "og:description",
     "og:image",
+    "og:video",
     "og:site_name",
     "twitter:card",
     "twitter:url",
