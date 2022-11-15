@@ -26,7 +26,7 @@ async def parse_push_notification_data(event_data: dict, message: Message, chann
     else:
         author_name = "New message"
 
-    if channel.kind == "topic":
+    if channel.name:
         push_title = f"{author_name} (#{channel.name})"
     else:
         push_title = f"{author_name}"
