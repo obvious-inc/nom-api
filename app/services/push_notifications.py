@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 async def parse_push_notification_data(event_data: dict, message: Message, channel: Channel):
+    data = {}
     app_dict = event_data.get("app", {})
 
     if message.author:
@@ -25,9 +26,17 @@ async def parse_push_notification_data(event_data: dict, message: Message, chann
     else:
         author_name = "New message"
 
-    push_title = f"{author_name} (#{channel.name})"
+    if channel.kind == "topic":
+        push_title = f"{author_name} (#{channel.name})"
+    else:
+        push_title = f"{author_name}"
+
+    data["title"] = push_title
+
     push_body = (await get_raw_blocks(message.blocks))[:100]
-    return {"title": push_title, "body": push_body}
+    data["body"] = push_body
+
+    return data
 
 
 async def should_send_push_notification(
