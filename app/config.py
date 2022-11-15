@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     simplehash_api_key: Optional[str]
     dalle_api_key: Optional[str]
     expo_access_token: Optional[str]
+    opengraph_app_id: Optional[str]
 
     auto_join_channel_ids: Optional[str]
 

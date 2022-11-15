@@ -2,18 +2,17 @@ import logging
 import random
 import re
 from typing import Optional
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import quote_plus, urlparse, urlunparse
 
 import aiohttp
 from bs4 import BeautifulSoup, SoupStrainer
 
+from app.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246",
     "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) AppleWebKit/601.3.9 (KHTML, like Gecko) Version/9.0.2 Safari/601.3.9",
-    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1",
     "Mozilla/5.0 (X11; CrOS x86_64 8172.45.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.64 Safari/537.36",
 ]
 
@@ -84,6 +83,22 @@ async def extract_unfurl_info_from_html(html: str, url: str = None) -> dict:
     return info
 
 
+async def opengraph_extract_metatags(url: str) -> dict:
+    settings = get_settings()
+    params = {"app_id": settings.opengraph_app_id}
+    async with aiohttp.ClientSession() as session:
+        encoded_url = quote_plus(url)
+        async with session.get(f"https://opengraph.io/api/1.1/site/{encoded_url}", params=params) as resp:
+            if not resp.ok:
+                resp.raise_for_status()
+
+            json_resp = await resp.json()
+            graph = json_resp.get("hybridGraph")
+
+            metatags = {f"og:{tag}": value for tag, value in graph.items()}
+            return metatags
+
+
 async def unfurl_url(url: str) -> Optional[dict]:
     headers = {"User-Agent": random.choice(USER_AGENTS)}
     async with aiohttp.ClientSession(headers=headers) as session:
@@ -94,4 +109,9 @@ async def unfurl_url(url: str) -> Optional[dict]:
                 resp.raise_for_status()
 
             info = await extract_unfurl_info_from_html(text, url=url)
+            metatags = info.get("metatags", {})
+            if len(metatags) < 2:
+                logger.debug("too little metatags extracted, trying with opengraph...")
+                info["metatags"] = await opengraph_extract_metatags(url)
+
             return {"url": url, **info}

@@ -43,3 +43,11 @@ class TestURLHelper:
     async def test_unfurl(self, url, partial_expected):
         extracted_info = await unfurl_url(url=url)
         assert partial_expected.items() <= extracted_info.items()
+
+    @pytest.mark.asyncio
+    async def test_unfurl_twitter_link(self):
+        url = "https://twitter.com/SoVeryBritish/status/1591470202981875712"
+        extracted_info = await unfurl_url(url=url)
+        metatags = extracted_info.get("metatags")
+        assert len(metatags) > 2
+        assert str(metatags.get("og:description", "")).startswith("Having to go")
