@@ -1,6 +1,6 @@
 import pytest
 
-from app.helpers.urls import extract_unfurl_info_from_html
+from app.helpers.urls import extract_unfurl_info_from_html, unfurl_url
 
 
 class TestURLHelper:
@@ -14,9 +14,32 @@ class TestURLHelper:
                 "https://docs.expo.dev/push-notifications/sending-notifications/",
                 {"favicon": "https://docs.expo.dev/static/images/favicon.ico"},
             ),
+            (
+                '<!DOCTYPE html><html lang="en"><head>...</style><link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" /><title>',
+                "https://deno.com/blog/v1.28",
+                {"favicon": "https://deno.com/favicon.ico"},
+            ),
         ],
     )
     @pytest.mark.asyncio
     async def test_extract_metatags(self, html, partial_expected, url):
         extracted_info = await extract_unfurl_info_from_html(html=html, url=url)
+        assert partial_expected.items() <= extracted_info.items()
+
+    @pytest.mark.parametrize(
+        "url, partial_expected",
+        [
+            (
+                "https://www.nytimes.com/2022/11/14/science/time-leap-second.html",
+                {"title": "Time Is Running Out for the Leap Second - The New York Times"},
+            ),
+            (
+                "https://www.tiktok.com/@abba/video/7166121198521175302",
+                {"title": "Happy Birthday Frida!"},
+            ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_unfurl(self, url, partial_expected):
+        extracted_info = await unfurl_url(url=url)
         assert partial_expected.items() <= extracted_info.items()
