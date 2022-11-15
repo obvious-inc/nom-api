@@ -24,16 +24,22 @@ async def parse_push_notification_data(event_data: dict, message: Message, chann
     elif app_dict:
         author_name = app_dict.get("name")
     else:
-        author_name = "New message"
-
-    if channel.name:
-        push_title = f"{author_name} (#{channel.name})"
-    else:
-        push_title = f"{author_name}"
-
-    data["title"] = push_title
+        logger.warning("unable to fetch author's name")
+        author_name = None
 
     push_body = (await get_raw_blocks(message.blocks))[:100]
+
+    if channel.name:
+        push_title = channel.name
+        if author_name:
+            push_body = f"{author_name}: {push_body}"
+    else:
+        if author_name:
+            push_title = author_name
+        else:
+            push_title = "New message"
+
+    data["title"] = push_title
     data["body"] = push_body
 
     return data
