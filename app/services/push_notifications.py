@@ -105,6 +105,11 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
 
     async for batch_user_ids in batch_list(channel_user_ids):
         users = await get_items(filters={"_id": {"$in": batch_user_ids}}, result_obj=User, limit=None)
+        read_states = await get_items(
+            filters={"user": {"$in": batch_user_ids}, "channel": channel.pk}, result_obj=ChannelReadState, limit=None
+        )
+        read_states_per_user_id = {read_state.user.pk: read_state for read_state in read_states}
+
         user: User
         for user in users:
             should_send_push = await should_send_push_notification(
@@ -113,12 +118,8 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
             if not should_send_push:
                 continue
 
-            # todo: change this to get_items (faster)
-            curr_read_state = await get_item(
-                filters={"user": user.pk, "channel": channel.pk},
-                result_obj=ChannelReadState,
-            )
-            mention_count = curr_read_state.mention_count if curr_read_state else 1
+            user_read_state = read_states_per_user_id.get(user.pk, None)
+            mention_count = user_read_state.mention_count if user_read_state else 1
 
             push_tokens = list(filter(lambda i: i not in used_push_tokens, user.push_tokens or []))
             if len(push_tokens) == 0:
