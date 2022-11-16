@@ -1,5 +1,6 @@
 import logging
 
+from app.config import get_settings
 from app.middlewares import get_request_id
 
 
@@ -11,6 +12,8 @@ class RequestIDFilter(logging.Filter):
             record.request_id = None
         return True
 
+
+settings = get_settings()
 
 log_configuration = {
     "version": 1,
@@ -38,14 +41,14 @@ log_configuration = {
         },
         "app": {
             "class": "logging.StreamHandler",
-            "level": "DEBUG",
+            "level": settings.log_level,
             "formatter": "normal",
             "stream": "ext://sys.stdout",
             "filters": ["request_id"],
         },
     },
     "loggers": {
-        "app": {"handlers": ["app"], "level": "DEBUG", "propagate": False},
+        "app": {"handlers": ["app"], "level": settings.log_level, "propagate": False},
         "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
         "uvicorn.access": {"handlers": ["default"], "level": "INFO", "propagate": False},
     },

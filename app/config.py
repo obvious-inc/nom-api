@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     profiling: bool = False
     profiling_json: bool = False
     environment: str = "development"
+    log_level: str = "DEBUG"
 
     frontend_url: str = "http://localhost:8080"
     cdn_url: str = "https://cdn.newshades.xyz"
