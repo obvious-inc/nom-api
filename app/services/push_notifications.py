@@ -102,22 +102,31 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
     mentioned_users = await get_message_mentioned_users(message=message)
 
     push_messages = []
+    used_push_tokens = set()
+
     async for batch_user_ids in batch_list(channel_user_ids):
         users = await get_items(filters={"_id": {"$in": batch_user_ids}}, result_obj=User, limit=None)
         user: User
         for user in users:
-            # validate notification logic for each (channel muted, mentioned, etc.)
-            if await should_send_push_notification(
+            should_send_push = await should_send_push_notification(
                 user=user, channel=channel, mentioned_users=mentioned_users, message=message
-            ):
-                curr_read_state = await get_item(
-                    filters={"user": user.pk, "channel": channel.pk},
-                    result_obj=ChannelReadState,
-                )
-                mention_count = curr_read_state.mention_count if curr_read_state else 1
+            )
+            if not should_send_push:
+                continue
 
-                if user.push_tokens and len(user.push_tokens) > 0:
-                    push_messages.append({**notification_data, "to": user.push_tokens, "badge": mention_count})
+            # todo: change this to get_items (faster)
+            curr_read_state = await get_item(
+                filters={"user": user.pk, "channel": channel.pk},
+                result_obj=ChannelReadState,
+            )
+            mention_count = curr_read_state.mention_count if curr_read_state else 1
+
+            push_tokens = list(filter(lambda i: i not in used_push_tokens, user.push_tokens or []))
+            if len(push_tokens) == 0:
+                continue
+
+            push_messages.append({**notification_data, "to": push_tokens, "badge": mention_count})
+            used_push_tokens.update(push_tokens)
 
     async for batched_messages in batch_list(push_messages):
         await send_expo_push_notifications(push_messages=batched_messages)
