@@ -94,7 +94,6 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
         "event_name": event.name,
         "event_data": data,
         "url": f"channels/{str(channel.pk)}",
-        "sound": "default",
         **message_push_data,
     }
 
@@ -125,7 +124,11 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
             if len(push_tokens) == 0:
                 continue
 
-            push_messages.append({**notification_data, "to": push_tokens, "badge": mention_count})
+            push_message = {**notification_data, "to": push_tokens, "badge": mention_count}
+            if user.status != "online":
+                push_message["sound"] = "default"
+
+            push_messages.append(push_message)
             used_push_tokens.update(push_tokens)
 
     async for batched_messages in batch_list(push_messages):
