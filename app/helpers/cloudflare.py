@@ -53,7 +53,7 @@ async def upload_content(
     headers = {"Authorization": f"Bearer {settings.cloudflare_images_api_token}"}
 
     if content_type not in CLOUDFLARE_IMAGES_SUPPORTED_TYPES:
-        logger.error(f"content type not supported: {content_type}")
+        logger.warning(f"content type not supported: {content_type}")
         raise Exception(f"content type not supported: {content_type}")
 
     if settings.testing:
