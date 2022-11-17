@@ -80,7 +80,7 @@ async def extract_unfurl_info_from_html(html: str, url: str) -> dict:
                 title = metatags[tag]
                 break
 
-    if len(metatags) < 2:
+    if len(metatags) < 2 and url:
         logger.debug("too little metatags extracted, trying with opengraph...")
         metatags = await opengraph_extract_metatags(url)
         if not favicon and "og:favicon" in metatags:
