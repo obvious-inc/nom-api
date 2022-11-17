@@ -223,6 +223,8 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
             cf_response = await cloudflare.upload_image_url(avatar)
             logger.info(f"uploaded avatar image {avatar} to cloudflare: {cf_response}")
             data["avatar"] = cf_response.get("id")
+        else:
+            data["avatar"] = None
 
     updated_item = await update_item(item=channel, data=data)
 
