@@ -22,6 +22,7 @@ title_tag_strainer = SoupStrainer("title")
 favicon_tag_strainer = SoupStrainer("link", rel="icon")
 favicon_shortcut_tag_strainer = SoupStrainer("link", rel="shortcut icon")
 favicon_alt_tag_strainer = SoupStrainer(href=re.compile("favicon"))
+redirect_strainer = SoupStrainer("meta", attrs={"http-equiv": "refresh"})
 
 INTERESTING_METATAGS = [
     "title",
@@ -41,7 +42,7 @@ INTERESTING_METATAGS = [
 ]
 
 
-async def extract_unfurl_info_from_html(html: str, url: str = None) -> dict:
+async def extract_unfurl_info_from_html(html: str, url: str) -> dict:
     soup = BeautifulSoup(html, "lxml", parse_only=title_tag_strainer)
     title = soup.title.string if soup.title else ""
 
@@ -79,6 +80,12 @@ async def extract_unfurl_info_from_html(html: str, url: str = None) -> dict:
                 title = metatags[tag]
                 break
 
+    if len(metatags) < 2:
+        logger.debug("too little metatags extracted, trying with opengraph...")
+        metatags = await opengraph_extract_metatags(url)
+        if not favicon and "og:favicon" in metatags:
+            favicon = metatags["favicon"]
+
     info = {"title": title, "favicon": favicon, "metatags": metatags}
     return info
 
@@ -105,13 +112,17 @@ async def unfurl_url(url: str) -> Optional[dict]:
         async with session.get(url) as resp:
             text = await resp.text()
 
+            redirect_soup = BeautifulSoup(text, "lxml", parse_only=redirect_strainer)
+            redirect_meta = redirect_soup.find("meta")
+            if redirect_meta:
+                content = redirect_meta.get("content")
+                new_url_match = re.match(r"(\d+;url=)?(.+)", content, flags=re.IGNORECASE)
+                new_url = new_url_match.group(2) if new_url_match else None
+                if new_url:
+                    return await unfurl_url(new_url)
+
             if not resp.ok:
                 resp.raise_for_status()
 
             info = await extract_unfurl_info_from_html(text, url=url)
-            metatags = info.get("metatags", {})
-            if len(metatags) < 2:
-                logger.debug("too little metatags extracted, trying with opengraph...")
-                info["metatags"] = await opengraph_extract_metatags(url)
-
             return {"url": url, **info}
