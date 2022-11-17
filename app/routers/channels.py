@@ -145,7 +145,9 @@ async def post_invite_to_channel(
     "/{channel_id}/members/me", response_description="Remove me from channel", status_code=http.HTTPStatus.NO_CONTENT
 )
 async def delete_remove_me_from_channel(channel_id: str, current_user: User = Depends(get_current_user)):
-    return await kick_member_from_channel(channel_id=channel_id, member_id=str(current_user.pk))
+    return await kick_member_from_channel(
+        channel_id=channel_id, member_id=str(current_user.pk), current_user=current_user
+    )
 
 
 @router.delete(
@@ -154,8 +156,10 @@ async def delete_remove_me_from_channel(channel_id: str, current_user: User = De
     status_code=http.HTTPStatus.NO_CONTENT,
     dependencies=[Depends(PermissionsChecker(permissions=["channels.kick"]))],
 )
-async def delete_remove_member_from_channel(channel_id: str, member_id: str):
-    return await kick_member_from_channel(channel_id=channel_id, member_id=member_id)
+async def delete_remove_member_from_channel(
+    channel_id: str, member_id: str, current_user: User = Depends(get_current_user)
+):
+    return await kick_member_from_channel(channel_id=channel_id, member_id=member_id, current_user=current_user)
 
 
 @router.put(

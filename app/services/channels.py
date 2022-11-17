@@ -19,6 +19,7 @@ from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.common import PermissionOverwrite
 from app.models.section import Section
+from app.models.star import Star
 from app.models.user import User
 from app.schemas.channels import (
     ChannelBulkReadStateCreateSchema,
@@ -33,6 +34,7 @@ from app.schemas.permissions import PermissionUpdateSchema
 from app.services.crud import (
     create_item,
     delete_item,
+    delete_items,
     find_and_update_item,
     get_item,
     get_item_by_id,
@@ -287,7 +289,7 @@ async def invite_members_to_channel(channel_id: str, members: List[str], current
         await create_message(message_model=message, current_user=new_user)
 
 
-async def kick_member_from_channel(channel_id: str, member_id: str):
+async def kick_member_from_channel(channel_id: str, member_id: str, current_user: User):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
     if channel.kind != "topic":
         raise HTTPException(
@@ -305,6 +307,11 @@ async def kick_member_from_channel(channel_id: str, member_id: str):
     final_channel_members = [m for m in current_channel_members if m != member_id]
     await update_item(item=channel, data={"members": final_channel_members})
     await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))
+
+    if member_id == str(current_user.pk):
+        await delete_items(
+            filters={"user": current_user.pk, "type": "channel", "reference": str(channel.pk)}, result_obj=Star
+        )
 
 
 async def update_channel_permissions(channel_id: str, update_data: List[PermissionUpdateSchema]):
