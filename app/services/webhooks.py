@@ -84,7 +84,7 @@ async def process_channel_occupied_event(channel_name: str, actor: Union[User, A
         await queue_bg_task(
             broadcast_event,
             EventType.USER_PRESENCE_UPDATE,
-            {"status": "online", "user": await actor.to_dict(exclude_fields=["pfp"])},
+            {"status": "online", "user": actor.dump()},
         )
 
 
@@ -98,7 +98,7 @@ async def process_channel_vacated_event(channel_name: str, actor: Union[User, Ap
             await queue_bg_task(
                 broadcast_event,
                 EventType.USER_PRESENCE_UPDATE,
-                {"status": "offline", "user": await actor.to_dict(exclude_fields=["pfp"])},
+                {"status": "offline", "user": actor.dump()},
             )
 
 

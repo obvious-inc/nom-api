@@ -10,11 +10,11 @@ class App(APIDocument):
     creator = fields.ReferenceField("User")
     description = fields.StrField(required=False)
     client_id = fields.StrField()
-    client_secret = fields.StrField()
+    client_secret = fields.StrField(load_only=True)
     redirect_uris = fields.ListField(fields.StrField(), default=[])
     scopes = fields.ListField(fields.StrField, default=[])
 
-    online_channels = fields.ListField(fields.StrField(), required=False, default=[])
+    online_channels = fields.ListField(fields.StrField(), required=False, default=[], load_only=True)
     status = fields.StrField(default="offline")
 
     class Meta:

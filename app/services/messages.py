@@ -72,8 +72,8 @@ async def create_app_message(
             (
                 EventType.MESSAGE_CREATE,
                 {
-                    "message": await message.to_dict(),
-                    "app": await current_app.to_dict(exclude_fields=["client_secret"]),
+                    "message": message.dump(),
+                    "app": current_app.dump(),
                 },
             ),
         ),
@@ -110,8 +110,6 @@ async def create_message(
     )
 
     channel = await message.channel.fetch()
-    dump_channel = await channel.to_dict(exclude_fields=["permission_overwrites"])
-    dump_curr_user = await current_user.to_dict(exclude_fields=["pfp"])
 
     bg_tasks = [
         (broadcast_event, (EventType.MESSAGE_CREATE, {"message": message.dump()})),
@@ -120,7 +118,7 @@ async def create_message(
             broadcast_event,
             (
                 EventType.CHANNEL_READ,
-                {"read_at": message.created_at.isoformat(), "channel": dump_channel, "user": dump_curr_user},
+                {"read_at": message.created_at.isoformat(), "channel": channel.dump(), "user": current_user.dump()},
             ),
         ),
         (process_message_mentions, (str(message.pk),)),

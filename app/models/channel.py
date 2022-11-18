@@ -25,7 +25,7 @@ class Channel(APIDocument):
     description = fields.StrField()
     avatar = fields.StrField()
 
-    permission_overwrites = fields.ListField(fields.EmbeddedField(PermissionOverwrite), default=[])
+    permission_overwrites = fields.ListField(fields.EmbeddedField(PermissionOverwrite), default=[], load_only=True)
 
     def pre_insert(self):
         if self.kind == "dm":

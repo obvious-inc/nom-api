@@ -49,7 +49,7 @@ async def get_user_profile_by_server_id(server_id: str, current_user: User) -> U
     return profile
 
 
-async def set_user_profile_picture(data: dict, current_user: User, profile: Union[ServerMember, User]) -> dict:
+async def set_user_profile_picture(data: dict, current_user: User, profile: User) -> dict:
     pfp_input_string = data.get("pfp", "")
     if not pfp_input_string:
         return data
@@ -138,7 +138,7 @@ async def update_user_profile(
             await queue_bg_task(
                 broadcast_event,
                 EventType.USER_PROFILE_UPDATE,
-                {**data, "user": await current_user.to_dict(exclude_fields=["pfp"])},
+                {**data, "user": current_user.dump()},
             )
 
     return updated_item

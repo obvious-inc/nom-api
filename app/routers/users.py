@@ -8,7 +8,7 @@ from app.models.user import User
 from app.schemas.channels import ChannelReadStateSchema, EitherChannel
 from app.schemas.preferences import UserPreferencesSchema, UserPreferencesUpdateSchema
 from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
-from app.schemas.users import EitherUserProfile, PublicUserSchema, UserUpdateSchema
+from app.schemas.users import EitherUserProfile, PublicUserSchema, UserSchema, UserUpdateSchema
 from app.services.channels import get_user_channels
 from app.services.servers import get_user_servers
 from app.services.users import (
@@ -40,7 +40,7 @@ async def list_user_servers(current_user: User = Depends(get_current_user)):
     return servers
 
 
-@router.patch("/me", response_model=EitherUserProfile, summary="Update user profile")
+@router.patch("/me", response_model=UserSchema, summary="Update user profile")
 async def patch_update_user_profile(
     server_id: Optional[str] = None,
     update_data: Union[UserUpdateSchema, ServerMemberUpdateSchema] = Body(...),

@@ -152,7 +152,7 @@ async def delete_channel(channel_id, current_user: User):
     await queue_bg_task(
         broadcast_event,
         EventType.CHANNEL_DELETED,
-        {"channel": await channel.to_dict(exclude_fields=["permission_overwrites"])},
+        {"channel": channel.dump()},
     )
 
     return deleted_channel
@@ -198,8 +198,8 @@ async def create_typing_indicator(channel_id: str, current_user: User) -> None:
         broadcast_event,
         EventType.USER_TYPING,
         {
-            "user": await current_user.to_dict(exclude_fields=["pfp"]),
-            "channel": await channel.to_dict(exclude_fields=["permission_overwrites"]),
+            "user": current_user.dump(),
+            "channel": channel.dump(),
         },
     )
 
@@ -243,7 +243,7 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
     await queue_bg_task(
         broadcast_event,
         EventType.CHANNEL_UPDATE,
-        {"channel": await updated_item.to_dict(exclude_fields=["permission_overwrites"])},
+        {"channel": updated_item.dump()},
     )
 
     updated_fields = list(data.keys())
@@ -255,7 +255,7 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
 
 
 async def get_channel(channel_id: str):
-    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    channel = await get_item(filters={"_id": ObjectId(channel_id)}, result_obj=Channel)
     if not channel:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return channel
@@ -283,8 +283,8 @@ async def invite_members_to_channel(channel_id: str, members: List[str], current
             broadcast_event,
             EventType.CHANNEL_USER_INVITED,
             {
-                "channel": await channel.to_dict(exclude_fields=["permission_overwrites"]),
-                "user": await new_user.to_dict(exclude_fields=["pfp"]),
+                "channel": channel.dump(),
+                "user": new_user.dump(),
             },
         )
 
@@ -351,8 +351,8 @@ async def join_channel(channel_id: str, current_user: User):
         broadcast_event,
         EventType.CHANNEL_USER_JOINED,
         {
-            "channel": await channel.to_dict(exclude_fields=["permission_overwrites"]),
-            "user": await current_user.to_dict(exclude_fields=["pfp"]),
+            "channel": channel.dump(),
+            "user": current_user.dump(),
         },
     )
 

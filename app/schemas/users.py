@@ -2,8 +2,14 @@ from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
-from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
+from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, APIEmbeddedBaseSchema, PyObjectId
 from app.schemas.servers import ServerMemberSchema
+
+
+class MemberPfpSchema(APIEmbeddedBaseSchema):
+    cf_id: Optional[str]
+    input_image_url: str
+    verified: bool
 
 
 class UserSchema(APIBaseSchema):
@@ -11,7 +17,7 @@ class UserSchema(APIBaseSchema):
     wallet_address: Optional[str]
     ens_domain: Optional[str]
     email: Optional[str]
-    pfp: Optional[dict]
+    pfp: Optional[MemberPfpSchema]
     status: Optional[str]
     description: Optional[str]
 
@@ -26,11 +32,7 @@ class UserSchema(APIBaseSchema):
                 "email": "test@newshades.xyz",
                 "pfp": {
                     "cf_id": "5adcdc13-0a45-45cd-0707-31eab9997c00",
-                    "contract": "0x58f7e9810f5559dc759b731843212370363e433e",
-                    "token_id": "100",
-                    "token": {},
                     "verified": True,
-                    "input": "https://opensea.io/assets/0x58f7e9810f5559dc759b731843212370363e433e/100",
                     "input_image_url": "https://cloudflare-ipfs.com/ipfs/.../image.png",
                 },
                 "status": "online",
@@ -77,12 +79,6 @@ class RoleCreateSchema(APIBaseCreateSchema):
     permissions: List[str]
 
 
-class MemberPfpSchema(BaseModel):
-    cf_id: Optional[str]
-    input_image_url: str
-    verified: bool
-
-
 class MemberUserSchema(APIBaseSchema):
     display_name: Optional[str]
     wallet_address: Optional[str]
@@ -105,7 +101,7 @@ class MemberUserSchema(APIBaseSchema):
         }
 
 
-class PublicPfpSchema(BaseModel):
+class PublicPfpSchema(APIEmbeddedBaseSchema):
     cf_id: str
 
 

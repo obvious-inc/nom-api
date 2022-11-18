@@ -11,12 +11,12 @@ class DatetimeMixin(MixinDocument):
     created_at = fields.AwareDateTimeField(default=get_mongo_utc_date)
 
     # TODO: add default updated_at + trigger on each update
-    updated_at = fields.AwareDateTimeField()
+    updated_at = fields.AwareDateTimeField(load_only=True)
 
 
 @instance.register
 class APIDocument(Document, DatetimeMixin):
-    deleted = fields.BoolField(default=False)
+    deleted = fields.BoolField(default=False, load_only=True)
 
     async def to_dict(self, expand_fields: List[str] = None, exclude_fields: List[str] = None):
         dumped_obj = self.dump()
