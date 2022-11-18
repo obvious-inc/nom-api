@@ -289,7 +289,11 @@ async def validate_resource_permission(user: User, action: str, resource: Any) -
 
 
 async def check_request_permissions(
-    request: Request, permissions: List[str], current_user: Optional[User] = None, current_app: Optional[App] = None
+    request: Request,
+    permissions: List[str],
+    current_user: Optional[User] = None,
+    current_app: Optional[App] = None,
+    raise_exception: Exception = None,
 ):
     channel_id = await _fetch_channel_from_request(request=request)
     server_id = await _fetch_server_from_request(request=request)
@@ -308,6 +312,8 @@ async def check_request_permissions(
     request.state.permissions_used = ",".join(permissions)
 
     if not all([req_permission in user_permissions for req_permission in permissions]):
+        if raise_exception:
+            raise raise_exception
         raise APIPermissionError(needed_permissions=permissions, user_permissions=user_permissions)
 
 

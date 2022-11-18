@@ -759,7 +759,7 @@ class TestChannelsRoutes:
         member_client = await get_authorized_client(member)
 
         response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
-        assert response.status_code == 403
+        assert response.status_code == 404
 
         user_client = await get_authorized_client(current_user)
         data = {"members": [member.wallet_address]}
@@ -863,7 +863,7 @@ class TestChannelsRoutes:
         member_client = await get_authorized_client(member)
 
         response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
-        assert response.status_code == 403
+        assert response.status_code == 404
 
         user_client = await get_authorized_client(current_user)
         data = [
@@ -908,7 +908,7 @@ class TestChannelsRoutes:
         assert tc.members[0] == current_user
 
         response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_kick_member_from_channel(
@@ -947,7 +947,7 @@ class TestChannelsRoutes:
 
         member_client = await get_authorized_client(member)
         response = await member_client.get(f"/channels/{str(topic_channel.pk)}")
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_kick_member_from_channel_as_guest_nok(
@@ -1490,7 +1490,7 @@ class TestChannelsRoutes:
 
         guest_client = await get_authorized_client(guest_user)
         response = await guest_client.get(f"/channels/{channel_id}")
-        assert response.status_code == 403
+        assert response.status_code == 404
 
         response = await guest_client.get(f"/channels/{channel_id}/messages")
         assert response.status_code == 403

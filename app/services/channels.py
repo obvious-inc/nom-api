@@ -255,7 +255,10 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
 
 
 async def get_channel(channel_id: str):
-    return await get_item_by_id(id_=channel_id, result_obj=Channel)
+    channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if not channel:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return channel
 
 
 async def invite_members_to_channel(channel_id: str, members: List[str], current_user: User):

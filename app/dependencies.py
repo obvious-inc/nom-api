@@ -156,9 +156,10 @@ async def get_current_app_non_error(
 
 
 class PermissionsChecker:
-    def __init__(self, needs_bearer: bool = True, permissions: List[str] = None):
+    def __init__(self, needs_bearer: bool = True, permissions: List[str] = None, raise_exception: Exception = None):
         self.needs_bearer = needs_bearer
         self.permissions = permissions
+        self.raise_exception = raise_exception
 
     async def __call__(
         self,
@@ -184,7 +185,11 @@ class PermissionsChecker:
             app = cast(App, app_or_exception)
 
             await check_request_permissions(
-                request=request, current_user=user, current_app=app, permissions=self.permissions
+                request=request,
+                current_user=user,
+                current_app=app,
+                permissions=self.permissions,
+                raise_exception=self.raise_exception,
             )
 
 

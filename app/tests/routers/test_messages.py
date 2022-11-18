@@ -275,7 +275,7 @@ class TestMessagesRoutes:
         messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 0
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
+        message = await Message.find_one({"_id": channel_message.pk})
         assert message.deleted is True
 
     @pytest.mark.asyncio
@@ -341,7 +341,7 @@ class TestMessagesRoutes:
         messages = await get_messages(channel_id=str(server_channel.id), limit=10)
         assert len(messages) == 0
 
-        message = await get_item_by_id(id_=channel_message.id, result_obj=Message)
+        message = await Message.find_one({"_id": channel_message.id})
         assert message.deleted is True
 
     @pytest.mark.asyncio

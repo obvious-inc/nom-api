@@ -2,7 +2,8 @@ import http
 from datetime import datetime
 from typing import List, Optional, Union
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
+from starlette import status
 
 from app.dependencies import PermissionsChecker, common_parameters, get_current_user, get_current_user_non_error
 from app.models.user import User
@@ -75,7 +76,15 @@ async def get_list_messages(channel_id, common_params: dict = Depends(common_par
     "/{channel_id}",
     response_description="Get channel info",
     response_model=EitherChannel,
-    dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["channels.view"]))],
+    dependencies=[
+        Depends(
+            PermissionsChecker(
+                needs_bearer=False,
+                permissions=["channels.view"],
+                raise_exception=HTTPException(status_code=status.HTTP_404_NOT_FOUND),
+            )
+        )
+    ],
 )
 async def get_fetch_channel(channel_id):
     return await get_channel(channel_id=channel_id)
