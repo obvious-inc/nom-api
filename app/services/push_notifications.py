@@ -91,9 +91,7 @@ async def dispatch_push_notification_event(event: EventType, data: dict):
 
     message_push_data = await parse_push_notification_data(event_data=data, message=message, channel=channel)
     notification_data = {
-        "event_name": event.name,
-        "event_data": data,
-        "url": f"channels/{str(channel.pk)}",
+        "data": {"event_name": event.name, "event_data": data, "url": f"channels/{str(channel.pk)}"},
         **message_push_data,
     }
 
