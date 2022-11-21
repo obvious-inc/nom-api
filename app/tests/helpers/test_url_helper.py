@@ -31,7 +31,7 @@ class TestURLHelper:
         [
             (
                 "https://www.nytimes.com/2022/11/14/science/time-leap-second.html",
-                {"title": "Time Is Running Out for the Leap Second - The New York Times"},
+                {"title": "Time Has Run Out for the Leap Second - The New York Times"},
             ),
             (
                 "https://www.tiktok.com/@abba/video/7166121198521175302",
