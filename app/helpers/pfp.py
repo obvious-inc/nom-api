@@ -42,7 +42,12 @@ async def extract_contract_and_token_from_string(pfp_string: str) -> Tuple[Optio
 
 
 async def upload_pfp_url_and_update_profile(input_str: str, image_url: str, profile: User, metadata: dict):
-    cf_image = await cloudflare.upload_image_url(image_url, metadata=metadata)
+    try:
+        cf_image = await cloudflare.upload_image_url(image_url, metadata=metadata)
+    except Exception as e:
+        logger.warning(f"problem updating user profile: {e}")
+        return
+
     cf_id = cf_image.get("id")
 
     profile_pfp: UserAvatar = profile.pfp

@@ -222,19 +222,9 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
     avatar = data.get("avatar", None)
     if avatar is not None and avatar != "":
         if avatar.startswith("http"):
-            try:
-                cf_response = await cloudflare.upload_image_url(avatar)
-                logger.info(f"uploaded avatar image {avatar} to cloudflare: {cf_response}")
-                data["avatar"] = cf_response.get("id")
-            except Exception as e:
-                logger.warning(f"problems updating image to cloudflare: {e}")
-                capture_exception(e)
-                data.pop("avatar")
-                if not data:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST, detail=f"Problem uploading avatar: {avatar}"
-                    )
-
+            cf_response = await cloudflare.upload_image_url(avatar)
+            logger.info(f"uploaded avatar image {avatar} to cloudflare: {cf_response}")
+            data["avatar"] = cf_response.get("id")
         else:
             data["avatar"] = None
 

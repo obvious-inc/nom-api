@@ -54,7 +54,7 @@ async def upload_content(
 
     if content_type not in CLOUDFLARE_IMAGES_SUPPORTED_TYPES:
         logger.warning(f"content type not supported: {content_type}")
-        raise Exception(f"content type not supported: {content_type}")
+        raise TypeError(f"content type not supported: {content_type}")
 
     if settings.testing:
         if not metadata:
