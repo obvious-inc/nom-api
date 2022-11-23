@@ -57,3 +57,12 @@ class UserPreferences(APIDocument):
     class Meta:
         collection_name = "users_preferences"
         indexes = ["user"]
+
+
+@instance.register
+class UserBlock(APIDocument):
+    author = fields.ReferenceField("User", required=True)
+    user = fields.ReferenceField("User", required=True)
+
+    class Meta:
+        collection_name = "users_blocked"

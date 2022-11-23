@@ -12,12 +12,14 @@ from app.helpers.queue_utils import queue_bg_task
 from app.helpers.w3 import checksum_address, get_nft, get_nft_image_url, verify_token_ownership
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
+from app.models.report import UserReport
 from app.models.server import ServerMember
-from app.models.user import User, UserPreferences
+from app.models.user import User, UserBlock, UserPreferences
 from app.schemas.preferences import UserPreferencesUpdateSchema
+from app.schemas.reports import UserReportCreateSchema
 from app.schemas.servers import ServerMemberUpdateSchema
-from app.schemas.users import UserCreateSchema, UserUpdateSchema
-from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
+from app.schemas.users import UserBlockCreateSchema, UserCreateSchema, UserUpdateSchema
+from app.services.crud import create_item, delete_item, get_item, get_item_by_id, get_items, update_item
 from app.services.events import broadcast_event
 from app.services.websockets import broadcast_server_event
 
@@ -172,3 +174,40 @@ async def update_user_preferences(update_data: UserPreferencesUpdateSchema, curr
 
     data = update_data.dict(exclude_unset=True)
     return await update_item(item=current_prefs, data=data)
+
+
+async def report_user(report_model: UserReportCreateSchema, current_user: User):
+    user_id = report_model.user
+    if user_id == str(current_user.pk):
+        raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST, detail="One cannot report themselves")
+
+    is_reported = await get_item(filters={"user": ObjectId(user_id), "author": current_user.pk}, result_obj=UserReport)
+    if is_reported:
+        raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST, detail="User has already been reported")
+
+    return await create_item(report_model, result_obj=UserReport, user_field="author", current_user=current_user)
+
+
+async def block_user(block_model: UserBlockCreateSchema, current_user: User):
+    user_id = block_model.user
+
+    if user_id == str(current_user.pk):
+        raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST, detail="One cannot block themselves")
+
+    is_blocked = await get_item(filters={"user": ObjectId(user_id), "author": current_user.pk}, result_obj=UserBlock)
+    if is_blocked:
+        raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST, detail="User has already been blocked")
+
+    await create_item(block_model, result_obj=UserBlock, user_field="author", current_user=current_user)
+
+
+async def unblock_user(user_id: str, current_user: User):
+    block_item = await get_item(filters={"user": ObjectId(user_id), "author": current_user.pk}, result_obj=UserBlock)
+    if not block_item:
+        raise HTTPException(status_code=http.HTTPStatus.NOT_FOUND)
+
+    await delete_item(block_item)
+
+
+async def get_blocked_users(current_user: User):
+    return await get_items(filters={"author": current_user.pk}, result_obj=UserBlock, limit=None)

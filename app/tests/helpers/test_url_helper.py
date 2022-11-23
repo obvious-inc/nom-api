@@ -35,7 +35,7 @@ class TestURLHelper:
             ),
             (
                 "https://www.tiktok.com/@abba/video/7166121198521175302",
-                {"title": "Happy Birthday Frida!"},
+                {"title": "Happy Birthday Frida! | TikTok"},
             ),
         ],
     )

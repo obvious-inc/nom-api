@@ -1,3 +1,4 @@
+import http
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, Body, Depends, Response
@@ -7,15 +8,27 @@ from app.dependencies import PermissionsChecker, get_current_user
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateSchema, EitherChannel
 from app.schemas.preferences import UserPreferencesSchema, UserPreferencesUpdateSchema
+from app.schemas.reports import UserReportCreateSchema, UserReportSchema
 from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
-from app.schemas.users import EitherUserProfile, PublicUserSchema, UserSchema, UserUpdateSchema
+from app.schemas.users import (
+    EitherUserProfile,
+    PublicUserSchema,
+    UserBlockCreateSchema,
+    UserBlockSchema,
+    UserSchema,
+    UserUpdateSchema,
+)
 from app.services.channels import get_user_channels
 from app.services.servers import get_user_servers
 from app.services.users import (
+    block_user,
+    get_blocked_users,
     get_user_preferences,
     get_user_profile_by_server_id,
     get_user_read_states,
     get_users_info,
+    report_user,
+    unblock_user,
     update_user_preferences,
     update_user_profile,
 )
@@ -83,3 +96,23 @@ async def put_update_user_preferences(
     update_data: UserPreferencesUpdateSchema = Body(...), current_user: User = Depends(get_current_user)
 ):
     return await update_user_preferences(update_data, current_user)
+
+
+@router.post("/me/reports", summary="Report user", response_model=UserReportSchema, status_code=http.HTTPStatus.CREATED)
+async def post_report_user(report: UserReportCreateSchema = Body(...), current_user: User = Depends(get_current_user)):
+    return await report_user(report_model=report, current_user=current_user)
+
+
+@router.get("/me/blocks", summary="Get list of blocked users", response_model=List[UserBlockSchema])
+async def get_fetch_blocked_users(current_user: User = Depends(get_current_user)):
+    return await get_blocked_users(current_user=current_user)
+
+
+@router.post("/me/blocks", summary="Block user", status_code=http.HTTPStatus.NO_CONTENT)
+async def post_block_user(block: UserBlockCreateSchema = Body(...), current_user: User = Depends(get_current_user)):
+    return await block_user(block, current_user=current_user)
+
+
+@router.delete("/me/blocks/{user_id}", summary="Unblock user", status_code=http.HTTPStatus.NO_CONTENT)
+async def post_unblock_user(user_id: str, current_user: User = Depends(get_current_user)):
+    return await unblock_user(user_id, current_user=current_user)

@@ -6,6 +6,7 @@ from app.dependencies import PermissionsChecker, get_current_app, get_current_us
 from app.models.app import App
 from app.models.user import User
 from app.schemas.messages import AppMessageCreateSchema, MessageCreateSchema, MessageSchema, MessageUpdateSchema
+from app.schemas.reports import MessageReportCreateSchema, MessageReportSchema
 from app.services.messages import (
     add_reaction_to_message,
     create_app_message,
@@ -13,6 +14,7 @@ from app.services.messages import (
     create_reply_message,
     delete_message,
     remove_reaction_from_message,
+    report_message,
     update_message,
 )
 
@@ -102,3 +104,17 @@ async def post_create_reply(
     current_user: User = Depends(get_current_user),
 ):
     return await create_reply_message(message_id, message_model=message, current_user=current_user)
+
+
+@router.post(
+    "/{message_id}/report",
+    summary="Report message",
+    response_model=MessageReportSchema,
+    status_code=http.HTTPStatus.CREATED,
+)
+async def post_report_message(
+    message_id: str,
+    report: MessageReportCreateSchema = Body(...),
+    current_user: User = Depends(get_current_user),
+):
+    return await report_message(message_id, report_model=report, current_user=current_user)

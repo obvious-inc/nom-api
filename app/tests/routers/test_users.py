@@ -1,3 +1,5 @@
+from typing import Callable
+
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
@@ -202,3 +204,119 @@ class TestUserRoutes:
         assert topic_channel_prefs is not None
         assert topic_channel_prefs != {}
         assert topic_channel_prefs.get("muted") is False
+
+    @pytest.mark.asyncio
+    async def test_post_report_user(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User, create_new_user: Callable
+    ):
+        guest_user = await create_new_user()
+
+        response = await authorized_client.post("/users/me/reports", json={"user": str(guest_user.pk)})
+        assert response.status_code == 201
+        json_resp = response.json()
+        assert json_resp.get("author") == str(current_user.pk)
+        assert json_resp.get("user") == str(guest_user.pk)
+        assert json_resp.get("reason") == "other"
+
+    @pytest.mark.asyncio
+    async def test_post_report_user_self(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+    ):
+        response = await authorized_client.post("/users/me/reports", json={"user": str(current_user.pk)})
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_post_report_user_already_reported(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User, create_new_user: Callable
+    ):
+        guest_user = await create_new_user()
+
+        response = await authorized_client.post("/users/me/reports", json={"user": str(guest_user.pk)})
+        assert response.status_code == 201
+
+        response = await authorized_client.post("/users/me/reports", json={"user": str(guest_user.pk)})
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_post_block_user(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User, create_new_user: Callable
+    ):
+        guest_user = await create_new_user()
+
+        response = await authorized_client.post("/users/me/blocks", json={"user": str(guest_user.pk)})
+        assert response.status_code == 204
+
+    @pytest.mark.asyncio
+    async def test_post_block_user_self(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+    ):
+        response = await authorized_client.post("/users/me/blocks", json={"user": str(current_user.pk)})
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_post_block_user_already_blocked(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User, create_new_user: Callable
+    ):
+        guest_user = await create_new_user()
+
+        response = await authorized_client.post("/users/me/blocks", json={"user": str(guest_user.pk)})
+        assert response.status_code == 204
+
+        response = await authorized_client.post("/users/me/blocks", json={"user": str(guest_user.pk)})
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_get_list_blocked_users(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User, create_new_user: Callable
+    ):
+        guest_user = await create_new_user()
+
+        response = await authorized_client.post("/users/me/blocks", json={"user": str(guest_user.pk)})
+        assert response.status_code == 204
+
+        response = await authorized_client.get("/users/me/blocks")
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 1
+        print(json_resp)
+        assert json_resp[0].get("user") == str(guest_user.pk)
+        assert json_resp[0].get("author") == str(current_user.pk)
+
+    @pytest.mark.asyncio
+    async def test_unblock_user(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User, create_new_user: Callable
+    ):
+        guest_user = await create_new_user()
+
+        response = await authorized_client.post("/users/me/blocks", json={"user": str(guest_user.pk)})
+        assert response.status_code == 204
+
+        response = await authorized_client.get("/users/me/blocks")
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 1
+
+        response = await authorized_client.delete(f"/users/me/blocks/{str(guest_user.pk)}")
+        assert response.status_code == 204
+
+        response = await authorized_client.get("/users/me/blocks")
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 0
+
+    @pytest.mark.asyncio
+    async def test_unblock_user_not_blocked(
+        self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User, create_new_user: Callable
+    ):
+        guest_user = await create_new_user()
+
+        response = await authorized_client.delete(f"/users/me/blocks/{str(guest_user.pk)}")
+        assert response.status_code == 404

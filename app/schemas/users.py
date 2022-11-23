@@ -123,3 +123,12 @@ class PublicUserSchema(BaseModel):
                 "pfp": {"cf_id": "5adcdc13-0a45-45cd-0707-31eab9997c00"},
             }
         }
+
+
+class UserBlockCreateSchema(APIBaseCreateSchema):
+    user: str
+
+
+class UserBlockSchema(APIBaseSchema):
+    user: PyObjectId
+    author: PyObjectId

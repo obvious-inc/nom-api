@@ -23,6 +23,7 @@ from app.models.app import App
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
 from app.models.message import AppInstallMessage, AppMessage, Message, MessageReaction, SystemMessage, WebhookMessage
+from app.models.report import MessageReport
 from app.models.user import User
 from app.schemas.channels import ChannelReadStateCreateSchema
 from app.schemas.messages import (
@@ -33,6 +34,7 @@ from app.schemas.messages import (
     SystemMessageCreateSchema,
     WebhookMessageCreateSchema,
 )
+from app.schemas.reports import MessageReportCreateSchema
 from app.services.crud import (
     create_item,
     delete_item,
@@ -354,3 +356,12 @@ async def create_reply_message(
     message_model.reply_to = reply_to_message_id
     reply = await create_message(message_model=message_model, current_user=current_user)
     return reply
+
+
+async def report_message(message_id: str, report_model: MessageReportCreateSchema, current_user: User):
+    message = await get_item_by_id(id_=message_id, result_obj=Message)
+    if message.author == current_user:
+        raise HTTPException(status_code=400, detail="You cannot report your own message")
+
+    report_model.message = message_id
+    return await create_item(report_model, result_obj=MessageReport, user_field="author", current_user=current_user)

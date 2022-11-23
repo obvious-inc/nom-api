@@ -1324,3 +1324,54 @@ class TestMessagesRoutes:
         data = {"blocks": [{"type": "paragraph", "children": [{"text": ""}]}], "channel": str(topic_channel.pk)}
         response = await authorized_client.post("/messages", json=data)
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_post_report_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        topic_channel: Channel,
+    ):
+        guest_user = await create_new_user()
+
+        authorized_client = await get_authorized_client(current_user)
+        invite_data = {"members": [str(guest_user.pk)]}
+        response = await authorized_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=invite_data)
+        assert response.status_code == 204
+
+        guest_client = await get_authorized_client(guest_user)
+        data = {"content": "gm!", "channel": str(topic_channel.pk)}
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json()["id"]
+
+        data = {"reason": "spam"}
+        authorized_client = await get_authorized_client(current_user)
+        response = await authorized_client.post(f"/messages/{message_id}/report", json=data)
+        assert response.status_code == 201
+        json_resp = response.json()
+        assert json_resp.get("author") == str(current_user.pk)
+        assert json_resp.get("message") == message_id
+        assert json_resp.get("reason") == "spam"
+
+    @pytest.mark.asyncio
+    async def test_post_report_own_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+    ):
+
+        data = {"content": "gm!", "channel": str(topic_channel.pk)}
+        response = await authorized_client.post("/messages", json=data)
+        assert response.status_code == 201
+        message_id = response.json()["id"]
+
+        data = {"reason": "spam"}
+        response = await authorized_client.post(f"/messages/{message_id}/report", json=data)
+        assert response.status_code == 400
