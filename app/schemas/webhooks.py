@@ -9,6 +9,13 @@ class WebhookSchema(APIBaseSchema):
     channel: PyObjectId
 
 
+class WebhookCreatedSchema(APIBaseSchema):
+    app: PyObjectId
+    creator: PyObjectId
+    channel: PyObjectId
+    secret: str
+
+
 class WebhookCreateSchema(APIBaseCreateSchema):
     app: str = ""
     channel: Optional[str]

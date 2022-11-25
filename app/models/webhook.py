@@ -6,7 +6,7 @@ from app.models.base import APIDocument
 
 @instance.register
 class Webhook(APIDocument):
-    secret = fields.StrField()
+    secret = fields.StrField(load_only=True)
 
     creator = fields.ReferenceField("User")
     app = fields.ReferenceField("App")
