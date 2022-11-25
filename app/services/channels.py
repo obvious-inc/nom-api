@@ -20,7 +20,7 @@ from app.models.channel import Channel, ChannelReadState
 from app.models.common import PermissionOverwrite
 from app.models.section import Section
 from app.models.star import Star
-from app.models.user import User
+from app.models.user import User, UserBlock
 from app.schemas.channels import (
     ChannelBulkReadStateCreateSchema,
     ChannelReadStateCreateSchema,
@@ -66,6 +66,13 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
         # TODO: return 200 status code
         return existing_dm_channels[0]
 
+    # raise an error when trying to DM users who have blocked the current user
+    blocked_users = await get_items(
+        filters={"author": {"$in": channel_model.members}, "user": current_user.pk}, result_obj=UserBlock, limit=None
+    )
+    if blocked_users:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One of the member has blocked the user")
+
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
@@ -85,6 +92,14 @@ async def create_topic_channel(
     else:
         if current_user.pk not in channel_model.members:
             channel_model.members.insert(0, current_user.pk)
+
+    # raise an error when trying to DM users who have blocked the current user
+    blocked_users = await get_items(
+        filters={"author": {"$in": channel_model.members}, "user": current_user.pk}, result_obj=UserBlock, limit=None
+    )
+    if blocked_users:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One of the member has blocked the user")
+
     return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
 
 
@@ -264,6 +279,13 @@ async def invite_members_to_channel(channel_id: str, members: List[str], current
         if member not in channel.members:
             final_channel_members.append(member.pk)
             new_users.append(member)
+
+    # raise an error when trying to DM users who have blocked the current user
+    blocked_users = await get_items(
+        filters={"author": {"$in": final_channel_members}, "user": current_user.pk}, result_obj=UserBlock, limit=None
+    )
+    if blocked_users:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One of the invitees has blocked the user")
 
     await update_item(item=channel, data={"members": final_channel_members})
     await cache.client.hset(f"channel:{channel_id}", "members", ",".join([str(m) for m in final_channel_members]))

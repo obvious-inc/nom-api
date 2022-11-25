@@ -1608,3 +1608,69 @@ class TestChannelsRoutes:
         assert "members" in json_response
         assert len(json_response["members"]) == 2
         assert json_response["members"][0] == str(current_user.pk)
+
+    @pytest.mark.asyncio
+    async def test_create_dm_channel_with_blocked_user(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.post("/users/me/blocks", json={"user": str(current_user.pk)})
+        assert response.status_code == 204
+
+        data = {"kind": "dm", "members": [str(guest_user.pk), str(current_user.pk)]}
+        authorized_client = await get_authorized_client(current_user)
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel_with_blocked_user(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.post("/users/me/blocks", json={"user": str(current_user.pk)})
+        assert response.status_code == 204
+
+        data = {"kind": "topic", "members": [str(guest_user.pk), str(current_user.pk)]}
+        authorized_client = await get_authorized_client(current_user)
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_invite_blocked_user_to_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.post("/users/me/blocks", json={"user": str(current_user.pk)})
+        assert response.status_code == 204
+
+        data = {"kind": "topic", "name": "my-fav-channel", "members": [str(current_user.pk)]}
+
+        authorized_client = await get_authorized_client(current_user)
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        channel_id = response.json()["id"]
+
+        data = {"members": [str(guest_user.pk)]}
+        response = await authorized_client.post(f"/channels/{channel_id}/invite", json=data)
+        assert response.status_code == 400
