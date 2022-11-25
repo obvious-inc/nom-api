@@ -3,6 +3,7 @@ import pytest
 from app.helpers.urls import extract_unfurl_info_from_html, unfurl_url
 
 
+@pytest.mark.skip("need a smarter way to test external services (recording or mocking)")
 class TestURLHelper:
     @pytest.mark.parametrize(
         "html, url, partial_expected",

@@ -5,6 +5,7 @@ from typing import Optional
 from urllib.parse import quote_plus, urlparse, urlunparse
 
 import aiohttp
+from aiohttp import ClientTimeout
 from bs4 import BeautifulSoup, SoupStrainer
 
 from app.config import get_settings
@@ -108,7 +109,7 @@ async def opengraph_extract_metatags(url: str) -> dict:
 
 async def unfurl_url(url: str) -> Optional[dict]:
     headers = {"User-Agent": random.choice(USER_AGENTS)}
-    async with aiohttp.ClientSession(headers=headers) as session:
+    async with aiohttp.ClientSession(headers=headers, timeout=ClientTimeout(total=5)) as session:
         async with session.get(url) as resp:
             text = await resp.text()
 
