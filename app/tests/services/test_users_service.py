@@ -1,10 +1,20 @@
+import asyncio
+
 import ens
 import pytest
 
 from app.helpers.w3 import checksum_address
-from app.models.user import User
+from app.models.channel import Channel
+from app.models.star import Star
+from app.models.user import User, UserPreferences
+from app.schemas.channels import TopicChannelCreateSchema
+from app.schemas.preferences import UserPreferencesUpdateSchema
+from app.schemas.stars import StarCreateSchema
 from app.schemas.users import UserCreateSchema
-from app.services.users import create_user, set_user_profile_picture
+from app.services.channels import create_channel
+from app.services.crud import create_item, get_items
+from app.services.stars import create_star
+from app.services.users import create_user, delete_user, set_user_profile_picture
 
 
 class TestUsersService:
@@ -110,3 +120,33 @@ class TestUsersService:
         data = {"pfp": "asdfasdf"}
         updated_data = await set_user_profile_picture(data, current_user, current_user)
         assert "pfp" not in updated_data
+
+    @pytest.mark.asyncio
+    async def test_delete_user(self, db, current_user: User):
+        guest = await create_user(
+            user_model=UserCreateSchema(wallet_address="0x0000000000000000000000000000000000000000")
+        )
+
+        topic_channel = await create_channel(
+            current_user=guest,
+            channel_model=TopicChannelCreateSchema(kind="topic", name="test", members=[str(current_user.pk)]),
+        )
+        await create_star(current_user=current_user, star_model=StarCreateSchema(type="user", reference=str(guest.pk)))
+        await create_item(
+            item=UserPreferencesUpdateSchema(channels={str(topic_channel.pk): {"muted": True}}),
+            result_obj=UserPreferences,
+            current_user=current_user,
+        )
+
+        assert len(await get_items(filters={"members": current_user.pk}, result_obj=Channel)) == 1
+        assert len(await get_items(filters={"user": current_user.pk}, result_obj=Star)) == 1
+        assert len(await get_items(filters={"user": current_user.pk}, result_obj=UserPreferences)) == 1
+        assert len(await get_items(filters={"wallet_address": current_user.wallet_address}, result_obj=User)) == 1
+
+        await delete_user(current_user)
+        await asyncio.sleep(1)
+
+        assert len(await get_items(filters={"members": current_user.pk}, result_obj=Channel)) == 0
+        assert len(await get_items(filters={"user": current_user.pk}, result_obj=Star)) == 0
+        assert len(await get_items(filters={"user": current_user.pk}, result_obj=UserPreferences)) == 0
+        assert len(await get_items(filters={"wallet_address": current_user.wallet_address}, result_obj=User)) == 0

@@ -34,7 +34,7 @@ class User(APIDocument):
 
     class Meta:
         collection_name = "users"
-        indexes = [[("wallet_address", ASCENDING), {"unique": True}]]
+        indexes = [[("wallet_address", ASCENDING)]]
 
 
 @instance.register
