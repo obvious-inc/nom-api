@@ -47,14 +47,16 @@ async def handle_pusher_event(event: dict):
     actor = await _get_actor_from_event(event)
 
     if not actor:
-        raise Exception(f"Missing actor. [channel_name={channel_name}]")
+        logger.info(f"Missing actor from pusher event: {event} [channel_name={channel_name}]")
+        return
 
     if event_name == "channel_occupied":
         await process_channel_occupied_event(channel_name=channel_name, actor=actor)
     elif event_name == "channel_vacated":
         await process_channel_vacated_event(channel_name=channel_name, actor=actor)
     else:
-        raise NotImplementedError(f"not expected event: {event}")
+        logger.error("unexpected pusher event: %s", event)
+        return
 
     logger.info("pusher event handled successfully. [event=%s, channel=%s]", event_name, channel_name)
 
