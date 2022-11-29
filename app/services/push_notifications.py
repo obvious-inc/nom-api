@@ -20,7 +20,10 @@ async def parse_push_notification_data(event_data: dict, message: Message, chann
 
     if message.author:
         author: User = await message.author.fetch()
-        author_name = author.display_name or author.wallet_address
+        if author.display_name:
+            author_name = author.display_name
+        else:
+            author_name = author.wallet_address[:5] + "..." + author.wallet_address[-3:]
     elif app_dict:
         author_name = app_dict.get("name")
     else:
