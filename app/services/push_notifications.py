@@ -8,7 +8,7 @@ from app.helpers.message_utils import get_message_mentioned_users, get_raw_block
 from app.helpers.queue_utils import timed_task
 from app.models.channel import Channel, ChannelReadState
 from app.models.message import Message
-from app.models.user import User, UserPreferences
+from app.models.user import User, UserBlock, UserPreferences
 from app.services.crud import get_item, get_item_by_id, get_items
 
 logger = logging.getLogger(__name__)
@@ -51,12 +51,12 @@ async def parse_push_notification_data(event_data: dict, message: Message, chann
 async def should_send_push_notification(
     user: User, channel: Channel, mentioned_users: List[User], message: Message
 ) -> bool:
-    # apply all fancy logic to decide on sending push notification
-    # - is channel muted?
-    # - is user mentioned?
-    # - etc.
-
     if message.author == user:
+        return False
+
+    blocks = await get_items(filters={"author": user.pk}, result_obj=UserBlock, limit=None)
+    blocked_users = [block.user for block in blocks]
+    if message.author in blocked_users:
         return False
 
     if message.type in [1, 5]:
