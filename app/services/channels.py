@@ -73,7 +73,15 @@ async def create_dm_channel(channel_model: DMChannelCreateSchema, current_user: 
     if blocked_users:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One of the member has blocked the user")
 
-    return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
+    channel = await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
+
+    await queue_bg_task(
+        broadcast_event,
+        EventType.CHANNEL_CREATED,
+        {"channel": channel.dump()},
+    )
+
+    return channel
 
 
 async def create_server_channel(
@@ -100,7 +108,15 @@ async def create_topic_channel(
     if blocked_users:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="One of the member has blocked the user")
 
-    return await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
+    channel = await create_item(channel_model, result_obj=Channel, current_user=current_user, user_field="owner")
+
+    await queue_bg_task(
+        broadcast_event,
+        EventType.CHANNEL_CREATED,
+        {"channel": channel.dump()},
+    )
+
+    return channel
 
 
 async def create_channel(

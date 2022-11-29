@@ -17,6 +17,7 @@ class EventType(Enum):
     CHANNEL_USER_INVITED = "CHANNEL_USER_INVITED"
     CHANNEL_USER_JOINED = "CHANNEL_USER_JOINED"
     CHANNEL_DELETED = "CHANNEL_DELETED"
+    CHANNEL_CREATED = "CHANNEL_CREATED"
 
     USER_PROFILE_UPDATE = "USER_PROFILE_UPDATE"
     USER_PRESENCE_UPDATE = "USER_PRESENCE_UPDATE"
@@ -44,6 +45,7 @@ async def fetch_event_channel_scope(event: EventType) -> Optional[str]:
         EventType.CHANNEL_USER_INVITED,
         EventType.CHANNEL_USER_JOINED,
         EventType.CHANNEL_DELETED,
+        EventType.CHANNEL_CREATED,
         EventType.USER_TYPING,
     ]:
         return "channel"
