@@ -239,6 +239,9 @@ async def delete_user(current_user: User):
             "display_name": None,
             "ens_domain": None,
             "description": None,
+            "online_channels": [],
+            "push_tokens": [],
+            "status": "offline",
         },
     )
 
