@@ -32,7 +32,7 @@ class TestAppsRoutes:
         assert json_response != {}
         assert json_response["channel"] == webhook_data["channel"]
         assert json_response["app"] == str(integration_app.pk)
-        assert "secret" not in json_response
+        assert "secret" in json_response  # first time creating webhook, must send secret in response
 
         webhook_item = await get_item_by_id(id_=json_response["id"], result_obj=Webhook)
         assert webhook_item.secret is not None
