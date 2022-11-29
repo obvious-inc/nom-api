@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from app.helpers.events import EventType
 from app.helpers.pfp import extract_contract_and_token_from_string, upload_pfp_url_and_update_profile
-from app.helpers.queue_utils import queue_bg_task
+from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
 from app.helpers.w3 import checksum_address, get_nft, get_nft_image_url, verify_token_ownership
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
@@ -19,8 +19,11 @@ from app.schemas.preferences import UserPreferencesUpdateSchema
 from app.schemas.reports import UserReportCreateSchema
 from app.schemas.servers import ServerMemberUpdateSchema
 from app.schemas.users import UserBlockCreateSchema, UserCreateSchema, UserUpdateSchema
-from app.services.crud import create_item, delete_item, get_item, get_item_by_id, get_items, update_item
+from app.services.apps import delete_user_apps
+from app.services.channels import remove_user_channel_membership
+from app.services.crud import create_item, delete_item, delete_items, get_item, get_items, update_item
 from app.services.events import broadcast_event
+from app.services.stars import delete_user_stars
 from app.services.websockets import broadcast_server_event
 
 logger = logging.getLogger(__name__)
@@ -36,7 +39,7 @@ async def get_user_by_wallet_address(wallet_address: str) -> Union[User, APIDocu
 
 
 async def get_user_by_id(user_id) -> Union[User, APIDocument]:
-    return await get_item_by_id(id_=user_id, result_obj=User)
+    return await get_item(filters={"_id": ObjectId(user_id)}, result_obj=User)
 
 
 async def get_user_profile_by_server_id(server_id: str, current_user: User) -> Union[ServerMember, APIDocument]:
@@ -150,6 +153,10 @@ async def get_user_read_states(current_user: User):
     return await get_items(filters={"user": current_user.pk}, result_obj=ChannelReadState, limit=None)
 
 
+async def delete_user_read_states(current_user: User):
+    await delete_items(filters={"user": current_user.pk}, result_obj=ChannelReadState)
+
+
 async def get_users_info(data: dict):
     user_ids: List[str] = data.get("user_ids", [])
     user_obj_ids = []
@@ -174,6 +181,12 @@ async def update_user_preferences(update_data: UserPreferencesUpdateSchema, curr
 
     data = update_data.dict(exclude_unset=True)
     return await update_item(item=current_prefs, data=data)
+
+
+async def delete_user_preferences(current_user: User):
+    prefs = await get_user_preferences(current_user)
+    if prefs:
+        await delete_item(item=prefs)
 
 
 async def report_user(report_model: UserReportCreateSchema, current_user: User):
@@ -211,3 +224,33 @@ async def unblock_user(user_id: str, current_user: User):
 
 async def get_blocked_users(current_user: User):
     return await get_items(filters={"author": current_user.pk}, result_obj=UserBlock, limit=None)
+
+
+async def delete_all_blocked_users(current_user: User):
+    await delete_items(filters={"author": current_user.pk}, result_obj=UserBlock)
+
+
+async def delete_user(current_user: User):
+    await update_item(
+        current_user,
+        data={
+            "deleted": True,
+            "pfp": None,
+            "display_name": None,
+            "ens_domain": None,
+            "description": None,
+        },
+    )
+
+    logger.info("Deleted user %s. Queueing other data for deletion", current_user.pk)
+
+    bg_tasks = [
+        (delete_user_stars, (current_user,)),
+        (remove_user_channel_membership, (current_user,)),
+        (delete_user_read_states, (current_user,)),
+        (delete_user_preferences, (current_user,)),
+        (delete_all_blocked_users, (current_user,)),
+        (delete_user_apps, (current_user,)),
+    ]
+
+    await queue_bg_tasks(bg_tasks)  # type: ignore[arg-type]

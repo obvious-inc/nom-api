@@ -7,7 +7,7 @@ from app.models.base import APIDocument
 from app.models.star import Star
 from app.models.user import User
 from app.schemas.stars import StarCreateSchema
-from app.services.crud import create_item, delete_item, get_item_by_id, get_items
+from app.services.crud import create_item, delete_item, delete_items, get_item_by_id, get_items
 
 
 async def create_star(star_model: StarCreateSchema, current_user: User) -> Union[Star, APIDocument]:
@@ -35,3 +35,7 @@ async def delete_star(star_id: str, current_user: User):
         raise HTTPException(status_code=http.HTTPStatus.FORBIDDEN)
 
     await delete_item(item=star)
+
+
+async def delete_user_stars(user: User):
+    await delete_items(filters={"user": user.pk}, result_obj=Star)

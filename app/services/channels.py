@@ -433,3 +433,12 @@ async def get_public_channels():
         await cache.client.set(cache_key, json.dumps(channel_ids), ex=3600)
 
     return channels
+
+
+async def remove_user_channel_membership(user: User):
+    user_channels = await get_items(filters={"members": user.pk}, result_obj=Channel, limit=None)
+    for channel in user_channels:
+        try:
+            await kick_member_from_channel(channel_id=str(channel.pk), member_id=str(user.pk), current_user=user)
+        except Exception:
+            logger.info(f"problem leaving channel: {str(channel.pk)}", exc_info=True)

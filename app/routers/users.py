@@ -22,6 +22,7 @@ from app.services.channels import get_user_channels
 from app.services.servers import get_user_servers
 from app.services.users import (
     block_user,
+    delete_user,
     get_blocked_users,
     get_user_preferences,
     get_user_profile_by_server_id,
@@ -116,3 +117,8 @@ async def post_block_user(block: UserBlockCreateSchema = Body(...), current_user
 @router.delete("/me/blocks/{user_id}", summary="Unblock user", status_code=http.HTTPStatus.NO_CONTENT)
 async def post_unblock_user(user_id: str, current_user: User = Depends(get_current_user)):
     return await unblock_user(user_id, current_user=current_user)
+
+
+@router.delete("/me", summary="Delete account", status_code=http.HTTPStatus.NO_CONTENT)
+async def post_delete_user(current_user: User = Depends(get_current_user)):
+    return await delete_user(current_user=current_user)

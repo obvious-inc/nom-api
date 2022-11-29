@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import re
 from typing import Any, Dict, List, Optional
 
@@ -12,8 +13,9 @@ from app.models.channel import Channel
 from app.models.server import ServerMember
 from app.models.user import User
 from app.schemas.users import UserCreateSchema
-from app.services.crud import get_item, get_item_by_id, get_items, update_item
-from app.services.users import create_user
+from app.services.crud import create_item, get_item, get_item_by_id, get_items, update_item
+
+logger = logging.getLogger(__name__)
 
 
 async def is_user_in_channel(user: User, channel: Channel) -> bool:
@@ -111,7 +113,9 @@ async def parse_member_list(members: List[str], create_if_not_user: bool = True)
     for address in new_wallets:
         wallet_addr = checksum_address(address)
         if create_if_not_user:
-            user = await create_user(user_model=UserCreateSchema(wallet_address=wallet_addr))
+            user = await create_item(
+                item=UserCreateSchema(wallet_address=wallet_addr), result_obj=User, user_field=None
+            )
             users.append(user)
 
     return users
