@@ -456,5 +456,5 @@ async def remove_user_channel_membership(user: User):
     for channel in user_channels:
         try:
             await kick_member_from_channel(channel_id=str(channel.pk), member_id=str(user.pk), current_user=user)
-        except Exception:
-            logger.info(f"problem leaving channel: {str(channel.pk)}", exc_info=True)
+        except Exception as e:
+            logger.debug(f"problem leaving channel {str(channel.pk)}: {e}")
