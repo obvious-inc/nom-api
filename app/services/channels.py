@@ -216,6 +216,12 @@ async def update_channels_read_state(channel_ids: List[str], current_user: User,
             read_state_model = ChannelReadStateCreateSchema(channel=channel_id, last_read_at=last_read_at)
             await create_item(read_state_model, result_obj=ChannelReadState, current_user=current_user)
 
+        await queue_bg_task(
+            broadcast_event,
+            EventType.CHANNEL_READ,
+            {"read_at": last_read_at.isoformat(), "channel": channel_id, "user": current_user.dump()},
+        )
+
 
 async def create_typing_indicator(channel_id: str, current_user: User) -> None:
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)

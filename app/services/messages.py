@@ -111,8 +111,6 @@ async def create_message(
         item=message_model, result_obj=result_obj, current_user=current_user, user_field="author"
     )
 
-    channel = await message.channel.fetch()
-
     bg_tasks = [
         (broadcast_event, (EventType.MESSAGE_CREATE, {"message": message.dump()})),
         (update_channel_last_message, (message.channel, message.created_at)),
@@ -120,7 +118,11 @@ async def create_message(
             broadcast_event,
             (
                 EventType.CHANNEL_READ,
-                {"read_at": message.created_at.isoformat(), "channel": channel.dump(), "user": current_user.dump()},
+                {
+                    "read_at": message.created_at.isoformat(),
+                    "channel": str(message.channel.pk),
+                    "user": current_user.dump(),
+                },
             ),
         ),
         (process_message_mentions, (str(message.pk),)),
