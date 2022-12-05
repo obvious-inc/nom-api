@@ -8,7 +8,6 @@ from marshmallow import ValidationError
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from app.config import get_settings
 from app.exceptions import (
@@ -73,8 +72,6 @@ def get_application(testing=False):
 
     # Force HTTPS when not testing or local
     if not settings.testing:
-        app_.add_middleware(HTTPSRedirectMiddleware)
-
         sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
         app_.add_middleware(SentryAsgiMiddleware)
 
