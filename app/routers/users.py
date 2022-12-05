@@ -10,14 +10,7 @@ from app.schemas.channels import ChannelReadStateSchema, EitherChannel
 from app.schemas.preferences import UserPreferencesSchema, UserPreferencesUpdateSchema
 from app.schemas.reports import UserReportCreateSchema, UserReportSchema
 from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
-from app.schemas.users import (
-    EitherUserProfile,
-    PublicUserSchema,
-    UserBlockCreateSchema,
-    UserBlockSchema,
-    UserSchema,
-    UserUpdateSchema,
-)
+from app.schemas.users import PublicUserSchema, UserBlockCreateSchema, UserBlockSchema, UserSchema, UserUpdateSchema
 from app.services.channels import get_user_channels
 from app.services.servers import get_user_servers
 from app.services.users import (
@@ -38,7 +31,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/me", response_description="Get user profile", response_model=EitherUserProfile, summary="Get current user profile"
+    "/me", response_description="Get user profile", response_model=UserSchema, summary="Get current user profile"
 )
 async def get_user_me(server_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
     if server_id:
