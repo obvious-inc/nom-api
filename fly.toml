@@ -4,7 +4,7 @@ kill_signal = "SIGINT"
 kill_timeout = 5
 
 [processes]
-web = "gunicorn -b :8080 -w 4 -k uvicorn.workers.UvicornWorker app.main:app"
+web = "gunicorn --forwarded-allow-ips '*' -b :8080 -w 4 -k uvicorn.workers.UvicornWorker app.main:app"
 
 
 [env]
