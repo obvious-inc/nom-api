@@ -40,7 +40,7 @@ web = "gunicorn --forwarded-allow-ips '*' -b :8080 -w 4 -k uvicorn.workers.Uvico
     timeout = "2s"
 
   [[services.http_checks]]
-    interval = 15000
+    interval = 60000
     grace_period = "20s"
     method = "get"
     path = "/"
