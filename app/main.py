@@ -8,6 +8,7 @@ from marshmallow import ValidationError
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.config import get_settings
 from app.exceptions import (
@@ -21,7 +22,7 @@ from app.helpers.cache_utils import close_redis_connection, connect_to_redis, co
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, create_all_indexes, override_connect_to_mongo
 from app.helpers.logconf import log_configuration
 from app.helpers.queue_utils import stop_background_tasks
-from app.middlewares import add_canonical_log_line, profile_request
+from app.middlewares import CanonicalLoggingMiddleware, profile_request
 from app.routers import (
     apps,
     auth,
@@ -77,7 +78,8 @@ def get_application(testing=False):
 
     if settings.profiling:
         app_.add_middleware(BaseHTTPMiddleware, dispatch=profile_request)
-    app_.add_middleware(BaseHTTPMiddleware, dispatch=add_canonical_log_line)
+    app_.add_middleware(CanonicalLoggingMiddleware)
+    app_.add_middleware(ProxyHeadersMiddleware)
 
     app_.add_exception_handler(AssertionError, assertion_exception_handler)
     app_.add_exception_handler(TypeError, type_error_handler)
