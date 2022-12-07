@@ -6,6 +6,8 @@ from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from marshmallow import ValidationError
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+from sentry_sdk.integrations.pymongo import PyMongoIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
@@ -71,13 +73,22 @@ def get_application(testing=False):
 
     settings = get_settings()
 
-    # Force HTTPS when not testing or local
-    if not settings.testing:
-        sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
+    if testing and settings.environment.lower() != "testing":
+        raise ValueError("Testing environment is not set to testing")
+
+    if settings.environment.lower() != "testing":
+        trace_rate = 0.1 if settings.environment.lower() == "production" else 1.0
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.environment,
+            traces_sample_rate=trace_rate,
+            integrations=[RedisIntegration(), PyMongoIntegration()],
+        )
         app_.add_middleware(SentryAsgiMiddleware)
 
     if settings.profiling:
         app_.add_middleware(BaseHTTPMiddleware, dispatch=profile_request)
+
     app_.add_middleware(CanonicalLoggingMiddleware)
     app_.add_middleware(ProxyHeadersMiddleware)
 

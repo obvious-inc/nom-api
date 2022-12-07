@@ -35,7 +35,7 @@ python-dotenv = "^0.19"
 python-jose = "^3.3"
 python-multipart = "^0.0.5"
 redis = "^4.2.2"
-sentry-sdk = {extras = ["starlette", "fastapi"], version = "^1.11.1"}
+sentry-sdk = {extras = ["starlette", "fastapi", "pymongo"], version = "^1.11.1"}
 types-python-dateutil = "^2.8.14"
 types-redis = "^4.2.0"
 types-requests = "^2.27.9"
@@ -47,6 +47,7 @@ web3 = "^5.26"
 aioauth = "^1.5.0"
 beautifulsoup4 = "^4.11.1"
 lxml = "^4.9.1"
+pytest = "^7.1.3"
 
 [tool.poetry.dev-dependencies]
 black = { version = "*", allow-prereleases = true }
@@ -55,9 +56,10 @@ flake8 = ">=4.0"
 flake8-black = ">=0.2"
 flake8-isort = ">=4.1"
 pre-commit = "^2.19.0"
-pytest = "^6.2"
+pytest = "^7.1.3"
+pytest-env = "^0.8.1"
 pytest-asyncio = "^0.16"
-pytest-cov = "^3.0.0"
+pytest-cov = "^4.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -97,4 +99,8 @@ filterwarnings = [
     "ignore:The.+?(attribute of|argument to) fields is deprecated.:DeprecationWarning:marshmallow",
     "ignore:The.+?(attribute of|argument to) fields is deprecated.:DeprecationWarning:umongo",
     'ignore:"@coroutine" decorator is deprecated since Python 3.8, use "async def" instead:DeprecationWarning:pusher',
+]
+
+env = [
+    "ENVIRONMENT = testing"
 ]
