@@ -8,6 +8,7 @@ from app.schemas.base import APIBaseCreateSchema, APIBaseSchema, PyObjectId
 class ChannelPreferencesSchema(BaseModel):
     muted: Optional[bool]
     mentions: Optional[bool]
+    dismissed: Optional[bool]
 
 
 class UserPreferencesSchema(APIBaseSchema):
@@ -18,6 +19,7 @@ class UserPreferencesSchema(APIBaseSchema):
 class ChannelPreferencesUpdateSchema(BaseModel):
     muted: Optional[bool]
     mentions: Optional[bool]
+    dismissed: Optional[bool]
 
 
 class UserPreferencesUpdateSchema(APIBaseCreateSchema):
