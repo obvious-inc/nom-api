@@ -11,9 +11,11 @@ from app.constants.permissions import (
     ALL_PERMISSIONS,
     CHANNEL_OWNER_PERMISSIONS,
     DEFAULT_DM_MEMBER_PERMISSIONS,
+    DEFAULT_NOT_WHITELISTED_USER_PERMISSIONS,
     DEFAULT_TOPIC_MEMBER_PERMISSIONS,
     DEFAULT_USER_PERMISSIONS,
     MEMBERS_GROUP,
+    NON_WHITELISTED_TOPIC_MEMBER_PERMISSIONS,
     OWNERS_GROUP,
     PUBLIC_GROUP,
     SERVER_OWNER_PERMISSIONS,
@@ -25,6 +27,7 @@ from app.helpers.channels import fetch_and_cache_channel
 from app.helpers.sections import fetch_and_cache_section
 from app.helpers.servers import fetch_and_cache_server
 from app.helpers.users import fetch_and_cache_user, get_user_roles_permissions
+from app.helpers.whitelist import is_wallet_whitelisted
 from app.models.app import App
 from app.models.channel import Channel
 from app.models.server import Server, ServerMember
@@ -178,9 +181,13 @@ async def fetch_user_permissions(
     user_id: Optional[str],
     app_id: Optional[str] = None,
     token_scopes: Optional[List[str]] = None,
+    user_whitelisted: Optional[bool] = False,
 ) -> List[str]:
     logger.debug(f"fetching permissions. user: {user_id} | channel: {channel_id} | server: {server_id} | app: {app_id}")
     if not channel_id and not server_id:
+        if not user_whitelisted:
+            return DEFAULT_NOT_WHITELISTED_USER_PERMISSIONS
+
         return DEFAULT_USER_PERMISSIONS
 
     channel, user, server, section, app = await fetch_cached_permissions_data(
@@ -216,7 +223,10 @@ async def fetch_user_permissions(
                 if member_perms:
                     user_roles[MEMBERS_GROUP] = member_perms
                 else:
-                    user_roles[MEMBERS_GROUP] = DEFAULT_TOPIC_MEMBER_PERMISSIONS
+                    if not user_whitelisted:
+                        user_roles[MEMBERS_GROUP] = NON_WHITELISTED_TOPIC_MEMBER_PERMISSIONS
+                    else:
+                        user_roles[MEMBERS_GROUP] = DEFAULT_TOPIC_MEMBER_PERMISSIONS
 
             if app_id:
                 if not app:
@@ -300,13 +310,25 @@ async def check_request_permissions(
     user_id = str(current_user.pk) if current_user else None
     app_id = str(current_app.pk) if current_app else None
 
+    user_whitelisted = False
+    if current_user:
+        try:
+            user_whitelisted = await is_wallet_whitelisted(wallet_address=current_user.wallet_address)
+        except Exception:
+            logger.error("failed to check user wallet address")
+
     try:
         token_scopes = request.state.scopes
     except AttributeError:
         token_scopes = []
 
     user_permissions = await fetch_user_permissions(
-        user_id=user_id, channel_id=channel_id, server_id=server_id, app_id=app_id, token_scopes=token_scopes
+        user_id=user_id,
+        channel_id=channel_id,
+        server_id=server_id,
+        app_id=app_id,
+        token_scopes=token_scopes,
+        user_whitelisted=user_whitelisted,
     )
 
     request.state.permissions_used = ",".join(permissions)

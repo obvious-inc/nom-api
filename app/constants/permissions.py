@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import List
 
 
 class Permission(Enum):
@@ -55,6 +56,16 @@ DEFAULT_TOPIC_MEMBER_PERMISSIONS = [
     ]
 ]
 
+NON_WHITELISTED_TOPIC_MEMBER_PERMISSIONS = [
+    p.value
+    for p in [
+        Permission.CHANNELS_VIEW,
+        Permission.MESSAGES_LIST,
+        Permission.CHANNELS_MEMBERS_LIST,
+    ]
+]
+
+DEFAULT_NOT_WHITELISTED_USER_PERMISSIONS: List[str] = []
 DEFAULT_USER_PERMISSIONS = [p.value for p in [Permission.CHANNELS_CREATE]]
 
 MEMBERS_GROUP = "@members"
