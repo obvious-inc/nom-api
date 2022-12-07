@@ -66,6 +66,7 @@ async def post_create_channel(
     "/{channel_id}/messages",
     response_description="Get latest messages",
     response_model=List[EitherMessage],
+    response_model_exclude_none=True,
     dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["messages.list"]))],
 )
 async def get_list_messages(channel_id, common_params: dict = Depends(common_parameters)):
@@ -94,6 +95,7 @@ async def get_fetch_channel(channel_id):
     "/{channel_id}/messages/{message_id}",
     response_description="Get message",
     response_model=EitherMessage,
+    response_model_exclude_none=True,
     dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["messages.list"]))],
 )
 async def get_specific_message(channel_id, message_id):
@@ -206,6 +208,7 @@ async def post_join_server(channel_id: str, current_user: User = Depends(get_cur
     "/{channel_id}/members",
     response_description="List channel members",
     response_model=List[MemberUserSchema],
+    response_model_exclude_none=True,
     dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["channels.members.list"]))],
 )
 async def get_fetch_channel_members(channel_id: str):
