@@ -16,7 +16,7 @@ cryptography = "^36.0"
 dnspython = "^2.1"
 eth-account = "^0.5"
 eth-utils = "^1.10"
-fastapi = "^0.79"
+fastapi = "^0.88"
 gunicorn = "^20.1"
 hiredis = "^2.0.0"
 httptools = "^0.3"
@@ -35,7 +35,7 @@ python-dotenv = "^0.19"
 python-jose = "^3.3"
 python-multipart = "^0.0.5"
 redis = "^4.2.2"
-sentry-sdk = "^1.5.4"
+sentry-sdk = {extras = ["starlette", "fastapi"], version = "^1.11.1"}
 types-python-dateutil = "^2.8.14"
 types-redis = "^4.2.0"
 types-requests = "^2.27.9"
@@ -95,5 +95,6 @@ exclude_lines = [
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore:The.+?(attribute of|argument to) fields is deprecated.:DeprecationWarning:marshmallow",
+    "ignore:The.+?(attribute of|argument to) fields is deprecated.:DeprecationWarning:umongo",
     'ignore:"@coroutine" decorator is deprecated since Python 3.8, use "async def" instead:DeprecationWarning:pusher',
 ]
