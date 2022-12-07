@@ -16,22 +16,29 @@ logger = logging.getLogger(__name__)
 
 async def expo_push(headers, data, attempts=0, max_retries=5):
     async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.post("https://exp.host/--/api/v2/push/send", data=data) as resp:
-            if not resp.ok:
-                if resp.status == 429 or str(resp.status).startswith("5"):
-                    if attempts >= max_retries:
-                        logger.error(f"unable to send notifications. max retries exceeded ({max_retries})")
-                        resp.raise_for_status()
+        try:
+            async with session.post("https://exp.host/--/api/v2/push/send", data=data) as resp:
+                if not resp.ok:
+                    if resp.status == 429 or str(resp.status).startswith("5"):
+                        if attempts >= max_retries:
+                            logger.error(f"unable to send notifications. max retries exceeded ({max_retries})")
+                            resp.raise_for_status()
 
-                    attempts += 1
-                    delay = 2**attempts + random.uniform(0, 1)
-                    logger.warning(
-                        f"notifications failed (attempt {attempts}), waiting {delay:.2f}s and trying again. {resp.status}"
-                    )
-                    await asyncio.sleep(delay)
-                    return await expo_push(headers, data, attempts=attempts)
+                        attempts += 1
+                        delay = 2**attempts + random.uniform(0, 1)
+                        logger.warning(
+                            f"notifications failed (attempt {attempts}), waiting {delay:.2f}s and trying again. {resp.status}"
+                        )
+                        await asyncio.sleep(delay)
+                        return await expo_push(headers, data, attempts=attempts)
 
-            return await resp.json()
+                return await resp.json()
+        except Exception as e:
+            attempts += 1
+            delay = 2**attempts + random.uniform(0, 1)
+            await asyncio.sleep(delay)
+            logger.warning("unable to send notifications", exc_info=e)
+            return await expo_push(headers, data, attempts=attempts)
 
 
 async def handle_expo_response(json_resp):
