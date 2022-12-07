@@ -94,7 +94,7 @@ async def get_fetch_channel(channel_id):
 @router.get(
     "/{channel_id}/messages/{message_id}",
     response_description="Get message",
-    response_model=EitherMessage,
+    response_model=Optional[EitherMessage],
     response_model_exclude_none=True,
     dependencies=[Depends(PermissionsChecker(needs_bearer=False, permissions=["messages.list"]))],
 )
