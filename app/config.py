@@ -54,7 +54,10 @@ class Settings(BaseSettings):
     expo_access_token: Optional[str]
     opengraph_app_id: Optional[str]
 
-    auto_join_channel_ids: Optional[str]
+    # feature flags v0.1
+    feature_auto_join: bool = False
+    feature_auto_join_channel_ids: Optional[str]
+    feature_whitelist: bool = False
 
     class Config:
         env_file = ".env"

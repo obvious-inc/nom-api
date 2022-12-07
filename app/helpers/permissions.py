@@ -7,6 +7,7 @@ from bson import ObjectId
 from fastapi import HTTPException
 from starlette.requests import Request
 
+from app.config import get_settings
 from app.constants.permissions import (
     ALL_PERMISSIONS,
     CHANNEL_OWNER_PERMISSIONS,
@@ -184,8 +185,9 @@ async def fetch_user_permissions(
     user_whitelisted: Optional[bool] = False,
 ) -> List[str]:
     logger.debug(f"fetching permissions. user: {user_id} | channel: {channel_id} | server: {server_id} | app: {app_id}")
+    settings = get_settings()
     if not channel_id and not server_id:
-        if not user_whitelisted:
+        if settings.feature_whitelist and not user_whitelisted:
             return DEFAULT_NOT_WHITELISTED_USER_PERMISSIONS
 
         return DEFAULT_USER_PERMISSIONS
@@ -223,7 +225,7 @@ async def fetch_user_permissions(
                 if member_perms:
                     user_roles[MEMBERS_GROUP] = member_perms
                 else:
-                    if not user_whitelisted:
+                    if settings.feature_whitelist and not user_whitelisted:
                         user_roles[MEMBERS_GROUP] = NON_WHITELISTED_TOPIC_MEMBER_PERMISSIONS
                     else:
                         user_roles[MEMBERS_GROUP] = DEFAULT_TOPIC_MEMBER_PERMISSIONS
