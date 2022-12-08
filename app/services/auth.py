@@ -130,7 +130,7 @@ async def create_refresh_token(token_model: RefreshTokenCreateSchema) -> AccessT
         raise credentials_exception
 
     if refresh_token.used is True:
-        logger.warning("tried to reuse already used refresh token. revoking all!")
+        logger.warning("tried to reuse already used refresh token. revoking all! [user_id=%s]", user_id)
         await delete_items(filters={"user": user.pk}, result_obj=RefreshToken)
         await cache.client.delete(f"refresh_tokens:{str(user.pk)}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token already used")
