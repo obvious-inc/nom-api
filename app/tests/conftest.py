@@ -12,6 +12,7 @@ from httpx import AsyncClient
 from redis.asyncio.client import Redis
 from web3 import Web3
 
+from app.config import get_settings
 from app.helpers import cloudflare
 from app.helpers.cache_utils import cache
 from app.helpers.connection import get_client, get_db
@@ -281,3 +282,12 @@ async def get_signed_message_data():
         return data
 
     return _get_signed_message_data
+
+
+@pytest.fixture(scope="function")
+async def mock_whitelist_feature(monkeypatch):
+    get_settings.cache_clear()
+    monkeypatch.setenv("FEATURE_WHITELIST", "1")
+    yield monkeypatch
+    get_settings.cache_clear()
+    monkeypatch.delenv("FEATURE_WHITELIST", raising=False)

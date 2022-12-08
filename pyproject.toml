@@ -102,5 +102,6 @@ filterwarnings = [
 ]
 
 env = [
-    "ENVIRONMENT = testing"
+    "ENVIRONMENT = testing",
+    "FEATURE_WHITELIST = 0"
 ]
