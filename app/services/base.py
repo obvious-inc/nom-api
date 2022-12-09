@@ -1,3 +1,4 @@
+from app.helpers.whitelist import is_wallet_whitelisted
 from app.models.app import App
 from app.models.user import User
 from app.services.channels import get_all_member_channels
@@ -6,7 +7,15 @@ from app.services.users import get_user_read_states
 
 
 async def get_connection_ready_data(current_user: User) -> dict:
-    data = {"user": current_user.dump()}
+    user_data = current_user.dump()
+
+    try:
+        user_whitelisted = await is_wallet_whitelisted(wallet_address=current_user.wallet_address)
+        user_data["whitelisted"] = user_whitelisted
+    except Exception:
+        pass
+
+    data = {"user": user_data}
     apps = await get_items(filters={}, result_obj=App)
 
     # TODO: pass only installed apps
