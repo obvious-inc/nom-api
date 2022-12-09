@@ -16,7 +16,7 @@ RUN poetry config virtualenvs.create false && poetry config virtualenvs.in-proje
 
 WORKDIR /code
 
-COPY tox.ini pyproject.toml poetry.lock ./
+COPY tox.ini pyproject.toml poetry.lock scripts ./
 RUN poetry install
 
 COPY app ./app

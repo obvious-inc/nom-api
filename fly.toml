@@ -6,6 +6,8 @@ kill_timeout = 5
 [processes]
 app = "gunicorn --forwarded-allow-ips '*' -b :8080 -w 4 -k uvicorn.workers.UvicornWorker app.main:app"
 
+[deploy]
+  strategy = "bluegreen"
 
 [env]
 

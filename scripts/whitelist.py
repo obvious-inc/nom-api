@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 async def main():
     app = get_application()
     async with LifespanManager(app):
+        wallet_address = sys.argv[1] or None
         try:
-            wallet_address = sys.argv[1]
             await whitelist_wallet(wallet_address)
         except Exception as e:
             logger.warning(f"problem whitelisting address {wallet_address}: {e}")
