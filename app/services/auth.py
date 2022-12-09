@@ -29,11 +29,11 @@ SIGNED_AT_SIGNATURE_REGEX = re.compile(r"issued at:\s?(.+?)$", flags=re.IGNORECA
 async def add_user_to_default_channels(user_id):
     settings = get_settings()
 
-    if not settings.auto_join_channel_ids:
+    if not settings.feature_auto_join:
         return
 
     user = await get_user_by_id(user_id=user_id)
-    for channel_id in settings.auto_join_channel_ids.split(","):
+    for channel_id in settings.feature_auto_join_channel_ids.split(","):
         channel_id = channel_id.strip()
         channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
         if not channel:

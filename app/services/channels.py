@@ -15,6 +15,7 @@ from app.helpers.channels import convert_permission_object_to_cached, is_user_in
 from app.helpers.events import EventType
 from app.helpers.permissions import fetch_user_permissions, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
+from app.helpers.whitelist import is_wallet_whitelisted
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.common import PermissionOverwrite
@@ -400,8 +401,20 @@ async def get_channel_permissions(channel_id: str, current_user_or_exception: Un
 
     user_id = str(current_user_or_exception.pk) if current_user_or_exception else None
 
+    user_whitelisted = False
+    if current_user_or_exception:
+        try:
+            user_whitelisted = await is_wallet_whitelisted(wallet_address=current_user_or_exception.wallet_address)
+        except Exception:
+            logger.error("failed to check user wallet address")
+
     try:
-        permissions = await fetch_user_permissions(channel_id=channel_id, server_id=None, user_id=user_id)
+        permissions = await fetch_user_permissions(
+            channel_id=channel_id,
+            server_id=None,
+            user_id=user_id,
+            user_whitelisted=user_whitelisted,
+        )
     except Exception:
         permissions = None
 

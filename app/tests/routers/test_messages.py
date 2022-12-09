@@ -10,6 +10,7 @@ from httpx import AsyncClient
 from pymongo.database import Database
 
 from app.helpers.message_utils import blockify_content, get_message_mentions
+from app.helpers.whitelist import whitelist_wallet
 from app.models.app import App
 from app.models.channel import Channel
 from app.models.message import Message, MessageReaction
@@ -1375,3 +1376,80 @@ class TestMessagesRoutes:
         data = {"reason": "spam"}
         response = await authorized_client.post(f"/messages/{message_id}/report", json=data)
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_post_create_message_as_non_whitelisted_guest(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        topic_channel: Channel,
+        mock_whitelist_feature,
+    ):
+        guest_user = await create_new_user()
+
+        authorized_client = await get_authorized_client(current_user)
+        invite_data = {"members": [str(guest_user.pk)]}
+        response = await authorized_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=invite_data)
+        assert response.status_code == 204
+
+        guest_client = await get_authorized_client(guest_user)
+        data = {"content": "gm!", "channel": str(topic_channel.pk)}
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_post_create_message_as_whitelisted_guest(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        topic_channel: Channel,
+        mock_whitelist_feature,
+    ):
+        guest_user = await create_new_user()
+
+        authorized_client = await get_authorized_client(current_user)
+        invite_data = {"members": [str(guest_user.pk)]}
+        response = await authorized_client.post(f"/channels/{str(topic_channel.pk)}/invite", json=invite_data)
+        assert response.status_code == 204
+
+        guest_client = await get_authorized_client(guest_user)
+        data = {"content": "gm!", "channel": str(topic_channel.pk)}
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 403
+
+        await whitelist_wallet(wallet_address=guest_user.wallet_address)
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_answer_dm_non_whitelisted(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        mock_whitelist_feature,
+    ):
+        await whitelist_wallet(current_user.wallet_address)
+
+        guest_user = await create_new_user()
+
+        authorized_client = await get_authorized_client(current_user)
+        members = [current_user, guest_user]
+        data = {"kind": "dm", "members": [str(member.pk) for member in members]}
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        dm_channel_id = response.json()["id"]
+
+        guest_client = await get_authorized_client(guest_user)
+        data = {"content": "gm!", "channel": dm_channel_id}
+        response = await guest_client.post("/messages", json=data)
+        assert response.status_code == 201

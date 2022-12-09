@@ -66,3 +66,12 @@ class UserBlock(APIDocument):
 
     class Meta:
         collection_name = "users_blocked"
+
+
+@instance.register
+class WhitelistedWallet(APIDocument):
+    wallet_address = fields.StrField(required=True)
+
+    class Meta:
+        collection_name = "wallets_whitelisted"
+        indexes = [[("wallet_address", ASCENDING), {"unique": True}]]

@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.helpers.whitelist import whitelist_wallet
 from app.models.app import App
 from app.models.channel import Channel
 from app.models.section import Section
@@ -1674,3 +1675,64 @@ class TestChannelsRoutes:
         data = {"members": [str(guest_user.pk)]}
         response = await authorized_client.post(f"/channels/{channel_id}/invite", json=data)
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel_not_whitelisted(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, mock_whitelist_feature
+    ):
+        data = {"kind": "topic", "name": "my-fav-channel"}
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel_whitelisted(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, mock_whitelist_feature
+    ):
+        data = {"kind": "topic", "name": "my-fav-channel"}
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 403
+
+        await whitelist_wallet(current_user.wallet_address)
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_create_dm_channel_non_whitelisted(
+        self, app: FastAPI, db: Database, current_user: User, authorized_client: AsyncClient, mock_whitelist_feature
+    ):
+        members = []
+        for x in range(3):
+            user = User(wallet_address=f"0x{x}")
+            await user.commit()
+            members.append(user)
+
+        data = {"kind": "dm", "members": [str(member.id) for member in members]}
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_create_dm_channel_whitelisted(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        mock_whitelist_feature,
+    ):
+        members = []
+        for x in range(3):
+            user = User(wallet_address=f"0x{x}")
+            await user.commit()
+            members.append(user)
+
+        data = {"kind": "dm", "members": [str(member.id) for member in members]}
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 403
+
+        await whitelist_wallet(current_user.wallet_address)
+
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
