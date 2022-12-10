@@ -1,5 +1,8 @@
 import http
+import json
 import logging
+import random
+import uuid
 from typing import List, Optional
 from urllib.parse import urlparse
 
@@ -9,6 +12,7 @@ from fastapi import HTTPException
 from app.config import get_settings
 from app.helpers.giphy import GiphyClient
 from app.helpers.tenor import TenorClient
+from app.helpers.urls import USER_AGENTS
 
 logger = logging.getLogger(__name__)
 
@@ -111,3 +115,59 @@ async def generate_dalle_image(prompt: str):
                 raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST)
 
             return data[0]
+
+
+async def talk_to_chatgpt(message: str):
+    settings = get_settings()
+
+    data = {
+        "action": "next",
+        "messages": [
+            {
+                "id": str(uuid.uuid4()),
+                "role": "user",
+                "content": {
+                    "content_type": "text",
+                    "parts": [message],
+                },
+            }
+        ],
+        "parent_message_id": str(uuid.uuid4()),
+        "model": "text-davinci-002-render",
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "origin": "https://chat.openai.com",
+        "referrer": "https://chat.openai.com/chat",
+        "authority": "chat.openai.com",
+        "Authorization": f"Bearer {settings.chatgpt_session_token}",
+        "user-agent": random.choice(USER_AGENTS),
+    }
+
+    logger.debug("asking ChatGPT...")
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.post("https://chat.openai.com/backend-api/conversation", json=data) as response:
+            if not response.ok:
+                logger.warning(f"error talking to ChatGPT: {response.status}")
+                raise Exception("problem with request")
+
+            reply = {}
+            async for line in response.content:
+                parsed_line = line[6:]
+                try:
+                    reply = json.loads(parsed_line)
+                except Exception:
+                    pass
+
+            if not reply:
+                raise Exception("no message fetched")
+
+            gpt_message = reply.get("message", {})
+            content: dict = gpt_message.get("content", {})
+
+            parts = content.get("parts", [])
+            parts_str = "\n".join(parts).strip()
+
+            response = {"message": parts_str, "id": gpt_message.get("id", "")}
+            return response

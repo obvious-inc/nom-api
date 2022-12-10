@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     alchemy_api_key: Optional[str]
     simplehash_api_key: Optional[str]
     dalle_api_key: Optional[str]
+    chatgpt_session_token: Optional[str]
     expo_access_token: Optional[str]
     opengraph_app_id: Optional[str]
 
