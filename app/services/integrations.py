@@ -1,8 +1,6 @@
+import datetime
 import http
-import json
 import logging
-import random
-import uuid
 from typing import List, Optional
 from urllib.parse import urlparse
 
@@ -12,7 +10,6 @@ from fastapi import HTTPException
 from app.config import get_settings
 from app.helpers.giphy import GiphyClient
 from app.helpers.tenor import TenorClient
-from app.helpers.urls import USER_AGENTS
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +96,7 @@ async def generate_dalle_image(prompt: str):
     url = "https://api.openai.com/v1/images/generations"
 
     headers = {
-        "Authorization": f"Bearer {settings.dalle_api_key}",
+        "Authorization": f"Bearer {settings.openai_api_key}",
         "Content-Type": "application/json",
     }
 
@@ -119,55 +116,31 @@ async def generate_dalle_image(prompt: str):
 
 async def talk_to_chatgpt(message: str):
     settings = get_settings()
-
-    data = {
-        "action": "next",
-        "messages": [
-            {
-                "id": str(uuid.uuid4()),
-                "role": "user",
-                "content": {
-                    "content_type": "text",
-                    "parts": [message],
-                },
-            }
-        ],
-        "parent_message_id": str(uuid.uuid4()),
-        "model": "text-davinci-002-render",
-    }
+    url = "https://api.openai.com/v1/completions"
 
     headers = {
+        "Authorization": f"Bearer {settings.openai_api_key}",
         "Content-Type": "application/json",
-        "origin": "https://chat.openai.com",
-        "referrer": "https://chat.openai.com/chat",
-        "authority": "chat.openai.com",
-        "Authorization": f"Bearer {settings.chatgpt_session_token}",
-        "user-agent": random.choice(USER_AGENTS),
     }
 
-    logger.debug("asking ChatGPT...")
+    curr_date = datetime.datetime.now().strftime("%b %d, %Y")
+    prompt_context = f"""Assistant is a large language model trained by OpenAI.
+    Knowledge cutoff: 2022-09
+    Current date: {curr_date}
+    browsing: enabled\n"""
+
+    prompt = f"{prompt_context}\nUser: {message}\nAssistant:"
+    json_data = {"prompt": prompt, "model": "text-davinci-003", "max_tokens": 4000, "temperature": 0.9}
+
     async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.post("https://chat.openai.com/backend-api/conversation", json=data) as response:
-            if not response.ok:
-                logger.warning(f"error talking to ChatGPT: {response.status}")
-                raise Exception("problem with request")
+        async with session.post(url, json=json_data) as response:
+            json_response = await response.json()
 
-            reply = {}
-            async for line in response.content:
-                parsed_line = line[6:]
-                try:
-                    reply = json.loads(parsed_line)
-                except Exception:
-                    pass
+            if not json_response.get("choices"):
+                logger.debug(f"OpenAI response: {json_response}")
+                raise HTTPException(status_code=http.HTTPStatus.BAD_REQUEST)
 
-            if not reply:
-                raise Exception("no message fetched")
+            choice = json_response.get("choices", [])[0].get("text").strip()
 
-            gpt_message = reply.get("message", {})
-            content: dict = gpt_message.get("content", {})
-
-            parts = content.get("parts", [])
-            parts_str = "\n".join(parts).strip()
-
-            response = {"message": parts_str, "id": gpt_message.get("id", "")}
+            response = {"message": choice, "id": json_response.get("id")}
             return response
