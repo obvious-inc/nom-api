@@ -32,11 +32,18 @@ async def upload_image_url(image_url, prefix: Optional[str] = "", metadata: Opti
 async def upload_images(files: List[UploadFile], prefix: Optional[str] = "", metadata: Optional[dict] = None):
     images = []
     for file in files:
-        content = await file.read()
-        image_data = await upload_content(
-            content=content, filename=file.filename, content_type=file.content_type, prefix=prefix, metadata=metadata
-        )
-        images.append(image_data)
+        try:
+            content = await file.read()
+            image_data = await upload_content(
+                content=content,
+                filename=file.filename,
+                content_type=file.content_type,
+                prefix=prefix,
+                metadata=metadata,
+            )
+            images.append(image_data)
+        finally:
+            await file.close()
     return images
 
 

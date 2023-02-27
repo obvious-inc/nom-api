@@ -5,10 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus, urlparse, urlunparse
 
 import aiohttp
-from aiohttp import ClientTimeout
 from bs4 import BeautifulSoup, SoupStrainer
 
 from app.config import get_settings
+from app.helpers.unfurl_singleton import SingletonHTTPClient
 
 logger = logging.getLogger(__name__)
 
@@ -109,21 +109,17 @@ async def opengraph_extract_metatags(url: str) -> dict:
 
 async def unfurl_url(url: str) -> Optional[dict]:
     headers = {"User-Agent": random.choice(USER_AGENTS)}
-    async with aiohttp.ClientSession(headers=headers, timeout=ClientTimeout(total=5)) as session:
-        async with session.get(url) as resp:
-            text = await resp.text()
 
-            redirect_soup = BeautifulSoup(text, "lxml", parse_only=redirect_strainer)
-            redirect_meta = redirect_soup.find("meta")
-            if redirect_meta:
-                content = redirect_meta.get("content")
-                new_url_match = re.match(r"(\d+;url=)?(.+)", content, flags=re.IGNORECASE)
-                new_url = new_url_match.group(2) if new_url_match else None
-                if new_url:
-                    return await unfurl_url(new_url)
+    text = await SingletonHTTPClient.query_url(url, headers=headers)
 
-            if not resp.ok:
-                resp.raise_for_status()
+    redirect_soup = BeautifulSoup(text, "lxml", parse_only=redirect_strainer)
+    redirect_meta = redirect_soup.find("meta")
+    if redirect_meta:
+        content = redirect_meta.get("content")
+        new_url_match = re.match(r"(\d+;url=)?(.+)", content, flags=re.IGNORECASE)
+        new_url = new_url_match.group(2) if new_url_match else None
+        if new_url:
+            return await unfurl_url(new_url)
 
-            info = await extract_unfurl_info_from_html(text, url=url)
-            return {"url": url, **info}
+    info = await extract_unfurl_info_from_html(text, url=url)
+    return {"url": url, **info}

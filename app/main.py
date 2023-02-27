@@ -24,6 +24,7 @@ from app.helpers.cache_utils import close_redis_connection, connect_to_redis, co
 from app.helpers.db_utils import close_mongo_connection, connect_to_mongo, create_all_indexes, override_connect_to_mongo
 from app.helpers.logconf import log_configuration
 from app.helpers.queue_utils import stop_background_tasks
+from app.helpers.unfurl_singleton import unfurl_singleton_shutdown, unfurl_singleton_start
 from app.middlewares import CanonicalLoggingMiddleware, profile_request
 from app.routers import (
     apps,
@@ -56,6 +57,9 @@ def get_application(testing=False):
         app_.add_event_handler("startup", connect_to_mongo)
         app_.add_event_handler("startup", create_all_indexes)
         app_.add_event_handler("startup", connect_to_redis)
+
+    app_.add_event_handler("startup", unfurl_singleton_start)
+    app_.add_event_handler("shutdown", unfurl_singleton_shutdown)
 
     app_.add_event_handler("shutdown", stop_background_tasks)
     app_.add_event_handler("shutdown", close_mongo_connection)
