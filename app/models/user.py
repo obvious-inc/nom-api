@@ -31,6 +31,7 @@ class User(APIDocument):
 
     online_channels = fields.ListField(fields.StrField(), required=False, default=[], load_only=True)
     push_tokens = fields.ListField(fields.StrField(), required=False, default=[], load_only=True)
+    signers = fields.ListField(fields.StrField(), required=False, default=[], load_only=True)
 
     class Meta:
         collection_name = "users"

@@ -5,6 +5,7 @@ from typing import List, Optional, Union
 import arrow
 import pytest
 from asgi_lifespan import LifespanManager
+from cryptography.hazmat.primitives._serialization import Encoding, PublicFormat
 from eth_account import Account
 from eth_account.messages import encode_defunct
 from fastapi import FastAPI
@@ -16,6 +17,7 @@ from app.config import get_settings
 from app.helpers import cloudflare
 from app.helpers.cache_utils import cache
 from app.helpers.connection import get_client, get_db
+from app.helpers.crypto import create_ed25519_keypair
 from app.helpers.jwt import generate_jwt_token
 from app.main import get_application
 from app.models.app import App, AppInstalled
@@ -107,6 +109,24 @@ async def create_new_user():
         return await create_user(UserCreateSchema(wallet_address=acct.address))
 
     return _create_new_user
+
+
+@pytest.fixture
+async def create_new_signer():
+    async def _create_new_signer(user: User, broadcast: bool = True):
+        private_key, public_key = await create_ed25519_keypair()
+        str_public_key = "0x" + public_key.public_bytes(encoding=Encoding.Raw, format=PublicFormat.Raw).hex()
+
+        if not user:
+            user = await create_new_user()
+
+        if broadcast:
+            user.update({"signers": [str_public_key]})
+            await user.commit()
+
+        return private_key, str_public_key
+
+    return _create_new_signer
 
 
 @pytest.fixture

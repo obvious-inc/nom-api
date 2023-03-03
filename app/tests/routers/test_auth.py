@@ -15,6 +15,7 @@ from httpx import AsyncClient
 from pymongo.database import Database
 from web3 import Web3
 
+from app.helpers.crypto import sign_keccak_ed25519
 from app.helpers.jwt import decode_jwt_token
 from app.models.server import Server, ServerMember
 from app.models.user import User
@@ -296,4 +297,61 @@ class TestAuthRoutes:
 
         data = {"refresh_token": refresh_token}
         response = await client.post("/auth/refresh", json=data)
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_auth_with_signer(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        current_user: User,
+        create_new_signer: Callable,
+    ):
+        private_key, public_key_hex = await create_new_signer(current_user)
+
+        timestamp = int(time.time())
+        url = "/users/me"
+        base_string = f"{timestamp}:{url}:"
+        signature: bytes = await sign_keccak_ed25519(base_string.encode(), private_key)
+        signature_hex = binascii.hexlify(signature).decode()
+
+        client.headers.update(
+            {
+                "X-Newshades-Signer": public_key_hex,
+                "X-Newshades-Signature": signature_hex,
+                "X-Newshades-Timestamp": str(timestamp),
+            }
+        )
+
+        response = await client.get(url)
+        assert response.status_code == 200
+        assert response.json()["wallet_address"] == current_user.wallet_address
+
+    @pytest.mark.asyncio
+    async def test_auth_with_signer_not_broadcasted(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        current_user: User,
+        create_new_signer: Callable,
+    ):
+        private_key, public_key_hex = await create_new_signer(current_user, broadcast=False)
+
+        timestamp = int(time.time())
+        url = "/users/me"
+        base_string = f"{timestamp}:{url}:"
+        signature: bytes = await sign_keccak_ed25519(base_string.encode(), private_key)
+        signature_hex = binascii.hexlify(signature).decode()
+
+        client.headers.update(
+            {
+                "X-Newshades-Signer": public_key_hex,
+                "X-Newshades-Signature": signature_hex,
+                "X-Newshades-Timestamp": str(timestamp),
+            }
+        )
+
+        response = await client.get(url)
         assert response.status_code == 401

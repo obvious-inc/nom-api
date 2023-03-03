@@ -10,6 +10,7 @@ from starlette.requests import Request
 from app.helpers.cache_utils import cache
 from app.helpers.jwt import decode_jwt_token
 from app.helpers.permissions import check_request_permissions
+from app.helpers.signers import get_user_from_signed_request
 from app.models.app import App
 from app.models.user import User
 from app.services.apps import get_app_by_client_id
@@ -33,8 +34,6 @@ async def get_current_client(request: Request, credentials: HTTPBasicCredentials
     client_secret = credentials.password
     app: App = await get_app_by_client_id(client_id)
 
-    request.state.auth_type = "basic"
-
     if not app:
         logger.warning("Client not found. [client_id=%s]", client_id)
         raise credentials_exception
@@ -43,27 +42,16 @@ async def get_current_client(request: Request, credentials: HTTPBasicCredentials
         logger.warning("Client details don't match. [client_id=%s]", client_id)
         raise credentials_exception
 
+    request.state.auth_type = "basic"
+
     return app
 
 
-async def get_current_user(request: Request, token: HTTPAuthorizationCredentials = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = decode_jwt_token(token.credentials)
-        user_id: str = payload.get("sub")
-        if not user_id:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    except Exception:
-        logger.exception("Problems decoding JWT. [jwt=%s]", token.credentials)
-        raise credentials_exception
-
-    request.state.auth_type = "bearer"
+async def get_user_from_bearer_request(token: HTTPAuthorizationCredentials):
+    payload = decode_jwt_token(token.credentials)
+    user_id: str = payload.get("sub")
+    if not user_id:
+        raise Exception("User not present in JWT token.")
 
     client_id: str = payload.get("client_id")
     if client_id:
@@ -72,15 +60,50 @@ async def get_current_user(request: Request, token: HTTPAuthorizationCredentials
     user: User = await get_user_by_id(user_id=user_id)
     if not user:
         logger.warning("User in JWT token not found. [user_id=%s]", user_id)
-        raise credentials_exception
+        raise Exception("User in JWT token not found.")
 
-    if not await cache.client.smembers(f"refresh_tokens:{str(user.pk)}"):
-        logger.warning("Refresh tokens have all been revoked. [user_id=%s]", user_id)
-        raise credentials_exception
+    return user
+
+
+async def get_current_user(request: Request, token: HTTPAuthorizationCredentials = Depends(oauth2_no_error_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    signature = request.headers.get("X-Newshades-Signature")
+    if signature:
+        auth_type = "signer"
+        try:
+            user = await get_user_from_signed_request(request=request)
+            user_id = str(user.pk)
+        except Exception:
+            logger.exception("Problems decoding signature. [signature=%s]" % signature)
+            raise credentials_exception
+    else:
+        auth_type = "bearer"
+        if not token:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authenticated")
+
+        try:
+            user = await get_user_from_bearer_request(token=token)
+            if not user:
+                return None
+
+            user_id = str(user.pk)
+        except Exception:
+            logger.exception("Problems decoding JWT. [jwt=%s]" % token.credentials)
+            raise credentials_exception
+
+        if not await cache.client.smembers(f"refresh_tokens:{user_id}"):
+            logger.warning("Refresh tokens have all been revoked. [user_id=%s]", user_id)
+            raise credentials_exception
 
     request.state.user_id = user_id
     request.state.actor_type = "user"
     request.state.auth_source = "wallet"
+    request.state.auth_type = auth_type
     set_user({"id": user_id, "type": "user"})
     return user
 
@@ -103,7 +126,6 @@ async def get_current_app(request: Request, token: HTTPAuthorizationCredentials 
         logger.exception("Problems decoding JWT. [jwt=%s]", token.credentials)
         raise credentials_exception
 
-    request.state.auth_type = "bearer"
     client_id: str = payload.get("client_id")
     if not client_id:
         return None
@@ -120,6 +142,7 @@ async def get_current_app(request: Request, token: HTTPAuthorizationCredentials 
         logger.warning("Refresh tokens have all been revoked. [app_id=%s]", sub)
         raise credentials_exception
 
+    request.state.auth_type = "bearer"
     request.state.app_id = sub
     request.state.actor_type = "app"
     request.state.auth_source = "oauth2"
@@ -132,7 +155,8 @@ async def get_current_app(request: Request, token: HTTPAuthorizationCredentials 
 async def get_current_user_non_error(
     request: Request, token: HTTPAuthorizationCredentials = Depends(oauth2_no_error_scheme)
 ):
-    if not token:
+    signature = request.headers.get("X-Newshades-Signature")
+    if not signature and not token:
         return None
 
     try:

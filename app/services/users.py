@@ -38,6 +38,10 @@ async def get_user_by_wallet_address(wallet_address: str) -> Union[User, APIDocu
     return await get_item(filters={"wallet_address": wallet_address}, result_obj=User)
 
 
+async def get_user_by_signer(signer: str) -> Union[User, APIDocument]:
+    return await get_item(filters={"signers": signer}, result_obj=User)
+
+
 async def get_user_by_id(user_id) -> Union[User, APIDocument]:
     return await get_item(filters={"_id": ObjectId(user_id)}, result_obj=User)
 
