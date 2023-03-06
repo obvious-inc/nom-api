@@ -3,7 +3,7 @@ from typing import List, Optional, Union, cast
 
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
-from jose import JWTError
+from jose import ExpiredSignatureError, JWTError
 from sentry_sdk import set_user
 from starlette.requests import Request
 
@@ -92,8 +92,13 @@ async def get_current_user(request: Request, token: HTTPAuthorizationCredentials
                 return None
 
             user_id = str(user.pk)
+        except ExpiredSignatureError:
+            raise credentials_exception
+        except JWTError as e:
+            logger.warning(f"Problems decoding JWT: {e} [jwt=%s]" % token.credentials)
+            raise credentials_exception
         except Exception:
-            logger.exception("Problems decoding JWT. [jwt=%s]" % token.credentials)
+            logger.exception("Unknown problems decoding JWT. [jwt=%s]" % token.credentials)
             raise credentials_exception
 
         if not await cache.client.smembers(f"refresh_tokens:{user_id}"):
