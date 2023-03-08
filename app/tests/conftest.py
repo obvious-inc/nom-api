@@ -31,7 +31,7 @@ from app.schemas.auth import AuthWalletSchema, RefreshTokenCreateSchema
 from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema, TopicChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema
 from app.schemas.servers import ServerCreateSchema
-from app.schemas.users import UserCreateSchema
+from app.schemas.users import UserCreateSchema, UserSignerCreateSchema
 from app.schemas.webhooks import WebhookCreateSchema
 from app.services.apps import create_app, create_app_webhook
 from app.services.auth import generate_wallet_token
@@ -39,7 +39,7 @@ from app.services.channels import create_dm_channel, create_server_channel, crea
 from app.services.crud import create_item
 from app.services.messages import create_message
 from app.services.servers import create_server
-from app.services.users import create_user
+from app.services.users import create_signer, create_user
 
 
 @pytest.fixture
@@ -121,8 +121,7 @@ async def create_new_signer():
             user = await create_new_user()
 
         if broadcast:
-            user.update({"signers": [str_public_key]})
-            await user.commit()
+            await create_signer(UserSignerCreateSchema(signer=str_public_key), current_user=user)
 
         return private_key, str_public_key
 

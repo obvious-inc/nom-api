@@ -10,13 +10,24 @@ from app.schemas.channels import ChannelReadStateSchema, EitherChannel
 from app.schemas.preferences import UserPreferencesSchema, UserPreferencesUpdateSchema
 from app.schemas.reports import UserReportCreateSchema, UserReportSchema
 from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
-from app.schemas.users import PublicUserSchema, UserBlockCreateSchema, UserBlockSchema, UserSchema, UserUpdateSchema
+from app.schemas.users import (
+    PublicUserSchema,
+    UserBlockCreateSchema,
+    UserBlockSchema,
+    UserSchema,
+    UserSignerCreateSchema,
+    UserSignerSchema,
+    UserUpdateSchema,
+)
 from app.services.channels import get_user_channels
 from app.services.servers import get_user_servers
 from app.services.users import (
     block_user,
+    create_signer,
+    delete_signer,
     delete_user,
     get_blocked_users,
+    get_signers,
     get_user_preferences,
     get_user_profile_by_server_id,
     get_user_read_states,
@@ -115,3 +126,22 @@ async def post_unblock_user(user_id: str, current_user: User = Depends(get_curre
 @router.delete("/me", summary="Delete account", status_code=http.HTTPStatus.NO_CONTENT)
 async def post_delete_user(current_user: User = Depends(get_current_user)):
     return await delete_user(current_user=current_user)
+
+
+@router.get("/me/signers", summary="List all signers", response_model=List[UserSignerSchema])
+async def get_fetch_signers(current_user: User = Depends(get_current_user)):
+    return await get_signers(current_user)
+
+
+@router.post(
+    "/me/signers", summary="Add new signer", status_code=http.HTTPStatus.CREATED, response_model=UserSignerSchema
+)
+async def post_create_signer(
+    signer: UserSignerCreateSchema = Body(...), current_user: User = Depends(get_current_user)
+):
+    return await create_signer(signer, current_user=current_user)
+
+
+@router.delete("/me/signers/{signer}", summary="Delete signer", status_code=http.HTTPStatus.NO_CONTENT)
+async def delete_remove_signer(signer: str, current_user: User = Depends(get_current_user)):
+    return await delete_signer(signer, current_user=current_user)

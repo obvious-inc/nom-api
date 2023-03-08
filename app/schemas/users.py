@@ -132,3 +132,11 @@ class UserBlockCreateSchema(APIBaseCreateSchema):
 class UserBlockSchema(APIBaseSchema):
     user: PyObjectId
     author: PyObjectId
+
+
+class UserSignerCreateSchema(APIBaseCreateSchema):
+    signer: str
+
+
+class UserSignerSchema(APIBaseSchema):
+    signer: str

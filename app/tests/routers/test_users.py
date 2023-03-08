@@ -328,3 +328,37 @@ class TestUserRoutes:
 
         response = await authorized_client.get("/users/me")
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_create_signer(self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User):
+        data = {"signer": "0x0000000"}
+        response = await authorized_client.post("/users/me/signers", json=data)
+        assert response.status_code == 201
+        json_resp = response.json()
+        assert json_resp.get("signer") == data.get("signer")
+
+        response = await authorized_client.get("/users/me/signers")
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 1
+        assert json_resp[0].get("signer") == data.get("signer")
+
+    @pytest.mark.asyncio
+    async def test_delete_signer(self, app: FastAPI, db: Database, authorized_client: AsyncClient, current_user: User):
+        signer_addr = "0x0000000000000000000000000000000000000000"
+        data = {"signer": signer_addr}
+        response = await authorized_client.post("/users/me/signers", json=data)
+        assert response.status_code == 201
+
+        response = await authorized_client.get("/users/me/signers")
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 1
+        assert json_resp[0].get("signer") == signer_addr
+
+        response = await authorized_client.delete(f"/users/me/signers/{signer_addr}")
+        assert response.status_code == 204
+        response = await authorized_client.get("/users/me/signers")
+        assert response.status_code == 200
+        json_resp = response.json()
+        assert len(json_resp) == 0
