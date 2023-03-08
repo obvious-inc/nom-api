@@ -426,6 +426,9 @@ async def get_channel_permissions(channel_id: str, current_user_or_exception: Un
 
 async def get_channel_members(channel_id: str):
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
+    if channel.deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
     if channel.kind not in ["topic", "dm"]:
         raise Exception(f"cannot get members of channel type: {channel.kind}")
 

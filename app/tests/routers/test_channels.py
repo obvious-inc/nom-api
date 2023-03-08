@@ -1736,3 +1736,21 @@ class TestChannelsRoutes:
 
         response = await authorized_client.post("/channels", json=data)
         assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_get_channel_members_from_deleted_channel(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        topic_channel: Channel,
+        authorized_client: AsyncClient,
+    ):
+        response = await authorized_client.get(f"/channels/{str(topic_channel.pk)}/members")
+        assert response.status_code == 200
+
+        response = await authorized_client.delete(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200
+
+        response = await authorized_client.get(f"/channels/{str(topic_channel.pk)}/members")
+        assert response.status_code == 404
