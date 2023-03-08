@@ -19,6 +19,7 @@ from app.helpers.whitelist import is_wallet_whitelisted
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
 from app.models.common import PermissionOverwrite
+from app.models.message import Message
 from app.models.section import Section
 from app.models.star import Star
 from app.models.user import User, UserBlock
@@ -180,6 +181,8 @@ async def delete_channel(channel_id, current_user: User):
     except Exception as e:
         logger.warning("trying to delete channel from section failed: %s", e)
         capture_exception(e)
+
+    await delete_channel_messages(channel=channel)
 
     await queue_bg_task(
         broadcast_event,
@@ -480,3 +483,7 @@ async def remove_user_channel_membership(user: User):
             await kick_member_from_channel(channel_id=str(channel.pk), member_id=str(user.pk), current_user=user)
         except Exception as e:
             logger.debug(f"problem leaving channel {str(channel.pk)}: {e}")
+
+
+async def delete_channel_messages(channel: Channel):
+    await delete_items(filters={"channel": channel.pk}, result_obj=Message)

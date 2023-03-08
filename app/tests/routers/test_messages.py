@@ -1453,3 +1453,33 @@ class TestMessagesRoutes:
         data = {"content": "gm!", "channel": dm_channel_id}
         response = await guest_client.post("/messages", json=data)
         assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_get_messages_from_deleted_channel_is_empty(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        topic_channel: Channel,
+    ):
+        channel_message = await create_item(
+            item=MessageCreateSchema(channel=str(topic_channel.pk), content="hey"),
+            result_obj=Message,
+            current_user=current_user,
+            user_field="author",
+        )
+
+        response = await authorized_client.get(f"/channels/{str(topic_channel.pk)}/messages")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert json_response[0]["id"] == str(channel_message.pk)
+
+        response = await authorized_client.delete(f"/channels/{str(topic_channel.pk)}")
+        assert response.status_code == 200
+
+        response = await authorized_client.get(f"/channels/{str(topic_channel.pk)}/messages")
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response == []
