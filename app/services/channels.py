@@ -327,7 +327,7 @@ async def invite_members_to_channel(channel_id: str, members: List[str], current
         )
 
         message = SystemMessageCreateSchema(channel=channel_id, type=1, inviter=str(current_user.pk))
-        await create_message(message_model=message, current_user=new_user)
+        await create_message(message_model=message, current_user=new_user, mark_read=False)
 
 
 async def kick_member_from_channel(channel_id: str, member_id: str, current_user: User):

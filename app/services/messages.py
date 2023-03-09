@@ -90,7 +90,9 @@ async def create_app_message(
 
 
 async def create_message(
-    message_model: Union[MessageCreateSchema, SystemMessageCreateSchema], current_user: User
+    message_model: Union[MessageCreateSchema, SystemMessageCreateSchema],
+    current_user: User,
+    mark_read: bool = True,
 ) -> Union[Message, APIDocument]:
     if message_model.blocks and not message_model.content:
         message_model.content = await stringify_blocks(message_model.blocks)
@@ -114,20 +116,24 @@ async def create_message(
     bg_tasks = [
         (broadcast_event, (EventType.MESSAGE_CREATE, {"message": message.dump()})),
         (update_channel_last_message, (message.channel, message.created_at)),
-        (
-            broadcast_event,
-            (
-                EventType.CHANNEL_READ,
-                {
-                    "read_at": message.created_at.isoformat(),
-                    "channel": str(message.channel.pk),
-                    "user": current_user.dump(),
-                },
-            ),
-        ),
         (process_message_mentions, (str(message.pk),)),
         (unfurl_message_links, (str(message.pk),)),
     ]
+
+    if mark_read:
+        bg_tasks.append(
+            (
+                broadcast_event,
+                (
+                    EventType.CHANNEL_READ,
+                    {
+                        "read_at": message.created_at.isoformat(),
+                        "channel": str(message.channel.pk),
+                        "user": current_user.dump(),
+                    },
+                ),
+            )
+        )
 
     # mypy has some issues with changing Callable signatures so we have to exclude that type check:
     # https://github.com/python/mypy/issues/10740
