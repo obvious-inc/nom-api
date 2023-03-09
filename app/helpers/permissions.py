@@ -324,14 +324,20 @@ async def check_request_permissions(
     except AttributeError:
         token_scopes = []
 
-    user_permissions = await fetch_user_permissions(
-        user_id=user_id,
-        channel_id=channel_id,
-        server_id=server_id,
-        app_id=app_id,
-        token_scopes=token_scopes,
-        user_whitelisted=user_whitelisted,
-    )
+    try:
+        user_permissions = await fetch_user_permissions(
+            user_id=user_id,
+            channel_id=channel_id,
+            server_id=server_id,
+            app_id=app_id,
+            token_scopes=token_scopes,
+            user_whitelisted=user_whitelisted,
+        )
+    except Exception as e:
+        if raise_exception:
+            raise raise_exception
+        else:
+            raise e
 
     request.state.permissions_used = ",".join(permissions)
 

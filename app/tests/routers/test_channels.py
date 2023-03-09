@@ -1754,3 +1754,26 @@ class TestChannelsRoutes:
 
         response = await authorized_client.get(f"/channels/{str(topic_channel.pk)}/members")
         assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_fetch_dm_channel_not_logged_in_404(
+        self, app: FastAPI, db: Database, client: AsyncClient, dm_channel: Channel
+    ):
+        response = await client.get(f"/channels/{str(dm_channel.pk)}")
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_fetch_dm_channel_not_member_404(
+        self,
+        app: FastAPI,
+        db: Database,
+        client: AsyncClient,
+        dm_channel: Channel,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{str(dm_channel.pk)}")
+        assert response.status_code == 404
