@@ -1,19 +1,28 @@
+import time
 from datetime import datetime
 from typing import Callable
 
 import arrow
 import pytest
+from cryptography.hazmat.primitives._serialization import Encoding, PublicFormat
+from eth_account.datastructures import SignedMessage
 from eth_account.messages import encode_defunct
 from fastapi import HTTPException
 from web3 import Web3
+from web3.auto import w3
 
 from app.config import get_settings
+from app.helpers.crypto import create_ed25519_keypair
 from app.helpers.jwt import decode_jwt_token
+from app.helpers.w3 import (
+    get_signable_message_for_broadcast_identity_payload,
+    get_wallet_address_from_broadcast_identity_payload,
+)
 from app.models.auth import RefreshToken
 from app.models.server import Server
 from app.models.user import User
-from app.schemas.auth import AuthWalletSchema, RefreshTokenCreateSchema
-from app.services.auth import create_refresh_token, generate_wallet_token, revoke_tokens
+from app.schemas.auth import AccountBroadcastIdentitySchema, AuthWalletSchema, RefreshTokenCreateSchema
+from app.services.auth import broadcast_user_identity, create_refresh_token, generate_wallet_token, revoke_tokens
 from app.services.crud import delete_item, get_item, get_items, update_item
 from app.services.users import get_user_by_id
 
@@ -282,3 +291,209 @@ class TestAuthService:
 
         with pytest.raises(HTTPException):
             await generate_wallet_token(AuthWalletSchema(**data))
+
+    @pytest.mark.asyncio
+    async def test_broadcast_account_identity_ok(self, db, private_key: bytes, wallet: str):
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+        signer_private_key, signer_public_key = await create_ed25519_keypair()
+        signer_str_public_key = (
+            "0x" + signer_public_key.public_bytes(encoding=Encoding.Raw, format=PublicFormat.Raw).hex()
+        )
+
+        to_sign_input_struct = {
+            "account": wallet,
+            "timestamp": int(time.time() * 1000),
+            "type": "account-broadcast",
+            "body": {"signers": [{"public_key": signer_str_public_key}]},
+        }
+
+        signable_message = await get_signable_message_for_broadcast_identity_payload(to_sign_input_struct)
+        signed_message: SignedMessage = w3.eth.account.sign_message(signable_message, private_key=private_key.hex())
+        signature: str = signed_message.signature.hex()
+        assert wallet == await get_wallet_address_from_broadcast_identity_payload(to_sign_input_struct, signature)
+
+        data = {
+            "headers": {"signature_scheme": "EIP-712", "hash_scheme": "SHA256", "signature": signature},
+            "payload": to_sign_input_struct,
+        }
+
+        await broadcast_user_identity(AccountBroadcastIdentitySchema(**data))
+
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is not None
+        assert len(user.signers) == 1
+        assert user.signers[0] == signer_str_public_key
+
+    @pytest.mark.asyncio
+    async def test_broadcast_account_identity_wrong_signer(self, db, private_key: bytes, wallet: str):
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+        signer_private_key, signer_public_key = await create_ed25519_keypair()
+        signer_str_public_key = (
+            "0x" + signer_public_key.public_bytes(encoding=Encoding.Raw, format=PublicFormat.Raw).hex()
+        )
+
+        another_wallet = Web3().eth.account.create().address
+
+        to_sign_input_struct = {
+            "account": another_wallet,
+            "timestamp": int(time.time() * 1000),
+            "type": "account-broadcast",
+            "body": {"signers": [{"public_key": signer_str_public_key}]},
+        }
+
+        signable_message = await get_signable_message_for_broadcast_identity_payload(to_sign_input_struct)
+        signed_message: SignedMessage = w3.eth.account.sign_message(signable_message, private_key=private_key.hex())
+        signature: str = signed_message.signature.hex()
+        assert wallet == await get_wallet_address_from_broadcast_identity_payload(to_sign_input_struct, signature)
+
+        data = {
+            "headers": {"signature_scheme": "EIP-712", "hash_scheme": "SHA256", "signature": signature},
+            "payload": to_sign_input_struct,
+        }
+
+        with pytest.raises(HTTPException) as e_info:
+            await broadcast_user_identity(AccountBroadcastIdentitySchema(**data))
+
+        assert "signature_invalid" == e_info.value.detail
+
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+    @pytest.mark.asyncio
+    async def test_broadcast_account_identity_expired_timestamp(self, db, private_key: bytes, wallet: str):
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+        signer_private_key, signer_public_key = await create_ed25519_keypair()
+        signer_str_public_key = (
+            "0x" + signer_public_key.public_bytes(encoding=Encoding.Raw, format=PublicFormat.Raw).hex()
+        )
+
+        to_sign_input_struct = {
+            "account": wallet,
+            "timestamp": int(time.time() * 1000) - 3600 * 1000,
+            "type": "account-broadcast",
+            "body": {"signers": [{"public_key": signer_str_public_key}]},
+        }
+
+        signable_message = await get_signable_message_for_broadcast_identity_payload(to_sign_input_struct)
+        signed_message: SignedMessage = w3.eth.account.sign_message(signable_message, private_key=private_key.hex())
+        signature: str = signed_message.signature.hex()
+        assert wallet == await get_wallet_address_from_broadcast_identity_payload(to_sign_input_struct, signature)
+
+        data = {
+            "headers": {"signature_scheme": "EIP-712", "hash_scheme": "SHA256", "signature": signature},
+            "payload": to_sign_input_struct,
+        }
+
+        with pytest.raises(HTTPException) as e_info:
+            await broadcast_user_identity(AccountBroadcastIdentitySchema(**data))
+
+        assert "signature_expired" == e_info.value.detail
+
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+    @pytest.mark.asyncio
+    async def test_broadcast_account_identity_unknown_sig_scheme(self, db, private_key: bytes, wallet: str):
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+        signer_private_key, signer_public_key = await create_ed25519_keypair()
+        signer_str_public_key = (
+            "0x" + signer_public_key.public_bytes(encoding=Encoding.Raw, format=PublicFormat.Raw).hex()
+        )
+
+        to_sign_input_struct = {
+            "account": wallet,
+            "timestamp": int(time.time() * 1000) - 3600 * 1000,
+            "type": "account-broadcast",
+            "body": {"signers": [{"public_key": signer_str_public_key}]},
+        }
+
+        signable_message = await get_signable_message_for_broadcast_identity_payload(to_sign_input_struct)
+        signed_message: SignedMessage = w3.eth.account.sign_message(signable_message, private_key=private_key.hex())
+        signature: str = signed_message.signature.hex()
+        assert wallet == await get_wallet_address_from_broadcast_identity_payload(to_sign_input_struct, signature)
+
+        data = {
+            "headers": {"signature_scheme": "eip-191", "hash_scheme": "SHA256", "signature": signature},
+            "payload": to_sign_input_struct,
+        }
+
+        with pytest.raises(NotImplementedError) as e_info:
+            await broadcast_user_identity(AccountBroadcastIdentitySchema(**data))
+
+        assert "unexpected signature scheme" in str(e_info.value)
+
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+    @pytest.mark.asyncio
+    async def test_broadcast_account_identity_unknown_hash_scheme(self, db, private_key: bytes, wallet: str):
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+        signer_private_key, signer_public_key = await create_ed25519_keypair()
+        signer_str_public_key = (
+            "0x" + signer_public_key.public_bytes(encoding=Encoding.Raw, format=PublicFormat.Raw).hex()
+        )
+
+        to_sign_input_struct = {
+            "account": wallet,
+            "timestamp": int(time.time() * 1000),
+            "type": "account-broadcast",
+            "body": {"signers": [{"public_key": signer_str_public_key}]},
+        }
+
+        signable_message = await get_signable_message_for_broadcast_identity_payload(to_sign_input_struct)
+        signed_message: SignedMessage = w3.eth.account.sign_message(signable_message, private_key=private_key.hex())
+        signature: str = signed_message.signature.hex()
+        assert wallet == await get_wallet_address_from_broadcast_identity_payload(to_sign_input_struct, signature)
+
+        data = {
+            "headers": {"signature_scheme": "eip-712", "hash_scheme": "sha512", "signature": signature},
+            "payload": to_sign_input_struct,
+        }
+
+        with pytest.raises(NotImplementedError) as e_info:
+            await broadcast_user_identity(AccountBroadcastIdentitySchema(**data))
+
+        assert "unexpected hash scheme" in str(e_info.value)
+
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+    @pytest.mark.asyncio
+    async def test_broadcast_account_identity_empty_signers(self, db, private_key: bytes, wallet: str):
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None
+
+        to_sign_input_struct = {
+            "account": wallet,
+            "timestamp": int(time.time() * 1000),
+            "type": "account-broadcast",
+            "body": {"signers": []},
+        }
+
+        signable_message = await get_signable_message_for_broadcast_identity_payload(to_sign_input_struct)
+        signed_message: SignedMessage = w3.eth.account.sign_message(signable_message, private_key=private_key.hex())
+        signature: str = signed_message.signature.hex()
+        assert wallet == await get_wallet_address_from_broadcast_identity_payload(to_sign_input_struct, signature)
+
+        data = {
+            "headers": {"signature_scheme": "eip-712", "hash_scheme": "sha256", "signature": signature},
+            "payload": to_sign_input_struct,
+        }
+
+        with pytest.raises(HTTPException) as e_info:
+            await broadcast_user_identity(AccountBroadcastIdentitySchema(**data))
+
+        assert "no signers found" in e_info.value.detail
+
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is None

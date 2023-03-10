@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import Dict, List
 
 import arrow
 from fastapi import HTTPException
@@ -9,11 +10,20 @@ from starlette import status
 from app.config import get_settings
 from app.helpers.cache_utils import cache
 from app.helpers.jwt import decode_jwt_token, generate_jwt_token
-from app.helpers.w3 import checksum_address, get_wallet_address_from_signed_message
+from app.helpers.w3 import (
+    checksum_address,
+    get_wallet_address_from_broadcast_identity_payload,
+    get_wallet_address_from_signed_message,
+)
 from app.models.auth import RefreshToken
 from app.models.channel import Channel
 from app.models.user import User
-from app.schemas.auth import AccessTokenSchema, AuthWalletSchema, RefreshTokenCreateSchema
+from app.schemas.auth import (
+    AccessTokenSchema,
+    AccountBroadcastIdentitySchema,
+    AuthWalletSchema,
+    RefreshTokenCreateSchema,
+)
 from app.schemas.users import UserCreateSchema
 from app.services.channels import join_channel
 from app.services.crud import create_item, delete_items, get_item, get_item_by_id, update_item
@@ -154,3 +164,38 @@ async def create_refresh_token(token_model: RefreshTokenCreateSchema) -> AccessT
 async def revoke_tokens(current_user: User):
     await cache.client.delete(f"refresh_tokens:{str(current_user.pk)}")
     await delete_items(filters={"user": current_user.pk}, result_obj=RefreshToken)
+
+
+async def broadcast_user_identity(data: AccountBroadcastIdentitySchema):
+    sig_scheme = data.headers.signature_scheme
+    if sig_scheme.lower() != "eip-712":
+        raise NotImplementedError(f"unexpected signature scheme: {sig_scheme}")
+
+    hash_scheme = data.headers.hash_scheme
+    if hash_scheme.lower() != "sha256":
+        raise NotImplementedError(f"unexpected hash scheme: {hash_scheme}")
+
+    payload = data.payload
+
+    signed_address = await get_wallet_address_from_broadcast_identity_payload(payload.dict(), data.headers.signature)
+    if signed_address != checksum_address(payload.account):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="signature_invalid")
+
+    timestamp = payload.timestamp
+    signed_at = arrow.get(timestamp)
+
+    if signed_at <= arrow.utcnow().shift(seconds=-SIGNATURE_VALID_SECONDS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="signature_expired")
+
+    signers: List[Dict[str, str]] = payload.body.get("signers", [])
+    if not signers:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no signers found")
+
+    user = await get_user_by_wallet_address(wallet_address=signed_address)
+    if not user:
+        user = await create_user(UserCreateSchema(wallet_address=signed_address))
+
+    signers_pks = [s.get("public_key") for s in signers]
+    await update_item(user, data={"signers": signers_pks})
+
+    await add_user_to_default_channels(str(user.pk))

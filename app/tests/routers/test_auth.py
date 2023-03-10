@@ -7,6 +7,7 @@ from typing import Callable
 
 import arrow
 import pytest
+from cryptography.hazmat.primitives._serialization import Encoding, PublicFormat
 from eth_account import Account
 from eth_account.datastructures import SignedMessage
 from eth_account.messages import encode_defunct
@@ -14,12 +15,17 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 from web3 import Web3
+from web3.auto import w3
 
-from app.helpers.crypto import sign_keccak_ed25519
+from app.helpers.crypto import create_ed25519_keypair, sign_keccak_ed25519
 from app.helpers.jwt import decode_jwt_token
+from app.helpers.w3 import (
+    get_signable_message_for_broadcast_identity_payload,
+    get_wallet_address_from_broadcast_identity_payload,
+)
 from app.models.server import Server, ServerMember
 from app.models.user import User
-from app.services.crud import get_items
+from app.services.crud import get_item, get_items
 from app.services.users import get_user_by_id
 
 
@@ -355,3 +361,53 @@ class TestAuthRoutes:
 
         response = await client.get(url)
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_full_auth_flow_with_signer(self, db, private_key: bytes, wallet: str, client: AsyncClient):
+        signer_private_key, signer_public_key = await create_ed25519_keypair()
+        signer_public_key_str = (
+            "0x" + signer_public_key.public_bytes(encoding=Encoding.Raw, format=PublicFormat.Raw).hex()
+        )
+
+        to_sign_input_struct = {
+            "account": wallet,
+            "timestamp": int(time.time() * 1000),
+            "type": "account-broadcast",
+            "body": {"signers": [{"public_key": signer_public_key_str}]},
+        }
+
+        signable_message = await get_signable_message_for_broadcast_identity_payload(to_sign_input_struct)
+        signed_message: SignedMessage = w3.eth.account.sign_message(signable_message, private_key=private_key.hex())
+        signature: str = signed_message.signature.hex()
+        assert wallet == await get_wallet_address_from_broadcast_identity_payload(to_sign_input_struct, signature)
+
+        data = {
+            "headers": {"signature_scheme": "EIP-712", "hash_scheme": "SHA256", "signature": signature},
+            "payload": to_sign_input_struct,
+        }
+
+        response = await client.post("/auth/broadcast", json=data)
+        assert response.status_code == 204
+
+        user = await get_item(filters={"wallet_address": wallet}, result_obj=User)
+        assert user is not None
+        assert len(user.signers) == 1
+        assert user.signers[0] == signer_public_key_str
+
+        timestamp = int(time.time())
+        url = "/users/me"
+        base_str = f"{timestamp}:{url}:"
+        base_str_signature: bytes = await sign_keccak_ed25519(base_str.encode(), signer_private_key)
+        base_str_signature_hex = binascii.hexlify(base_str_signature).decode()
+
+        client.headers.update(
+            {
+                "X-Newshades-Signer": signer_public_key_str,
+                "X-Newshades-Signature": base_str_signature_hex,
+                "X-Newshades-Timestamp": str(timestamp),
+            }
+        )
+
+        response = await client.get(url)
+        assert response.status_code == 200
+        assert response.json()["wallet_address"] == wallet

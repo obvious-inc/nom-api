@@ -71,3 +71,41 @@ class AuthorizationCodeCreateSchema(APIBaseCreateSchema):
 
     class Config:
         allow_population_by_field_name = True
+
+
+class AccountIdentityHeaders(BaseModel):
+    signature_scheme: str
+    hash_scheme: str
+    signature: str
+
+
+class OperationPayload(BaseModel):
+    account: str
+    timestamp: int
+    type: str
+    body: dict
+
+
+class AccountBroadcastIdentitySchema(BaseModel):
+    headers: AccountIdentityHeaders
+    payload: OperationPayload
+
+    class Config:
+        allow_population_by_field_name = True
+        schema_extra = {
+            "example": {
+                "headers": {
+                    "signature_scheme": "EIP-712",
+                    "hash_scheme": "SHA256",
+                    "signature": "0x123123123123123",
+                },
+                "payload": {
+                    "account": "0x1231237072081028432784128371234898237233",
+                    "timestamp": 123123123,
+                    "type": "account-broadcast",
+                    "body": {
+                        "signers": ["0x12312370720810284327841283712348982372331231237072081028432784"],
+                    },
+                },
+            }
+        }

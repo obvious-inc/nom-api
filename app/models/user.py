@@ -31,6 +31,7 @@ class User(APIDocument):
 
     online_channels = fields.ListField(fields.StrField(), required=False, default=[], load_only=True)
     push_tokens = fields.ListField(fields.StrField(), required=False, default=[], load_only=True)
+    signers = fields.ListField(fields.StrField(), required=False, default=[], load_only=True)
 
     class Meta:
         collection_name = "users"
@@ -75,12 +76,3 @@ class WhitelistedWallet(APIDocument):
     class Meta:
         collection_name = "wallets_whitelisted"
         indexes = [[("wallet_address", ASCENDING), {"unique": True}]]
-
-
-@instance.register
-class UserSigner(APIDocument):
-    user = fields.ReferenceField("User", required=True)
-    signer = fields.StrField(required=True)
-
-    class Meta:
-        collection_name = "users_signers"

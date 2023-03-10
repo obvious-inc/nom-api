@@ -1,9 +1,10 @@
 import logging
 import re
 
-from eth_account.messages import encode_defunct
+from eth_account.messages import SignableMessage, encode_defunct, encode_structured_data
 from eth_typing import ChecksumAddress
 from eth_utils import ValidationError
+from hexbytes import HexBytes
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 
@@ -84,3 +85,35 @@ async def verify_token_ownership(contract_address: str, token_id: str, wallet_ad
     except Exception as e:
         logger.warning(f"exception verifying ownership of {contract_address}/{token_id_int} for {wallet_address} | {e}")
         return False
+
+
+async def get_signable_message_for_broadcast_identity_payload(broadcast_identity_payload: dict) -> SignableMessage:
+    signable_message: SignableMessage = encode_structured_data(
+        {
+            "types": {
+                "EIP712Domain": [
+                    {"name": "name", "type": "string"},
+                    {"name": "version", "type": "string"},
+                ],
+                "SignerAddress": [{"name": "public_key", "type": "string"}],
+                "BroadcastIdentityBody": [{"name": "signers", "type": "SignerAddress[]"}],
+                "Signer": [
+                    {"name": "account", "type": "address"},
+                    {"name": "timestamp", "type": "uint256"},
+                    {"name": "type", "type": "string"},
+                    {"name": "body", "type": "BroadcastIdentityBody"},
+                ],
+            },
+            "domain": {"name": "NewShades", "version": "0.0.1"},
+            "primaryType": "Signer",
+            "message": broadcast_identity_payload,
+        }
+    )
+
+    return signable_message
+
+
+async def get_wallet_address_from_broadcast_identity_payload(broadcast_identity_payload: dict, signature: str) -> str:
+    signable_message = await get_signable_message_for_broadcast_identity_payload(broadcast_identity_payload)
+    bytes_sig = HexBytes(signature)
+    return Web3().eth.account.recover_message(signable_message, signature=bytes_sig)

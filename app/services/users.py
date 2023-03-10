@@ -14,11 +14,11 @@ from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
 from app.models.report import UserReport
 from app.models.server import ServerMember
-from app.models.user import User, UserBlock, UserPreferences, UserSigner
+from app.models.user import User, UserBlock, UserPreferences
 from app.schemas.preferences import UserPreferencesUpdateSchema
 from app.schemas.reports import UserReportCreateSchema
 from app.schemas.servers import ServerMemberUpdateSchema
-from app.schemas.users import UserBlockCreateSchema, UserCreateSchema, UserSignerCreateSchema, UserUpdateSchema
+from app.schemas.users import UserBlockCreateSchema, UserCreateSchema, UserUpdateSchema
 from app.services.apps import delete_user_apps
 from app.services.channels import remove_user_channel_membership
 from app.services.crud import create_item, delete_item, delete_items, get_item, get_items, update_item
@@ -39,11 +39,13 @@ async def get_user_by_wallet_address(wallet_address: str) -> Union[User, APIDocu
 
 
 async def get_user_by_signer(signer: str) -> Union[User, APIDocument, None]:
-    signer = await get_item(filters={"signer": signer}, result_obj=UserSigner)
-    if not signer:
+    users = await get_items(filters={"signers": signer}, result_obj=User)
+    if len(users) > 1:
+        raise Exception(f"More than one user found for signer: {signer}")
+    elif len(users) == 1:
+        return users[0]
+    else:
         return None
-
-    return await get_item(filters={"_id": signer.user.pk}, result_obj=User)
 
 
 async def get_user_by_id(user_id) -> Union[User, APIDocument]:
@@ -250,6 +252,7 @@ async def delete_user(current_user: User):
             "online_channels": [],
             "push_tokens": [],
             "status": "offline",
+            "signers": [],
         },
     )
 
@@ -262,27 +265,6 @@ async def delete_user(current_user: User):
         (delete_all_blocked_users, (current_user,)),
         (delete_user_apps, (current_user,)),
         (delete_user_stars, (current_user,)),
-        (delete_all_signers, (current_user,)),
     ]
 
     await queue_bg_tasks(bg_tasks)  # type: ignore[arg-type]
-
-
-async def get_signers(current_user: User):
-    return await get_items(filters={"user": current_user.pk}, result_obj=UserSigner, limit=None)
-
-
-async def create_signer(signer: UserSignerCreateSchema, current_user: User):
-    return await create_item(signer, result_obj=UserSigner, user_field="user", current_user=current_user)
-
-
-async def delete_signer(signer: str, current_user: User):
-    signer = await get_item(filters={"signer": signer, "user": current_user.pk}, result_obj=UserSigner)
-    if not signer:
-        raise HTTPException(status_code=http.HTTPStatus.NOT_FOUND)
-
-    await delete_item(signer)
-
-
-async def delete_all_signers(current_user: User):
-    await delete_items(filters={"user": current_user.pk}, result_obj=UserSigner)
