@@ -27,7 +27,8 @@ async def expo_push(headers, data, attempts=0, max_retries=5):
                         attempts += 1
                         delay = 2**attempts + random.uniform(0, 1)
                         logger.warning(
-                            f"notifications failed (attempt {attempts}), waiting {delay:.2f}s and trying again. {resp.status}"
+                            f"notifications failed (attempt {attempts}), waiting {delay:.2f}s and trying again. "
+                            f"{resp.status}"
                         )
                         await asyncio.sleep(delay)
                         return await expo_push(headers, data, attempts=attempts)

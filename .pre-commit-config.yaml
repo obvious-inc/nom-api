@@ -13,6 +13,10 @@ repos:
     hooks:
       - id: poetry-check
         name: check poetry configuration
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.0.255
+    hooks:
+      - id: ruff
   - repo: https://github.com/psf/black
     rev: 22.6.0
     hooks:
@@ -22,10 +26,6 @@ repos:
     hooks:
       - id: isort
         name: isort (python)
-  - repo: https://github.com/pycqa/flake8
-    rev: 5.0.4
-    hooks:
-      - id: flake8
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.37.3
     hooks:

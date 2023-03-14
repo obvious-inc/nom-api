@@ -16,7 +16,8 @@ class TestURLHelper:
                 {"favicon": "https://docs.expo.dev/static/images/favicon.ico"},
             ),
             (
-                '<!DOCTYPE html><html lang="en"><head>...</style><link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" /><title>',
+                '<!DOCTYPE html><html lang="en"><head>...</style><link rel="shortcut icon" href="/favicon.ico" '
+                'type="image/x-icon" /><title>',
                 "https://deno.com/blog/v1.28",
                 {"favicon": "https://deno.com/favicon.ico"},
             ),
