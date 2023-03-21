@@ -18,11 +18,12 @@ from app.models.section import Section
 from app.models.server import Server
 from app.models.user import User
 from app.models.webhook import Webhook
-from app.schemas.channels import ServerChannelCreateSchema
+from app.schemas.channels import DMChannelCreateSchema, ServerChannelCreateSchema, TopicChannelCreateSchema
 from app.schemas.messages import MessageCreateSchema, WebhookMessageCreateSchema
+from app.schemas.permissions import PermissionCreateSchema
 from app.schemas.sections import SectionCreateSchema
 from app.schemas.servers import ServerCreateSchema
-from app.services.channels import create_server_channel, get_dm_channels
+from app.services.channels import create_dm_channel, create_server_channel, create_topic_channel, get_dm_channels
 from app.services.crud import create_item, get_item, get_item_by_id
 from app.services.messages import create_app_message, create_message
 from app.services.servers import create_server, get_user_servers
@@ -1777,3 +1778,104 @@ class TestChannelsRoutes:
 
         response = await guest_client.get(f"/channels/{str(dm_channel.pk)}")
         assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_get_channels_dms(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        client: AsyncClient,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+        topic_channel: Channel,
+        server_channel: Channel,
+    ):
+        response = await client.get("/channels?kind=dm")
+        assert response.status_code == 401
+
+        auth_client = await get_authorized_client(current_user)
+        guest_user = await create_new_user()
+
+        self_dm_channel = await create_dm_channel(
+            channel_model=DMChannelCreateSchema(kind="dm", members=[str(current_user.pk)]),
+            current_user=current_user,
+        )
+
+        guest_dm_channel = await create_dm_channel(
+            channel_model=DMChannelCreateSchema(kind="dm", members=[str(current_user.pk), str(guest_user.pk)]),
+            current_user=current_user,
+        )
+
+        await create_dm_channel(
+            channel_model=DMChannelCreateSchema(kind="dm", members=[str(guest_user.pk)]),
+            current_user=guest_user,
+        )
+
+        response = await auth_client.get("/channels?kind=dm")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+        dm_channel_ids = [channel["id"] for channel in response.json()]
+        assert str(self_dm_channel.pk) in dm_channel_ids
+        assert str(guest_dm_channel.pk) in dm_channel_ids
+
+    @pytest.mark.asyncio
+    async def test_get_channels_discovery_as_guest(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        client: AsyncClient,
+        create_new_user: Callable,
+        topic_channel: Channel,
+        dm_channel: Channel,
+    ):
+        public_topic_channel = await create_topic_channel(
+            channel_model=TopicChannelCreateSchema(
+                kind="topic",
+                name="public-channel",
+                permission_overwrites=[
+                    PermissionCreateSchema(group="@public", permissions=["channels.view", "messages.list"])
+                ],
+            ),
+            current_user=current_user,
+        )
+
+        response = await client.get("/channels?kind=topic&scope=discovery")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == str(public_topic_channel.pk)
+
+    @pytest.mark.asyncio
+    async def test_get_private_topic_channels(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+        topic_channel: Channel,
+        dm_channel: Channel,
+    ):
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        data = {
+            "kind": "topic",
+            "name": "my-closed-channel",
+            "members": [str(guest_user.pk)],
+        }
+        response = await guest_client.post("/channels", json=data)
+        assert response.status_code == 201
+        guest_channel_id = response.json()["id"]
+
+        response = await guest_client.get("/channels?kind=topic&scope=private")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == guest_channel_id
+
+        user_client = await get_authorized_client(current_user)
+        response = await user_client.get("/channels?kind=topic&scope=private")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == str(topic_channel.pk)

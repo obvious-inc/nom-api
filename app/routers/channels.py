@@ -26,6 +26,7 @@ from app.services.channels import (
     get_channel,
     get_channel_members,
     get_channel_permissions,
+    get_channels,
     get_public_channels,
     invite_members_to_channel,
     join_channel,
@@ -40,10 +41,27 @@ router = APIRouter()
 
 
 @router.get(
-    "/@public",
-    response_description="Get public channels",
+    "",
+    response_description="Get channels",
     response_model=List[EitherChannel],
 )
+async def get_fetch_channels(
+    kind: Optional[str] = None,
+    scope: Optional[str] = None,
+    current_user_or_exception=Depends(get_current_user_non_error),
+    common_params: dict = Depends(common_parameters),
+):
+    if scope == "discovery":
+        return await get_public_channels()
+    else:
+        if not current_user_or_exception or isinstance(current_user_or_exception, Exception):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+    return await get_channels(current_user=current_user_or_exception, kind=kind, scope=scope, **common_params)
+
+
+# deprecated in favour of /channels?kind=topic&scope=discovery
+@router.get("/@public", response_description="Get public channels", response_model=List[EitherChannel])
 async def get_fetch_public_channels():
     return await get_public_channels()
 

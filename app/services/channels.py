@@ -2,7 +2,7 @@ import http
 import json
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 from bson import ObjectId
 from fastapi import HTTPException
@@ -145,12 +145,16 @@ async def get_server_channels(server_id, current_user: User) -> List[Union[Chann
     return await get_items(filters={"server": ObjectId(server_id)}, result_obj=Channel, limit=None)
 
 
-async def get_dm_channels(current_user: User, limit: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
-    return await get_items(filters={"members": current_user.pk, "kind": "dm"}, result_obj=Channel, limit=limit)
+async def get_all_member_channels(current_user: User, **kwargs) -> List[Union[Channel, APIDocument]]:
+    return await get_items(filters={"members": current_user.pk}, result_obj=Channel, **kwargs)
 
 
-async def get_all_member_channels(current_user: User, limit: Optional[int] = None) -> List[Union[Channel, APIDocument]]:
-    return await get_items(filters={"members": current_user.pk}, result_obj=Channel, limit=limit)
+async def get_dm_channels(current_user: User, **kwargs) -> List[Union[Channel, APIDocument]]:
+    return await get_items(filters={"members": current_user.pk, "kind": "dm"}, result_obj=Channel, **kwargs)
+
+
+async def get_topic_channels(current_user: User, **kwargs) -> List[Union[Channel, APIDocument]]:
+    return await get_items(filters={"members": current_user.pk, "kind": "topic"}, result_obj=Channel, **kwargs)
 
 
 async def delete_channel(channel_id, current_user: User):
@@ -487,3 +491,34 @@ async def remove_user_channel_membership(user: User):
 
 async def delete_channel_messages(channel: Channel):
     await delete_items(filters={"channel": channel.pk}, result_obj=Message)
+
+
+async def get_channels(
+    current_user: User, kind: Optional[str] = None, scope: Optional[str] = "private", **common_params
+):
+    filters: Dict[Any, Any] = {"deleted": False, "members": current_user.pk}
+
+    if kind == "topic":
+        filters["kind"] = "topic"
+        if scope == "public":
+            filters["permission_overwrites"] = {
+                "$elemMatch": {"group": "@public", "permissions": {"$all": ["messages.list", "channels.view"]}}
+            }
+
+        elif scope == "private":
+            filters["permission_overwrites"] = {"$not": {"$elemMatch": {"group": "@public"}}}
+
+    elif kind == "dm":
+        filters["kind"] = "dm"
+    else:
+        filters["kind"] = {"$in": ["topic", "dm"]}
+
+    channel_docs = await Channel.collection.aggregate(
+        [
+            {"$match": filters},
+            {"$limit": common_params.get("limit", 100)},
+        ]
+    ).to_list(length=None)
+    channels = [Channel.build_from_mongo(channel) for channel in channel_docs]
+
+    return channels

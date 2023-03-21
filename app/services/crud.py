@@ -83,6 +83,7 @@ async def get_items(
     before: str = None,
     after: str = None,
     limit: int = None,
+    **kwargs,
 ) -> List[APIDocumentType]:
     sort_filters = [(sort_by_field, sort_by_direction)]
     deleted_filter = {"$or": [{"deleted": {"$exists": False}}, {"deleted": False}]}
