@@ -508,7 +508,9 @@ async def get_channels(
             "$elemMatch": {"group": "@public", "permissions": {"$all": ["messages.list", "channels.view"]}}
         }
     else:
-        filters["permission_overwrites"] = {"$not": {"$elemMatch": {"group": "@public"}}}
+        filters["permission_overwrites"] = {
+            "$not": {"$elemMatch": {"group": "@public", "permissions": "channels.view"}}
+        }
 
     if member:
         members_list = member.split(",")
