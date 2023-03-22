@@ -21,11 +21,25 @@ async def get_connection_ready_data(current_user: User) -> dict:
     # TODO: pass only installed apps
     data["apps"] = [{"id": str(app.id), "name": app.name, "created_at": app.created_at.isoformat()} for app in apps]
 
+    unique_user_ids = set()
+
     channels = []
     for channel in await get_all_member_channels(current_user=current_user, limit=None):
-        channels.append(channel.dump())
+        unique_user_ids.update([member.pk for member in channel.members])
+        dumped_channel = channel.dump()
+        dumped_channel["members"] = [{"user": str(member.pk)} for member in channel.members]
+        channels.append(dumped_channel)
 
     data["channels"] = channels
+
+    users = await get_items(filters={"_id": {"$in": list(unique_user_ids)}}, result_obj=User, limit=None)
+    data["users"] = [
+        {
+            "id": str(user.pk),
+            "wallet_address": user.wallet_address,
+        }
+        for user in users
+    ]
 
     read_states = await get_user_read_states(current_user=current_user)
     data["read_states"] = [
