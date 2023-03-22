@@ -1985,3 +1985,42 @@ class TestChannelsRoutes:
     ):
         response = await authorized_client.get(f"/channels?member={wallet}")
         assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_get_private_topic_channels_diff_permissions(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        create_new_user: Callable,
+        get_authorized_client: Callable,
+    ):
+        user_client = await get_authorized_client(current_user)
+        data = {
+            "kind": "topic",
+            "name": "my-closed-channel",
+            "members": [str(current_user.pk)],
+            "permission_overwrites": [{"group": "@public", "permissions": []}],
+        }
+        response = await user_client.post("/channels", json=data)
+        assert response.status_code == 201
+        channel_id = response.json()["id"]
+
+        data = {
+            "kind": "topic",
+            "name": "my-closed-channel",
+            "members": [str(current_user.pk)],
+            "permission_overwrites": [{"group": "@public", "permissions": ["channels.view", "messages.list"]}],
+        }
+        response = await user_client.post("/channels", json=data)
+        assert response.status_code == 201
+
+        response = await user_client.get("/channels?kind=topic&scope=private")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == channel_id
+
+        response = await user_client.get("/channels?scope=private")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == channel_id

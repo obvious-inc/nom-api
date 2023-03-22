@@ -537,7 +537,6 @@ async def get_channels(
         del filters["permission_overwrites"]
         filters["kind"] = "dm"
     else:
-        del filters["permission_overwrites"]
         filters["kind"] = {"$in": ["topic", "dm"]}
 
     channel_docs = await Channel.collection.aggregate(
