@@ -1879,3 +1879,80 @@ class TestChannelsRoutes:
         assert response.status_code == 200
         assert len(response.json()) == 1
         assert response.json()[0]["id"] == str(topic_channel.pk)
+
+    @pytest.mark.asyncio
+    async def test_fetch_channel_by_member_id(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        create_new_user: Callable,
+        topic_channel: Channel,
+        dm_channel: Channel,
+    ):
+        guest_user = await create_new_user()
+
+        members = [str(current_user.pk), str(guest_user.pk)]
+        data = {"kind": "dm", "members": members}
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        dm_channel_id = response.json()["id"]
+
+        response = await authorized_client.get(f"/channels?member={str(guest_user.pk)}")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == dm_channel_id
+
+    @pytest.mark.asyncio
+    async def test_fetch_channel_by_member_wallet(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        create_new_user: Callable,
+        topic_channel: Channel,
+        dm_channel: Channel,
+    ):
+        guest_user = await create_new_user()
+
+        members = [str(current_user.pk), str(guest_user.pk)]
+        data = {"kind": "dm", "members": members}
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        dm_channel_id = response.json()["id"]
+
+        response = await authorized_client.get(f"/channels?member={guest_user.wallet_address}")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == dm_channel_id
+
+    @pytest.mark.asyncio
+    async def test_fetch_channel_by_members_wallet(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        create_new_user: Callable,
+        topic_channel: Channel,
+        dm_channel: Channel,
+    ):
+        guest_user = await create_new_user()
+        guest_user_2 = await create_new_user()
+
+        members = [str(current_user.pk), str(guest_user.pk), str(guest_user_2.pk)]
+        data = {"kind": "dm", "members": members}
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        dm_channel_id = response.json()["id"]
+
+        response = await authorized_client.get(f"/channels?member={guest_user.wallet_address}")
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+        response = await authorized_client.get(f"/channels?members={guest_user.wallet_address}")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == dm_channel_id

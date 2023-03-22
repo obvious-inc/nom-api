@@ -107,12 +107,12 @@ async def parse_member_list(members: List[str], create_if_not_user: bool = True)
     address_users = await get_items(filters={"wallet_address": {"$in": addresses}}, result_obj=User, limit=None)
     users.extend(address_users)
 
-    existing_wallets = [user.wallet_address for user in users]
-    new_wallets = [wallet for wallet in addresses if wallet not in existing_wallets]
+    if create_if_not_user:
+        existing_wallets = [user.wallet_address for user in users]
+        new_wallets = [wallet for wallet in addresses if wallet not in existing_wallets]
 
-    for address in new_wallets:
-        wallet_addr = checksum_address(address)
-        if create_if_not_user:
+        for address in new_wallets:
+            wallet_addr = checksum_address(address)
             user = await create_item(
                 item=UserCreateSchema(wallet_address=wallet_addr), result_obj=User, user_field=None
             )

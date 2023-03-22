@@ -494,23 +494,45 @@ async def delete_channel_messages(channel: Channel):
 
 
 async def get_channels(
-    current_user: User, kind: Optional[str] = None, scope: Optional[str] = "private", **common_params
+    current_user: User,
+    kind: Optional[str] = None,
+    scope: Optional[str] = "private",
+    member: Optional[str] = None,
+    members: Optional[str] = None,
+    **common_params,
 ):
-    filters: Dict[Any, Any] = {"deleted": False, "members": current_user.pk}
+    filters: Dict[Any, Any] = {"deleted": False}
+
+    if scope == "public":
+        filters["permission_overwrites"] = {
+            "$elemMatch": {"group": "@public", "permissions": {"$all": ["messages.list", "channels.view"]}}
+        }
+    else:
+        filters["permission_overwrites"] = {"$not": {"$elemMatch": {"group": "@public"}}}
+
+    if member:
+        members_list = member.split(",")
+        model_users = await parse_member_list(members=members_list)
+        if current_user not in model_users:
+            model_users.insert(0, current_user)
+        filters["members"] = {"$size": 2, "$all": [m.pk for m in model_users]}
+    elif members:
+        members_list = members.split(",")
+        model_users = await parse_member_list(members=members_list)
+        if current_user not in model_users:
+            model_users.insert(0, current_user)
+
+        filters["members"] = {"$all": [m.pk for m in model_users]}
+    else:
+        filters["members"] = current_user.pk
 
     if kind == "topic":
         filters["kind"] = "topic"
-        if scope == "public":
-            filters["permission_overwrites"] = {
-                "$elemMatch": {"group": "@public", "permissions": {"$all": ["messages.list", "channels.view"]}}
-            }
-
-        elif scope == "private":
-            filters["permission_overwrites"] = {"$not": {"$elemMatch": {"group": "@public"}}}
-
     elif kind == "dm":
+        del filters["permission_overwrites"]
         filters["kind"] = "dm"
     else:
+        del filters["permission_overwrites"]
         filters["kind"] = {"$in": ["topic", "dm"]}
 
     channel_docs = await Channel.collection.aggregate(

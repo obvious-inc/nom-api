@@ -48,6 +48,8 @@ router = APIRouter()
 async def get_fetch_channels(
     kind: Optional[str] = None,
     scope: Optional[str] = None,
+    member: Optional[str] = None,
+    members: Optional[str] = None,
     current_user_or_exception=Depends(get_current_user_non_error),
     common_params: dict = Depends(common_parameters),
 ):
@@ -57,7 +59,10 @@ async def get_fetch_channels(
         if not current_user_or_exception or isinstance(current_user_or_exception, Exception):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-    return await get_channels(current_user=current_user_or_exception, kind=kind, scope=scope, **common_params)
+    current_user: User = current_user_or_exception
+    return await get_channels(
+        current_user=current_user, kind=kind, scope=scope, member=member, members=members, **common_params
+    )
 
 
 # deprecated in favour of /channels?kind=topic&scope=discovery
