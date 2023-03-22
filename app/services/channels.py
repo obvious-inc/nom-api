@@ -513,6 +513,9 @@ async def get_channels(
     if member:
         members_list = member.split(",")
         model_users = await parse_member_list(members=members_list)
+        if not model_users:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
         if current_user not in model_users:
             model_users.insert(0, current_user)
         filters["members"] = {"$size": 2, "$all": [m.pk for m in model_users]}
@@ -542,5 +545,8 @@ async def get_channels(
         ]
     ).to_list(length=None)
     channels = [Channel.build_from_mongo(channel) for channel in channel_docs]
+
+    if member and not channels:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     return channels

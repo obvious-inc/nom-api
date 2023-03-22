@@ -1949,10 +1949,39 @@ class TestChannelsRoutes:
         dm_channel_id = response.json()["id"]
 
         response = await authorized_client.get(f"/channels?member={guest_user.wallet_address}")
-        assert response.status_code == 200
-        assert len(response.json()) == 0
+        assert response.status_code == 404
 
         response = await authorized_client.get(f"/channels?members={guest_user.wallet_address}")
         assert response.status_code == 200
         assert len(response.json()) == 1
         assert response.json()[0]["id"] == dm_channel_id
+
+    @pytest.mark.asyncio
+    async def test_fetch_channel_by_member_wallet_404(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        create_new_user: Callable,
+        topic_channel: Channel,
+        dm_channel: Channel,
+    ):
+        guest_user = await create_new_user()
+        response = await authorized_client.get(f"/channels?member={guest_user.wallet_address}")
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_fetch_channel_by_not_existing_member_wallet_404(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        create_new_user: Callable,
+        topic_channel: Channel,
+        dm_channel: Channel,
+        wallet: str,
+    ):
+        response = await authorized_client.get(f"/channels?member={wallet}")
+        assert response.status_code == 404
