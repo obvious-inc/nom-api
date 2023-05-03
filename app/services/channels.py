@@ -446,6 +446,39 @@ async def get_user_channels(current_user: User):
     return await get_items(filters={"members": current_user.pk}, result_obj=Channel, limit=None)
 
 
+async def get_user_member_channels(user_id: str, current_user: Optional[User] = None):
+    target_user = await get_item_by_id(id_=user_id, result_obj=User)
+
+    public_permission_overwrite_matcher = {
+        "group": "@public",
+        "permissions": {"$all": ["messages.list", "channels.view"]},
+    }
+    public_channels_matcher = {
+        "deleted": False,
+        "members": {"$all": [target_user.pk]},
+        "permission_overwrites": {"$elemMatch": public_permission_overwrite_matcher},
+    }
+
+    if not current_user:
+        matcher = public_channels_matcher
+    else:
+        matcher = {
+            "$or": [public_channels_matcher, {"deleted": False, "members": {"$all": [target_user.pk, current_user.pk]}}]
+        }
+
+    pipeline_stages = [
+        {"$match": matcher},
+        {"$sort": {"members": -1}},
+        {"$limit": 20},
+    ]
+
+    channel_docs = await Channel.collection.aggregate(pipeline_stages).to_list(length=None)
+
+    channels = [Channel.build_from_mongo(channel) for channel in channel_docs]
+
+    return channels
+
+
 async def get_public_channels():
     cache_key = "discovery:channels:@public"
 

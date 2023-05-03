@@ -42,6 +42,14 @@ from app.services.servers import create_server
 from app.services.users import create_user
 
 
+async def create_random_wallet_user() -> User:
+    key = secrets.token_bytes(32)
+    priv = binascii.hexlify(key).decode("ascii")
+    private_key = "0x" + priv
+    acct = Account.from_key(private_key)
+    return await create_user(UserCreateSchema(wallet_address=acct.address))
+
+
 @pytest.fixture
 async def app() -> FastAPI:
     app = get_application(testing=True)
@@ -92,23 +100,12 @@ async def current_user(private_key: bytes, wallet: str) -> User:
 
 @pytest.fixture
 async def guest_user() -> User:
-    key = secrets.token_bytes(32)
-    priv = binascii.hexlify(key).decode("ascii")
-    private_key = "0x" + priv
-    acct = Account.from_key(private_key)
-    return await create_user(UserCreateSchema(wallet_address=acct.address))
+    return await create_random_wallet_user()
 
 
 @pytest.fixture
 async def create_new_user():
-    async def _create_new_user():
-        key = secrets.token_bytes(32)
-        priv = binascii.hexlify(key).decode("ascii")
-        private_key = "0x" + priv
-        acct = Account.from_key(private_key)
-        return await create_user(UserCreateSchema(wallet_address=acct.address))
-
-    return _create_new_user
+    return create_random_wallet_user
 
 
 @pytest.fixture
@@ -126,6 +123,16 @@ async def create_new_signer():
         return private_key, str_public_key
 
     return _create_new_signer
+
+
+@pytest.fixture
+async def create_new_topic_channel():
+    async def _create(user: Optional[User] = None):
+        if not user:
+            user = await create_random_wallet_user()
+        return await create_topic_channel(channel_model=TopicChannelCreateSchema(name="..."), current_user=user)
+
+    return _create
 
 
 @pytest.fixture
