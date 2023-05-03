@@ -18,6 +18,10 @@ from app.helpers.simplehash import get_nft as get_simplehash_nft
 logger = logging.getLogger(__name__)
 
 
+def is_account_address(maybe_address: str) -> bool:
+    return re.match(r"^0x[a-fA-F\d]{40}$", maybe_address) is not None
+
+
 def checksum_address(address: str) -> ChecksumAddress:
     return Web3.toChecksumAddress(address)
 
