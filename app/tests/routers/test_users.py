@@ -46,6 +46,25 @@ class TestUserRoutes:
         assert "display_name" in json_response
 
     @pytest.mark.asyncio
+    async def test_get_users_info(self, authorized_client: AsyncClient, create_new_user: Callable):
+        user = await create_new_user()
+        user_id = str(user.pk)
+        response = await authorized_client.post("/users/info", json={"user_ids": [user_id]})
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert json_response[0]["id"] == user_id
+
+    @pytest.mark.asyncio
+    async def test_get_users_info_by_wallet_address(self, authorized_client: AsyncClient, create_new_user: Callable):
+        user = await create_new_user()
+        response = await authorized_client.post("/users/info", json={"wallet_addresses": [user.wallet_address]})
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert json_response[0]["wallet_address"] == user.wallet_address
+
+    @pytest.mark.asyncio
     async def test_update_user_profile_display_name(
         self, app: FastAPI, db: Database, authorized_client: AsyncClient, server: Server
     ):

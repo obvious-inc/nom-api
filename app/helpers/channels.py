@@ -1,14 +1,13 @@
 import datetime
 import json
 import logging
-import re
 from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
 
 from app.helpers.cache_utils import cache
 from app.helpers.queue_utils import timed_task
-from app.helpers.w3 import checksum_address
+from app.helpers.w3 import checksum_address, is_account_address
 from app.models.channel import Channel
 from app.models.server import ServerMember
 from app.models.user import User
@@ -103,7 +102,7 @@ async def parse_member_list(members: List[str], create_if_not_user: bool = True)
     user_ids = [ObjectId(member) for member in unique_member_list if ObjectId.is_valid(member)]
     users = await get_items(filters={"_id": {"$in": user_ids}}, result_obj=User, limit=None)
 
-    addresses = [checksum_address(member) for member in unique_member_list if re.match(r"^0x[a-fA-F\d]{40}$", member)]
+    addresses = [checksum_address(member) for member in unique_member_list if is_account_address(member)]
     address_users = await get_items(filters={"wallet_address": {"$in": addresses}}, result_obj=User, limit=None)
     users.extend(address_users)
 

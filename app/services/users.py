@@ -3,13 +3,12 @@ import logging
 from typing import List, Optional, Union
 
 from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import HTTPException
 
 from app.helpers.events import EventType
 from app.helpers.pfp import extract_contract_and_token_from_string, upload_pfp_url_and_update_profile
 from app.helpers.queue_utils import queue_bg_task, queue_bg_tasks
-from app.helpers.w3 import checksum_address, get_nft, get_nft_image_url, verify_token_ownership
+from app.helpers.w3 import checksum_address, get_nft, get_nft_image_url, is_account_address, verify_token_ownership
 from app.models.base import APIDocument
 from app.models.channel import ChannelReadState
 from app.models.report import UserReport
@@ -168,15 +167,25 @@ async def delete_user_read_states(current_user: User):
 
 
 async def get_users_info(data: dict):
-    user_ids: List[str] = data.get("user_ids", [])
-    user_obj_ids = []
-    for user_id in user_ids:
-        try:
-            user_obj_ids.append(ObjectId(user_id))
-        except InvalidId:
-            pass
+    users = []
 
-    return await get_items(filters={"_id": {"$in": user_obj_ids}}, result_obj=User)
+    user_ids: List[str] = [ObjectId(i) for i in data.get("user_ids", []) if ObjectId.is_valid(i)]
+
+    if len(user_ids) > 0:
+        id_users = await get_items(filters={"_id": {"$in": user_ids}}, result_obj=User, limit=None)
+        users.extend(id_users)
+
+    wallet_addresses: List[str] = [
+        checksum_address(a) for a in data.get("wallet_addresses", []) if is_account_address(a)
+    ]
+
+    if len(wallet_addresses) > 0:
+        address_users = await get_items(
+            filters={"wallet_address": {"$in": wallet_addresses}}, result_obj=User, limit=None
+        )
+        users.extend(address_users)
+
+    return users
 
 
 async def get_user_preferences(current_user: User):
