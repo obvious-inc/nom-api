@@ -8,6 +8,7 @@ from pymongo.database import Database
 from app.models.channel import Channel
 from app.models.server import Server
 from app.models.user import User
+from app.services.crud import update_item
 
 
 class TestUserRoutes:
@@ -347,3 +348,87 @@ class TestUserRoutes:
 
         response = await authorized_client.get("/users/me")
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_fetch_user_member_channels_unauthorized(
+        self,
+        client: AsyncClient,
+        create_new_user: Callable,
+        create_new_topic_channel: Callable,
+    ):
+        target_user = await create_new_user()
+        channel = await create_new_topic_channel()
+
+        async def run_request():
+            return await client.get(f"/users/{str(target_user.pk)}/channels")
+
+        # It shouldn’t return channels the user isn’t a member of
+        response = await run_request()
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+        # Add the user to the member list
+        await update_item(item=channel, data={"members": [target_user.pk]})
+
+        # It still shouldn’t return non-public channels the user is a member of
+        response = await run_request()
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+        # Make the channel publicly accessible
+        await update_item(
+            item=channel,
+            data={"permission_overwrites": [{"group": "@public", "permissions": ["channels.view", "messages.list"]}]},
+        )
+
+        # Now that the channel has the user in its member list and is publicly
+        # accessible, it should be in the results
+        response = await run_request()
+        assert response.status_code == 200
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert json_response[0]["id"] == str(channel.pk)
+
+    @pytest.mark.asyncio
+    async def test_fetch_user_member_channels_authorized(
+        self,
+        authorized_client: AsyncClient,
+        current_user: User,
+        create_new_user: Callable,
+        create_new_topic_channel: Callable,
+    ):
+        target_user = await create_new_user()
+        target_user_channel = await create_new_topic_channel(target_user)
+        current_user_channel = await create_new_topic_channel(current_user)
+
+        async def run_request():
+            return await authorized_client.get(f"/users/{str(target_user.pk)}/channels")
+
+        # It shouldn’t return channels the user aren’t a member of
+        response = await run_request()
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+        # Add the target user to the logged in user’s channel list
+        await update_item(item=current_user_channel, data={"members": [target_user.pk, current_user.pk]})
+
+        # It should now return the logged in user’s channel as it’s a common
+        # channel between the users
+        response = await run_request()
+        json_response = response.json()
+        assert len(json_response) == 1
+        assert json_response[0]["id"] == str(current_user_channel.pk)
+
+        # Make the target user’s channel publicly accessible
+        await update_item(
+            item=target_user_channel,
+            data={"permission_overwrites": [{"group": "@public", "permissions": ["channels.view", "messages.list"]}]},
+        )
+
+        # Now that the target user’s channel is publicly accessible, it should
+        # be in the results
+        response = await run_request()
+        assert response.status_code == 200
+        response_channel_ids = [c["id"] for c in response.json()]
+        expected_channel_ids = [str(c.pk) for c in [current_user_channel, target_user_channel]]
+        assert sorted(response_channel_ids) == sorted(expected_channel_ids)

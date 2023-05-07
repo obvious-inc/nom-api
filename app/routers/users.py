@@ -4,14 +4,14 @@ from typing import List, Optional, Union
 from fastapi import APIRouter, Body, Depends, Response
 from starlette.status import HTTP_204_NO_CONTENT
 
-from app.dependencies import PermissionsChecker, get_current_user
+from app.dependencies import PermissionsChecker, get_current_user, get_current_user_non_error
 from app.models.user import User
-from app.schemas.channels import ChannelReadStateSchema, EitherChannel
+from app.schemas.channels import ChannelReadStateSchema, ChannelSchema, EitherChannel
 from app.schemas.preferences import UserPreferencesSchema, UserPreferencesUpdateSchema
 from app.schemas.reports import UserReportCreateSchema, UserReportSchema
 from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
 from app.schemas.users import PublicUserSchema, UserBlockCreateSchema, UserBlockSchema, UserSchema, UserUpdateSchema
-from app.services.channels import get_user_channels
+from app.services.channels import get_user_channels, get_user_member_channels
 from app.services.servers import get_user_servers
 from app.services.users import (
     block_user,
@@ -64,6 +64,14 @@ async def list_read_states(current_user: User = Depends(get_current_user)):
 @router.get("/me/channels", summary="List channels user belongs to", response_model=List[EitherChannel])
 async def fetch_get_user_channels(current_user: User = Depends(get_current_user)):
     return await get_user_channels(current_user)
+
+
+@router.get("/{user_id}/channels", summary="Get user channels", response_model=List[ChannelSchema])
+async def fetch_get_user_member_channels(user_id: str, current_user_or_exception=Depends(get_current_user_non_error)):
+    if not current_user_or_exception or isinstance(current_user_or_exception, Exception):
+        return await get_user_member_channels(user_id)
+
+    return await get_user_member_channels(user_id, current_user_or_exception)
 
 
 @router.post(
