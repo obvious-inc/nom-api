@@ -4,9 +4,9 @@ from typing import List, Optional, Union
 from fastapi import APIRouter, Body, Depends, Response
 from starlette.status import HTTP_204_NO_CONTENT
 
-from app.dependencies import PermissionsChecker, get_current_user, get_current_user_non_error
+from app.dependencies import get_current_user, get_current_user_non_error
 from app.models.user import User
-from app.schemas.channels import ChannelReadStateSchema, ChannelSchema, EitherChannel
+from app.schemas.channels import ChannelReadStateSchema, EitherChannel
 from app.schemas.preferences import UserPreferencesSchema, UserPreferencesUpdateSchema
 from app.schemas.reports import UserReportCreateSchema, UserReportSchema
 from app.schemas.servers import ServerMemberUpdateSchema, ServerSchema
@@ -74,12 +74,7 @@ async def fetch_get_user_member_channels(user_id: str, current_user_or_exception
     return await get_user_member_channels(user_id, current_user_or_exception)
 
 
-@router.post(
-    "/info",
-    response_description="Get users info",
-    response_model=List[PublicUserSchema],
-    dependencies=[Depends(PermissionsChecker(needs_bearer=True))],
-)
+@router.post("/info", response_description="Get users info", response_model=List[PublicUserSchema])
 async def post_get_users_info(data=Body(...)):
     return await get_users_info(data)
 
