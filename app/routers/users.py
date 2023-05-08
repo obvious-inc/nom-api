@@ -66,7 +66,7 @@ async def fetch_get_user_channels(current_user: User = Depends(get_current_user)
     return await get_user_channels(current_user)
 
 
-@router.get("/{user_id}/channels", summary="Get user channels", response_model=List[ChannelSchema])
+@router.get("/{user_id}/channels", summary="Get user channels", response_model=List[EitherChannel])
 async def fetch_get_user_member_channels(user_id: str, current_user_or_exception=Depends(get_current_user_non_error)):
     if not current_user_or_exception or isinstance(current_user_or_exception, Exception):
         return await get_user_member_channels(user_id)
