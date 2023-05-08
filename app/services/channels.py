@@ -15,6 +15,7 @@ from app.helpers.channels import convert_permission_object_to_cached, is_user_in
 from app.helpers.events import EventType
 from app.helpers.permissions import fetch_user_permissions, user_belongs_to_server
 from app.helpers.queue_utils import queue_bg_task
+from app.helpers.w3 import checksum_address
 from app.helpers.whitelist import is_wallet_whitelisted
 from app.models.base import APIDocument
 from app.models.channel import Channel, ChannelReadState
@@ -446,8 +447,8 @@ async def get_user_channels(current_user: User):
     return await get_items(filters={"members": current_user.pk}, result_obj=Channel, limit=None)
 
 
-async def get_user_member_channels(user_id: str, current_user: Optional[User] = None):
-    target_user = await get_item_by_id(id_=user_id, result_obj=User)
+async def get_user_member_channels(account_address: str, current_user: Optional[User] = None):
+    target_user = await get_item(filters={"wallet_address": checksum_address(account_address)}, result_obj=User)
 
     public_permission_overwrite_matcher = {
         "group": "@public",
