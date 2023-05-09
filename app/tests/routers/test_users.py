@@ -360,7 +360,7 @@ class TestUserRoutes:
         channel = await create_new_topic_channel()
 
         async def run_request():
-            return await client.get(f"/users/{str(target_user.pk)}/channels")
+            return await client.get(f"/users/{target_user.wallet_address}/channels")
 
         # It shouldn’t return channels the user isn’t a member of
         response = await run_request()
@@ -402,7 +402,7 @@ class TestUserRoutes:
         current_user_channel = await create_new_topic_channel(current_user)
 
         async def run_request():
-            return await authorized_client.get(f"/users/{str(target_user.pk)}/channels")
+            return await authorized_client.get(f"/users/{target_user.wallet_address}/channels")
 
         # It shouldn’t return channels the user aren’t a member of
         response = await run_request()
