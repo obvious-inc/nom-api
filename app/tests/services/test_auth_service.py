@@ -32,7 +32,7 @@ class TestAuthService:
     async def test_generate_wallet_token_ok(self, db, private_key: bytes, wallet: str, server: Server):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
             {wallet}
 
@@ -66,7 +66,7 @@ class TestAuthService:
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
                         {wallet}
 
@@ -95,7 +95,7 @@ class TestAuthService:
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
                             {wallet}
 
@@ -270,7 +270,7 @@ class TestAuthService:
     async def test_generate_wallet_signature_expired(self, db, private_key: bytes, wallet: str, server: Server):
         nonce = 1234
         signed_at = arrow.utcnow().shift(minutes=-2).isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
                 {wallet}
 

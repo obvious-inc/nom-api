@@ -187,7 +187,7 @@ async def integration_app_webhook(current_user: User, integration_app: App, serv
 async def authorized_client(client: AsyncClient, private_key: bytes, current_user: User):
     nonce = 1234
     signed_at = arrow.utcnow().isoformat()
-    message = f"""NewShades wants you to sign in with your web3 account
+    message = f"""NOM wants you to sign in with your web3 account
 
     {current_user.wallet_address}
 
@@ -286,7 +286,7 @@ async def get_signed_message_data():
     async def _get_signed_message_data(private_key, address):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
                     {address}
 

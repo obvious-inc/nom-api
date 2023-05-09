@@ -36,7 +36,7 @@ class TestAuthRoutes:
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
         {wallet}
 
@@ -73,7 +73,7 @@ class TestAuthRoutes:
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
         {wallet}
 
@@ -125,7 +125,7 @@ class TestAuthRoutes:
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
         {wallet}
 
@@ -162,7 +162,7 @@ class TestAuthRoutes:
 
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
         {wallet}
 
@@ -206,7 +206,7 @@ class TestAuthRoutes:
     ):
         nonce = 1234
         signed_at = arrow.utcnow().isoformat()
-        message = f"""NewShades wants you to sign in with your web3 account
+        message = f"""NOM wants you to sign in with your web3 account
 
             {wallet}
 
@@ -324,9 +324,9 @@ class TestAuthRoutes:
 
         client.headers.update(
             {
-                "X-Newshades-Signer": public_key_hex,
-                "X-Newshades-Signature": signature_hex,
-                "X-Newshades-Timestamp": str(timestamp),
+                "X-NOM-Signer": public_key_hex,
+                "X-NOM-Signature": signature_hex,
+                "X-NOM-Timestamp": str(timestamp),
             }
         )
 
@@ -353,9 +353,9 @@ class TestAuthRoutes:
 
         client.headers.update(
             {
-                "X-Newshades-Signer": public_key_hex,
-                "X-Newshades-Signature": signature_hex,
-                "X-Newshades-Timestamp": str(timestamp),
+                "X-NOM-Signer": public_key_hex,
+                "X-NOM-Signature": signature_hex,
+                "X-NOM-Timestamp": str(timestamp),
             }
         )
 
@@ -402,9 +402,9 @@ class TestAuthRoutes:
 
         client.headers.update(
             {
-                "X-Newshades-Signer": signer_public_key_str,
-                "X-Newshades-Signature": base_str_signature_hex,
-                "X-Newshades-Timestamp": str(timestamp),
+                "X-NOM-Signer": signer_public_key_str,
+                "X-NOM-Signature": base_str_signature_hex,
+                "X-NOM-Timestamp": str(timestamp),
             }
         )
 

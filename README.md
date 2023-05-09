@@ -1,6 +1,6 @@
-# NewShades API
+# NOM API
 
-This is the API used by NewShades DAO.
+This is the API used by NOM.
 
 ## Getting started
 

@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_application(testing=False):
-    app_ = FastAPI(title="NewShades API", default_response_class=ORJSONResponse)
+    app_ = FastAPI(title="NOM API", default_response_class=ORJSONResponse)
 
     if testing:
         app_.add_event_handler("startup", override_connect_to_mongo)

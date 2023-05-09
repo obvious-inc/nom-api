@@ -108,7 +108,7 @@ async def get_signable_message_for_broadcast_identity_payload(broadcast_identity
                     {"name": "body", "type": "BroadcastIdentityBody"},
                 ],
             },
-            "domain": {"name": "NewShades", "version": "0.0.1"},
+            "domain": {"name": "NOM", "version": "0.0.1"},
             "primaryType": "Signer",
             "message": broadcast_identity_payload,
         }

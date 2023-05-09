@@ -72,7 +72,7 @@ async def get_current_user(request: Request, token: HTTPAuthorizationCredentials
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    signature = request.headers.get("X-Newshades-Signature")
+    signature = request.headers.get("X-NOM-Signature")
     if signature:
         auth_type = "signer"
         try:
@@ -160,7 +160,7 @@ async def get_current_app(request: Request, token: HTTPAuthorizationCredentials 
 async def get_current_user_non_error(
     request: Request, token: HTTPAuthorizationCredentials = Depends(oauth2_no_error_scheme)
 ):
-    signature = request.headers.get("X-Newshades-Signature")
+    signature = request.headers.get("X-NOM-Signature")
     if not signature and not token:
         return None
 

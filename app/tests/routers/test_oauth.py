@@ -661,16 +661,16 @@ class TestOAuthRoutes:
         "app_redirect_uris, request_redirect_uri",
         [
             (
-                ["https://example.com/newshades/callback"],
+                ["https://example.com/nom/callback"],
                 "https://example.com",
             ),
             (
-                ["https://example.com/newshades/callback"],
-                "https://example.com/newshades/callback &@foo.evil-user.net#@bar.evil-user.net/",
+                ["https://example.com/nom/callback"],
+                "https://example.com/nom/callback &@foo.evil-user.net#@bar.evil-user.net/",
             ),
             (
-                ["https://example.com/newshades/callback", "https://newshades.xyz"],
-                "https://newshades.xyz.hack-it.com",
+                ["https://example.com/nom/callback", "https://nom.xyz"],
+                "https://nom.xyz.hack-it.com",
             ),
         ],
     )

@@ -12,7 +12,7 @@ MAX_REQUEST_TIMESTAMP_DIFF_IN_SECONDS = 5
 
 
 async def _build_base_encryption_string(request: Request):
-    timestamp = request.headers.get("X-Newshades-Timestamp")
+    timestamp = request.headers.get("X-NOM-Timestamp")
     if int(time.time()) - int(timestamp) > MAX_REQUEST_TIMESTAMP_DIFF_IN_SECONDS:
         raise Exception("Timestamp is too old")
 
@@ -27,9 +27,9 @@ async def _build_base_encryption_string(request: Request):
 
 
 async def get_user_from_signed_request(request: Request):
-    timestamp = request.headers.get("X-Newshades-Timestamp")
-    signature = request.headers.get("X-Newshades-Signature")
-    signer = request.headers.get("X-Newshades-Signer")
+    timestamp = request.headers.get("X-NOM-Timestamp")
+    signature = request.headers.get("X-NOM-Signature")
+    signer = request.headers.get("X-NOM-Signer")
 
     if not timestamp or not signature or not signer:
         logger.warning(
