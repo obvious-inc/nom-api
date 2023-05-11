@@ -51,6 +51,7 @@ class TopicChannelSchema(ChannelSchema):
     description: Optional[str]
     members: List[PyObjectId] = []
     avatar: Optional[str]
+    body: Optional[List[dict]]
 
     class Config:
         schema_extra = {
@@ -80,6 +81,7 @@ class TopicChannelCreateSchema(ChannelCreateSchema):
     members: Optional[List[str]] = []
     description: Optional[str] = ""
     avatar: Optional[str] = ""
+    body: Optional[List[dict]] = []
     permission_overwrites: Optional[List[PermissionCreateSchema]] = []
 
 
@@ -106,6 +108,7 @@ class ChannelUpdateSchema(APIBaseUpdateSchema):
     name: Optional[str]
     description: Optional[str]
     avatar: Optional[str]
+    body: Optional[List[dict]] = []
 
 
 class ChannelBulkReadStateCreateSchema(APIBaseCreateSchema):

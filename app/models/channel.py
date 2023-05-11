@@ -24,6 +24,7 @@ class Channel(APIDocument):
     name = fields.StrField()
     description = fields.StrField()
     avatar = fields.StrField()
+    body = fields.ListField(fields.DictField, default=[])
 
     permission_overwrites = fields.ListField(fields.EmbeddedField(PermissionOverwrite), default=[], load_only=True)
 
