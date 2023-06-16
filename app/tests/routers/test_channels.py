@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from pymongo.database import Database
 
+from app.helpers.cache_utils import cache
 from app.helpers.whitelist import whitelist_wallet
 from app.models.app import App
 from app.models.channel import Channel
@@ -1299,7 +1300,7 @@ class TestChannelsRoutes:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_create_topic_channel_with_permissions_wrong_group(
+    async def test_create_topic_channel_with_random_permissions_group(
         self,
         app: FastAPI,
         db: Database,
@@ -1312,7 +1313,41 @@ class TestChannelsRoutes:
             "permission_overwrites": [{"group": "@random", "permissions": ["messages.list", "channels.view"]}],
         }
         response = await authorized_client.post("/channels", json=data)
-        assert response.status_code == 400
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_create_topic_channel_nouners_group(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+        get_authorized_client: Callable,
+        create_new_user: Callable,
+    ):
+        data = {
+            "kind": "topic",
+            "name": "nouners",
+            "permission_overwrites": [{"group": "@nouners", "permissions": ["messages.list"]}],
+        }
+        response = await authorized_client.post("/channels", json=data)
+        assert response.status_code == 201
+        json_response = response.json()
+        channel_id = json_response["id"]
+
+        response = await authorized_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
+
+        guest_user = await create_new_user()
+        guest_client = await get_authorized_client(guest_user)
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 403
+
+        await cache.client.zadd("nouns:voters", {guest_user.wallet_address: 1})
+
+        response = await guest_client.get(f"/channels/{channel_id}/messages")
+        assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_create_open_topic_channel(

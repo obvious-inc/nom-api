@@ -28,12 +28,13 @@ from app.helpers.channels import fetch_and_cache_channel
 from app.helpers.sections import fetch_and_cache_section
 from app.helpers.servers import fetch_and_cache_server
 from app.helpers.users import fetch_and_cache_user, get_user_roles_permissions
+from app.helpers.w3 import checksum_address
 from app.helpers.whitelist import is_wallet_whitelisted
 from app.models.app import App
 from app.models.channel import Channel
 from app.models.server import Server, ServerMember
 from app.models.user import User
-from app.services.crud import get_item
+from app.services.crud import get_item, get_item_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,54 @@ async def fetch_cached_permissions_data(channel_id: Optional[str], user_id: str,
     return channel_data, user_data, server_data, section_data, app_data
 
 
+async def user_belongs_to_group(user_id: str, group: str) -> bool:
+    if group in [PUBLIC_GROUP, MEMBERS_GROUP, OWNERS_GROUP]:
+        return False
+
+    # TODO: add proper support for custom groups
+    if group == "@nouners":
+        user = await get_item_by_id(id_=user_id, result_obj=User)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        wallet_address = checksum_address(user.wallet_address)
+        no_votes = await cache.client.zscore("nouns:voters", wallet_address) or 0
+        logger.debug(f"number of noun votes for {wallet_address}: {no_votes}")
+
+        return no_votes > 0
+    else:
+        logger.warning(f"unhandled group: {group}")
+
+    return False
+
+
+async def get_channel_user_group_roles(
+    user_id: str, channel: dict, user_roles: dict, user_whitelisted: Optional[bool] = False
+):
+    settings = get_settings()
+    channel_perms = json.loads(channel.get("permissions", ""))
+
+    channel_perm_groups = list(channel_perms.keys())
+
+    # handle default groups: @members, @?
+    members = channel.get("members", []).split(",")
+    if user_id in members:
+        member_perms = channel_perms.get(MEMBERS_GROUP, [])
+        if member_perms:
+            user_roles[MEMBERS_GROUP] = member_perms
+            channel_perm_groups.remove(MEMBERS_GROUP)
+        else:
+            if settings.feature_whitelist and not user_whitelisted:
+                user_roles[MEMBERS_GROUP] = NON_WHITELISTED_TOPIC_MEMBER_PERMISSIONS
+            else:
+                user_roles[MEMBERS_GROUP] = DEFAULT_TOPIC_MEMBER_PERMISSIONS
+
+    # handle custom groups: @nouners, etc.
+    for remaining_group in channel_perm_groups:
+        if await user_belongs_to_group(user_id, remaining_group):
+            user_roles[remaining_group] = channel_perms[remaining_group]
+
+
 async def fetch_user_permissions(
     channel_id: Optional[str],
     server_id: Optional[str],
@@ -212,23 +261,18 @@ async def fetch_user_permissions(
             return DEFAULT_DM_MEMBER_PERMISSIONS
         elif channel.get("kind") == "topic":
             channel_perms = json.loads(channel.get("permissions", ""))
-            if user_id and channel.get("owner") == user_id:
-                owner_perms = channel_perms.get(OWNERS_GROUP, [])
-                if not owner_perms:
-                    return CHANNEL_OWNER_PERMISSIONS
 
-                user_roles[OWNERS_GROUP] = owner_perms
+            if user_id:
+                if channel.get("owner", "") == user_id:
+                    owner_perms = channel_perms.get(OWNERS_GROUP, [])
+                    if not owner_perms:
+                        return CHANNEL_OWNER_PERMISSIONS
 
-            members = channel.get("members", []).split(",")
-            if user_id and user_id in members:
-                member_perms = channel_perms.get(MEMBERS_GROUP, [])
-                if member_perms:
-                    user_roles[MEMBERS_GROUP] = member_perms
-                else:
-                    if settings.feature_whitelist and not user_whitelisted:
-                        user_roles[MEMBERS_GROUP] = NON_WHITELISTED_TOPIC_MEMBER_PERMISSIONS
-                    else:
-                        user_roles[MEMBERS_GROUP] = DEFAULT_TOPIC_MEMBER_PERMISSIONS
+                    user_roles[OWNERS_GROUP] = owner_perms
+
+                await get_channel_user_group_roles(
+                    user_id=user_id, channel=channel, user_roles=user_roles, user_whitelisted=user_whitelisted
+                )
 
             if app_id:
                 if not app:

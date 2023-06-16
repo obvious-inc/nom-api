@@ -306,7 +306,6 @@ class TestUserRoutes:
         assert response.status_code == 200
         json_resp = response.json()
         assert len(json_resp) == 1
-        print(json_resp)
         assert json_resp[0].get("user") == str(guest_user.pk)
         assert json_resp[0].get("author") == str(current_user.pk)
 
