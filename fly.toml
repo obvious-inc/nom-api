@@ -2,13 +2,13 @@
 app = "ns-api"
 primary_region = "fra"
 kill_signal = "SIGINT"
-kill_timeout = "15s"
+kill_timeout = "5s"
 
 [experimental]
   auto_rollback = true
 
 [deploy]
-  strategy = "canary"
+  strategy = "rolling"
 
 [processes]
   app = "gunicorn --forwarded-allow-ips '*' -b :8080 -w 3 --max-requests 1000 --max-requests-jitter 100 -k uvicorn.workers.UvicornWorker app.main:app"
