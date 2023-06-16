@@ -1,56 +1,48 @@
 
 app = "ns-api"
+primary_region = "fra"
 kill_signal = "SIGINT"
-kill_timeout = 5
+kill_timeout = "15s"
+
+[experimental]
+  auto_rollback = true
 
 [deploy]
   strategy = "canary"
-
-[env]
-
-[experimental]
-  allowed_public_ports = []
-  auto_rollback = true
-  cmd = []
-  entrypoint = []
-  exec = []
 
 [processes]
   app = "gunicorn --forwarded-allow-ips '*' -b :8080 -w 3 --max-requests 1000 --max-requests-jitter 100 -k uvicorn.workers.UvicornWorker app.main:app"
 
 [[services]]
+  protocol = "tcp"
   internal_port = 8080
   processes = ["app"]
-  protocol = "tcp"
-  script_checks = []
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
 
   [services.concurrency]
+    type = "requests"
     hard_limit = 25
     soft_limit = 20
-    type = "requests"
-
-  [[services.ports]]
-    force_https = true
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
 
   [[services.tcp_checks]]
-    grace_period = "1s"
     interval = "15s"
-    restart_limit = 0
     timeout = "2s"
+    grace_period = "1s"
+    restart_limit = 0
 
   [[services.http_checks]]
-    interval = 60000
+    interval = "1m0s"
+    timeout = "2s"
     grace_period = "20s"
+    restart_limit = 0
     method = "get"
     path = "/"
     protocol = "http"
-    restart_limit = 0
-    timeout = 2000
-    tls_skip_verify = false
-    [services.http_checks.headers]
