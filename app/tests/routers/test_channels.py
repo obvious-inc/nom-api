@@ -703,6 +703,8 @@ class TestChannelsRoutes:
         assert "members" in json_response
         assert len(json_response["members"]) == 1
         assert json_response["members"][0] == str(current_user.pk)
+        assert "tags" in json_response
+        assert len(json_response["tags"]) == 0
 
     @pytest.mark.asyncio
     async def test_invite_member_to_channel(
@@ -2020,6 +2022,47 @@ class TestChannelsRoutes:
     ):
         response = await authorized_client.get(f"/channels?member={wallet}")
         assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_fetch_channels_by_tags(
+        self,
+        app: FastAPI,
+        db: Database,
+        current_user: User,
+        authorized_client: AsyncClient,
+    ):
+        response = await authorized_client.post(
+            "/channels",
+            json={
+                "kind": "topic",
+                "name": "foo",
+                "tags": ["bar"],
+            },
+        )
+        assert response.status_code == 201
+        channel_id = response.json()["id"]
+
+        response = await authorized_client.get("/channels?tags=bar")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+        assert response.json()[0]["id"] == channel_id
+
+        response = await authorized_client.get("/channels?tags=bar,baz")
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+        response = await authorized_client.post(
+            "/channels", json={"kind": "topic", "name": "foo2", "tags": ["bar", "baz"]}
+        )
+        assert response.status_code == 201
+
+        response = await authorized_client.get("/channels?tags=bar,baz")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+
+        response = await authorized_client.get("/channels?tags=bar")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
 
     @pytest.mark.asyncio
     async def test_get_private_topic_channels_diff_permissions(
