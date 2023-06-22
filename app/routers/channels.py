@@ -55,7 +55,7 @@ async def get_fetch_channels(
     current_user_or_exception=Depends(get_current_user_non_error),
     common_params: dict = Depends(common_parameters),
 ):
-    unescaped_tags = unquote(tags)
+    unescaped_tags = unquote(tags) if tags else None
 
     if scope == "discovery":
         return await get_public_channels(tags=unescaped_tags, **common_params)
