@@ -50,6 +50,7 @@ class TopicChannelSchema(ChannelSchema):
     name: str
     description: Optional[str]
     members: List[PyObjectId] = []
+    tags: Optional[List[str]] = []
     avatar: Optional[str]
     body: Optional[List[dict]]
 
@@ -79,6 +80,7 @@ class TopicChannelCreateSchema(ChannelCreateSchema):
     kind: str = "topic"
     name: str
     members: Optional[List[str]] = []
+    tags: Optional[List[str]] = []
     description: Optional[str] = ""
     avatar: Optional[str] = ""
     body: Optional[List[dict]] = []

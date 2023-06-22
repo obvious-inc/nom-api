@@ -480,10 +480,27 @@ async def get_user_member_channels(account_address: str, current_user: Optional[
     return channels
 
 
-async def get_public_channels():
+async def get_public_channels(tags: Optional[str] = None, **common_params):
+    filters: Dict[Any, Any] = {
+        "deleted": False,
+        "kind": "topic",
+        "permission_overwrites": {
+            "$elemMatch": {
+                "group": "@public",
+                "permissions": {"$all": ["messages.list", "channels.view"]},
+            }
+        },
+    }
+
     cache_key = "discovery:channels:@public"
 
+    if tags:
+        cache_key += f":{tags}"
+        tag_list = tags.split(",")
+        filters["tags"] = {"$all": tag_list}
+
     cached_channel_ids = await cache.client.get(cache_key)
+
     if cached_channel_ids:
         channel_ids = json.loads(cached_channel_ids)
         channel_pks = [ObjectId(channel_id) for channel_id in channel_ids]
@@ -491,25 +508,14 @@ async def get_public_channels():
     else:
         channel_docs = await Channel.collection.aggregate(
             [
-                {
-                    "$match": {
-                        "deleted": False,
-                        "kind": "topic",
-                        "permission_overwrites": {
-                            "$elemMatch": {
-                                "group": "@public",
-                                "permissions": {"$all": ["messages.list", "channels.view"]},
-                            }
-                        },
-                    }
-                },
+                {"$match": filters},
                 {"$sort": {"members": -1}},
-                {"$limit": 20},
+                {"$limit": common_params.get("limit", 20)},
             ]
         ).to_list(length=None)
         channels = [Channel.build_from_mongo(channel) for channel in channel_docs]
         channel_ids = [str(channel.pk) for channel in channels]
-        await cache.client.set(cache_key, json.dumps(channel_ids), ex=3600)
+        await cache.client.set(cache_key, json.dumps(channel_ids), ex=60)
 
     return channels
 
@@ -533,6 +539,7 @@ async def get_channels(
     scope: Optional[str] = "private",
     member: Optional[str] = None,
     members: Optional[str] = None,
+    tags: Optional[str] = None,
     **common_params,
 ):
     filters: Dict[Any, Any] = {"deleted": False}
@@ -564,6 +571,10 @@ async def get_channels(
         filters["members"] = {"$all": [m.pk for m in model_users]}
     else:
         filters["members"] = current_user.pk
+
+    if tags:
+        tag_list = tags.split(",")
+        filters["tags"] = {"$all": tag_list}
 
     if kind == "topic":
         filters["kind"] = "topic"

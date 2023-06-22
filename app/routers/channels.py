@@ -1,6 +1,7 @@
 import http
 from datetime import datetime
 from typing import List, Optional, Union
+from urllib.parse import unquote
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from starlette import status
@@ -50,18 +51,27 @@ async def get_fetch_channels(
     scope: Optional[str] = None,
     member: Optional[str] = None,
     members: Optional[str] = None,
+    tags: Optional[str] = None,
     current_user_or_exception=Depends(get_current_user_non_error),
     common_params: dict = Depends(common_parameters),
 ):
+    unescaped_tags = unquote(tags)
+
     if scope == "discovery":
-        return await get_public_channels()
+        return await get_public_channels(tags=unescaped_tags, **common_params)
     else:
         if not current_user_or_exception or isinstance(current_user_or_exception, Exception):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     current_user: User = current_user_or_exception
     return await get_channels(
-        current_user=current_user, kind=kind, scope=scope, member=member, members=members, **common_params
+        current_user=current_user,
+        kind=kind,
+        scope=scope,
+        member=member,
+        members=members,
+        tags=unescaped_tags,
+        **common_params,
     )
 
 
