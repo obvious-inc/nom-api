@@ -25,6 +25,7 @@ class MessageSchema(APIBaseSchema):
     reply_to: Optional[PyObjectId]
     inviter: Optional[PyObjectId]
     updates: Optional[dict]
+    previous: Optional[dict]
     type: Optional[int] = 0
 
 
@@ -67,6 +68,7 @@ class SystemMessageCreateSchema(MessageCreateSchema):
     server: Optional[str]
     inviter: Optional[str]
     updates: Optional[dict] = {}
+    previous: Optional[dict] = {}
     type: int = 1
 
 

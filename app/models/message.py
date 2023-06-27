@@ -40,6 +40,7 @@ class Message(APIDocument):
 class SystemMessage(Message):
     inviter = fields.ReferenceField("User", required=False, default=None)
     updates = fields.DictField(required=False, default={})
+    previous = fields.DictField(required=False, default={})
     type = fields.IntField(default=1)
 
 

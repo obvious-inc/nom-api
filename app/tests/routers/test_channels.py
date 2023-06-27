@@ -2102,3 +2102,33 @@ class TestChannelsRoutes:
         assert response.status_code == 200
         assert len(response.json()) == 1
         assert response.json()[0]["id"] == channel_id
+
+    @pytest.mark.asyncio
+    async def test_update_topic_channel_name_system_message(
+        self,
+        app: FastAPI,
+        db: Database,
+        authorized_client: AsyncClient,
+        current_user: User,
+        topic_channel: Channel,
+    ):
+        update_data = {"name": "new name"}
+        og_channel_data = topic_channel.dump()
+        og_data = {k: v for k, v in og_channel_data.items() if k in update_data.keys()}
+
+        response = await authorized_client.patch(f"/channels/{str(topic_channel.pk)}", json=update_data)
+        assert response.status_code == 200
+        json_response = response.json()
+        assert json_response["name"] == update_data["name"]
+
+        # check that system message was created
+        response = await authorized_client.get(f"/channels/{str(topic_channel.pk)}/messages")
+        assert response.status_code == 200
+        json_response = response.json()
+        sys_message = json_response[0]
+
+        assert "updates" in sys_message
+        assert sys_message["updates"] == update_data
+
+        assert "previous" in sys_message
+        assert sys_message["previous"] == og_data

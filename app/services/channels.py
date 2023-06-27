@@ -254,6 +254,8 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
     channel = await get_item_by_id(id_=channel_id, result_obj=Channel)
 
     data = update_data.dict(exclude_unset=True)
+    og_channel = channel.dump()
+    og_data = {k: v for k, v in og_channel.items() if k in data.keys()}
 
     if channel.kind == "server":
         server = await channel.server.fetch()
@@ -284,7 +286,7 @@ async def update_channel(channel_id: str, update_data: ChannelUpdateSchema, curr
 
     updated_fields = list(data.keys())
     if len(updated_fields) == 1:
-        message = SystemMessageCreateSchema(channel=channel_id, type=5, updates=data)
+        message = SystemMessageCreateSchema(channel=channel_id, type=5, updates=data, previous=og_data)
         await create_message(message_model=message, current_user=current_user)
 
     return updated_item
